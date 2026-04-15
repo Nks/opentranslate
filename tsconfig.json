@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "shared/**/*.ts",
+    "electron/**/*.ts",
+    "app/**/*.ts",
+    "tests/**/*.ts",
+    "scripts/**/*.ts",
+    "*.config.ts"
+  ],
+  "exclude": ["node_modules", "dist", "dist-electron", "out", "release", ".nuxt", ".output"]
+}
