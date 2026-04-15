@@ -1,7 +1,6 @@
 import js from '@eslint/js'
 import tseslint from '@typescript-eslint/eslint-plugin'
 import tsParser from '@typescript-eslint/parser'
-import prettierConfig from 'eslint-config-prettier'
 import stylistic from '@stylistic/eslint-plugin'
 import unusedImports from 'eslint-plugin-unused-imports'
 import antiTrojanSource from 'eslint-plugin-anti-trojan-source'
@@ -118,13 +117,12 @@ export default [
       'no-redeclare': 'off',
 
       // --- General code style enforced as errors ---
-      curly: 'error',
+      curly: ['error', 'all'],
       eqeqeq: ['error', 'always'],
       'no-console': 'error',
       'id-length': ['error', { min: 2, exceptions: idLengthExceptions }],
 
       // --- Force path aliases: no relative parent imports ---
-      // Use @shared / @electron / @app instead of ../... in source files
       'no-restricted-imports': [
         'error',
         {
@@ -167,22 +165,10 @@ export default [
       'boundaries/dependency-nodes': ['import', 'dynamic-import'],
       'boundaries/elements': [
         { type: 'shared', pattern: 'shared/**/*', mode: 'full' },
-        {
-          type: 'electron-providers',
-          pattern: 'electron/providers/**/*',
-          mode: 'full',
-        },
-        {
-          type: 'electron-services',
-          pattern: 'electron/services/**/*',
-          mode: 'full',
-        },
+        { type: 'electron-providers', pattern: 'electron/providers/**/*', mode: 'full' },
+        { type: 'electron-services', pattern: 'electron/services/**/*', mode: 'full' },
         { type: 'electron-ipc', pattern: 'electron/ipc/**/*', mode: 'full' },
-        {
-          type: 'electron-preload',
-          pattern: 'electron/preload/**/*',
-          mode: 'full',
-        },
+        { type: 'electron-preload', pattern: 'electron/preload/**/*', mode: 'full' },
         { type: 'electron-main', pattern: 'electron/main/**/*', mode: 'full' },
         { type: 'app', pattern: 'app/**/*', mode: 'full' },
       ],
@@ -226,7 +212,7 @@ export default [
     },
   },
 
-  // Stylistic plugin — semicolons forbidden, aligned to Prettier (semi: false)
+  // Stylistic plugin — replaces Prettier. All formatting rules driven from here.
   stylistic.configs.customize({
     indent: 2,
     quotes: 'single',
@@ -241,7 +227,33 @@ export default [
   {
     files: ['**/*.{ts,tsx,js,mjs,cjs}'],
     rules: {
-      // Align with Prettier: `=` stays at end of line, `|` `&` `?` `:` break before
+      // Max line length (was Prettier printWidth)
+      '@stylistic/max-len': [
+        'error',
+        {
+          code: 100,
+          tabWidth: 2,
+          ignoreUrls: true,
+          ignoreStrings: true,
+          ignoreTemplateLiterals: true,
+          ignoreRegExpLiterals: true,
+          ignoreComments: false,
+        },
+      ],
+
+      // Unix line endings only (was Prettier endOfLine: 'lf')
+      '@stylistic/linebreak-style': ['error', 'unix'],
+
+      // Type-member delimiter: multiline has no delimiter, inline uses `;`
+      '@stylistic/member-delimiter-style': [
+        'error',
+        {
+          multiline: { delimiter: 'none', requireLast: false },
+          singleline: { delimiter: 'semi', requireLast: false },
+        },
+      ],
+
+      // Operator line-break alignment: `=` stays at end; `|`, `&`, `?`, `:` break before
       '@stylistic/operator-linebreak': [
         'error',
         'after',
@@ -254,18 +266,19 @@ export default [
           },
         },
       ],
-      // Align with Prettier (semi: false): multiline interface/type members have
-      // no delimiter; inline type literals still use `;` between members.
-      '@stylistic/member-delimiter-style': [
+
+      // EOF newline (Prettier always enforces)
+      '@stylistic/eol-last': ['error', 'always'],
+
+      // No trailing whitespace (Prettier strips on save)
+      '@stylistic/no-trailing-spaces': 'error',
+
+      // Single quotes for JSX props too, no mixed quotes
+      '@stylistic/quotes': [
         'error',
-        {
-          multiline: { delimiter: 'none', requireLast: false },
-          singleline: { delimiter: 'semi', requireLast: false },
-        },
+        'single',
+        { avoidEscape: true, allowTemplateLiterals: 'always' },
       ],
     },
   },
-
-  // Prettier last — disables any remaining rules that conflict with Prettier
-  prettierConfig,
 ]

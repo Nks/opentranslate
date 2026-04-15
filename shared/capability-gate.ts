@@ -8,7 +8,11 @@ export function isFeatureAvailable(
   readiness: ProviderReadiness,
   appEnabled: boolean,
 ): boolean {
-  if (!appEnabled) return false
-  if (readiness.state !== 'ready') return false
+  if (!appEnabled) {
+    return false
+  }
+  if (readiness.state !== 'ready') {
+    return false
+  }
   return readiness.capabilities[feature] === true
 }
