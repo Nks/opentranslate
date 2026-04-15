@@ -9,6 +9,6 @@ export const ErrorCategory = {
   RateLimited: 'rate_limited',
   InvalidProviderResponse: 'invalid_provider_response',
   InternalAppError: 'internal_app_error',
-} as const;
+} as const
 
-export type ErrorCategoryId = (typeof ErrorCategory)[keyof typeof ErrorCategory];
+export type ErrorCategoryId = (typeof ErrorCategory)[keyof typeof ErrorCategory]

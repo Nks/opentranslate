@@ -1,23 +1,23 @@
-import type { ProviderId } from './provider-id.js';
+import type { ProviderId } from './provider-id'
 
-export type SourceLanguageSelection = { mode: 'auto' } | { mode: 'explicit'; code: string };
+export type SourceLanguageSelection = { mode: 'auto' } | { mode: 'explicit'; code: string }
 
 export interface TranslationInput {
-  text: string;
-  source: SourceLanguageSelection;
-  targetLanguage: string;
-  format?: 'text';
-  timeoutMs?: number;
+  text: string
+  source: SourceLanguageSelection
+  targetLanguage: string
+  format?: 'text'
+  timeoutMs?: number
 }
 
 export interface TranslationOutput {
-  translatedText: string;
-  detectedSourceLanguage?: string;
-  provider: ProviderId;
-  rawMetadata?: Record<string, unknown>;
+  translatedText: string
+  detectedSourceLanguage?: string
+  provider: ProviderId
+  rawMetadata?: Record<string, unknown>
 }
 
 export interface LanguageDetectionResult {
-  detectedLanguage: string;
-  confidence?: number;
+  detectedLanguage: string
+  confidence?: number
 }

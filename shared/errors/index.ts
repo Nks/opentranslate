@@ -1,2 +1,2 @@
-export { ErrorCategory, type ErrorCategoryId } from '../types/errors.js';
-export { AppError, toErrorCategory } from './mapper.js';
+export { ErrorCategory, type ErrorCategoryId } from '@shared/types/errors'
+export { AppError, toErrorCategory } from './mapper'

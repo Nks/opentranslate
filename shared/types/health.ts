@@ -1,4 +1,4 @@
 export interface HealthStatus {
-  ok: boolean;
-  details?: string;
+  ok: boolean
+  details?: string
 }

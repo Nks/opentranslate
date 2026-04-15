@@ -1,21 +1,21 @@
-import { z } from 'zod';
-import { PROVIDER_IDS } from '../types/provider-id.js';
-import type { AppSettings } from '../types/settings.js';
+import { z } from 'zod'
+import { PROVIDER_IDS } from '@shared/types/provider-id'
+import type { AppSettings } from '@shared/types/settings'
 
-const themeSchema = z.enum(['system', 'light', 'dark']);
-const retentionSchema = z.enum(['forever', 'last-30-days', 'last-100-entries']);
-const providerIdSchema = z.enum(PROVIDER_IDS);
+const themeSchema = z.enum(['system', 'light', 'dark'])
+const retentionSchema = z.enum(['forever', 'last-30-days', 'last-100-entries'])
+const providerIdSchema = z.enum(PROVIDER_IDS)
 
 const shortcutsSchema = z.object({
   quickTranslate: z.string().min(1),
   openMain: z.string().min(1),
   quickTranslateEnabled: z.boolean(),
-});
+})
 
 const advancedSchema = z.object({
   requestTimeoutMs: z.number().int().positive(),
   libreAllowSelfSignedTls: z.boolean(),
-});
+})
 
 export const appSettingsSchema = z.object({
   launchAtStartup: z.boolean(),
@@ -27,7 +27,7 @@ export const appSettingsSchema = z.object({
   shortcuts: shortcutsSchema,
   advanced: advancedSchema,
   activeProvider: providerIdSchema,
-});
+})
 
 export const defaultAppSettings: AppSettings = {
   launchAtStartup: false,
@@ -46,4 +46,4 @@ export const defaultAppSettings: AppSettings = {
     libreAllowSelfSignedTls: false,
   },
   activeProvider: 'libretranslate',
-};
+}
