@@ -19,34 +19,51 @@
   "packageManager": "pnpm@10.33.0",
   "type": "module",
   "scripts": {
-    "dev": "echo \"dev wiring lands in Phase 2 (feature/electron-shell)\" && exit 0",
-    "build": "pnpm run typecheck && echo \"build wiring lands in Phase 2\" && exit 0",
+    "dev": "node scripts/dev.mjs",
+    "build:electron": "node scripts/build-electron.mjs",
+    "build:renderer": "nuxt build",
+    "build": "pnpm run typecheck && pnpm run build:electron && pnpm run build:renderer",
     "package": "echo \"packaging lands in Phase 11 (feature/packaging)\" && exit 0",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "pretest:e2e": "pnpm run build:electron",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@nuxt/ui": "^4.6.1",
     "@playwright/test": "^1.49.0",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@types/node": "^24.0.0",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "@vitest/coverage-v8": "^2.1.8",
+    "electron": "^41.2.0",
     "electron-builder": "^25.1.8",
+    "esbuild": "^0.28.0",
     "eslint": "^9.17.0",
     "eslint-plugin-anti-trojan-source": "^1.1.2",
     "eslint-plugin-boundaries": "^6.0.2",
     "eslint-plugin-security-node": "^1.1.4",
     "eslint-plugin-unused-imports": "^4.4.1",
+    "nuxt": "^4.4.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "vue-eslint-parser": "^10.4.0",
+    "vue-tsc": "^3.2.6"
   },
   "dependencies": {
     "zod": "^4.3.6"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild",
+      "@parcel/watcher"
+    ]
   }
 }

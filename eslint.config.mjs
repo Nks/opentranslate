@@ -1,6 +1,7 @@
 import js from '@eslint/js'
 import tseslint from '@typescript-eslint/eslint-plugin'
 import tsParser from '@typescript-eslint/parser'
+import vueParser from 'vue-eslint-parser'
 import stylistic from '@stylistic/eslint-plugin'
 import unusedImports from 'eslint-plugin-unused-imports'
 import antiTrojanSource from 'eslint-plugin-anti-trojan-source'
@@ -32,6 +33,7 @@ const nodeGlobals = {
   AbortController: 'readonly',
   AbortSignal: 'readonly',
   crypto: 'readonly',
+  NodeJS: 'readonly',
 }
 
 const idLengthExceptions = ['_']
@@ -68,6 +70,24 @@ export default [
       globals: nodeGlobals,
     },
     ...js.configs.recommended,
+  },
+
+  // Vue SFC files — use vue-eslint-parser and delegate <script lang="ts"> to tsParser.
+  // Vue-specific rules land in Phase 6 with @nuxt/eslint-config.
+  {
+    files: ['**/*.vue'],
+    languageOptions: {
+      parser: vueParser,
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...nodeGlobals, window: 'readonly', document: 'readonly' },
+      parserOptions: {
+        parser: tsParser,
+        ecmaVersion: 2022,
+        sourceType: 'module',
+        extraFileExtensions: ['.vue'],
+      },
+    },
   },
 
   // TypeScript rules

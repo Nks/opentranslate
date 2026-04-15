@@ -28,6 +28,7 @@ coverage/
 *.lcov
 playwright-report/
 .playwright-cache/
+test-results/
 .vitest-cache/
 tests/tmp/
 node-compile-cache
