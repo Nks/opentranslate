@@ -55,7 +55,34 @@ jobs:
       - name: Unit + integration tests
         run: pnpm test
 
-      - name: E2E (Playwright Electron smoke)
+      - name: Install Electron runtime deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xvfb \
+            libnss3 \
+            libatk1.0-0t64 \
+            libatk-bridge2.0-0t64 \
+            libcups2t64 \
+            libdrm2 \
+            libxkbcommon0 \
+            libxcomposite1 \
+            libxdamage1 \
+            libxrandr2 \
+            libgbm1 \
+            libasound2t64 \
+            libpangocairo-1.0-0 \
+            libpango-1.0-0
+
+      - name: E2E Linux (xvfb-wrapped)
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" pnpm test:e2e
+        env:
+          CI: 'true'
+
+      - name: E2E macOS / Windows
+        if: runner.os != 'Linux'
         run: pnpm test:e2e
         env:
           CI: 'true'
