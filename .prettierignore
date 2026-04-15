@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-electron
+out
+release
+.nuxt
+.output
+coverage
+playwright-report
+pnpm-lock.yaml
+ruvector.db
+.claude
+.claude-flow
+.swarm

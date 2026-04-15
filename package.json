@@ -1,0 +1,41 @@
+{
+  "name": "opentranslate-desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MIT-licensed desktop translator with a DeepL-style workflow. Electron + Nuxt 4 + Nuxt UI + TypeScript.",
+  "license": "MIT",
+  "author": "OpenTranslate Desktop contributors",
+  "homepage": "https://github.com/ruvnet/opentranslate-desktop",
+  "engines": {
+    "node": ">=22.0.0 <23"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"dev wiring lands in Phase 2 (feature/electron-shell)\" && exit 0",
+    "build": "pnpm run typecheck && echo \"build wiring lands in Phase 2\" && exit 0",
+    "package": "echo \"packaging lands in Phase 11 (feature/packaging)\" && exit 0",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@vitest/coverage-v8": "^2.1.8",
+    "electron-builder": "^25.1.8",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

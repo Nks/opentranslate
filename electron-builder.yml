@@ -1,0 +1,63 @@
+appId: com.opentranslate.desktop
+productName: OpenTranslate Desktop
+copyright: Copyright © 2026 OpenTranslate Desktop contributors
+directories:
+  output: release/${version}
+  buildResources: build
+files:
+  - dist-electron/**/*
+  - .output/public/**/*
+  - package.json
+  - '!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}'
+  - '!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}'
+  - '!**/node_modules/*.d.ts'
+  - '!**/node_modules/.bin'
+asar: true
+asarUnpack:
+  - '**/*.{node,dll}'
+nodeGypRebuild: false
+buildDependenciesFromSource: false
+npmRebuild: true
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.productivity
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+dmg:
+  sign: false
+  contents:
+    - x: 410
+      y: 150
+      type: link
+      path: /Applications
+    - x: 130
+      y: 150
+      type: file
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: zip
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+  category: Utility
+  maintainer: OpenTranslate Desktop contributors <contributors@opentranslate.example>
