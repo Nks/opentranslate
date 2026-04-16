@@ -9,19 +9,24 @@ import {
 } from '@shared/errors'
 import type { TranslationProvider } from '@shared/providers/contract'
 
+/** Normalize path separators so tests pass on Windows (backslash) and Unix (forward slash). */
+function normalizePath(filePath: string): string {
+  return filePath.replace(/\\/g, '/')
+}
+
 describe('buildOutputFilename', () => {
   it('inserts target lang and .translated before extension', () => {
-    expect(buildOutputFilename('/docs/report.pdf', 'es'))
+    expect(normalizePath(buildOutputFilename('/docs/report.pdf', 'es')))
       .toBe('/docs/report.es.translated.pdf')
   })
 
   it('handles files without extension', () => {
-    expect(buildOutputFilename('/docs/readme', 'de'))
+    expect(normalizePath(buildOutputFilename('/docs/readme', 'de')))
       .toBe('/docs/readme.de.translated')
   })
 
   it('handles nested directories', () => {
-    expect(buildOutputFilename('/a/b/c/file.docx', 'fr'))
+    expect(normalizePath(buildOutputFilename('/a/b/c/file.docx', 'fr')))
       .toBe('/a/b/c/file.fr.translated.docx')
   })
 })

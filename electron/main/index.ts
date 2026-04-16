@@ -186,6 +186,53 @@ function registerIpcHandlers(): void {
   ipcMain.handle(channels['history:toggle'], safeHandler(
     (_event: unknown, input: unknown) => historyHandlers?.['history:toggle'](input as { enabled: boolean }),
   ))
+
+  // Document channels — capability check + file pick + translate.
+  // Actual document translation is stubbed until Google v3 Advanced lands.
+  ipcMain.handle(channels['document:status'], safeHandler(() => {
+    const adapter = orchestrator.getAdapter()
+
+    if (!adapter) {
+      return {
+        supported: false,
+        message: 'No provider selected',
+      }
+    }
+
+    return adapter.supportsDocumentTranslation().then((supported) => ({
+      supported,
+      message: supported
+        ? 'Document translation available'
+        : 'Document translation not supported by this provider',
+    }))
+  }))
+  ipcMain.handle(channels['document:pick'], safeHandler(async () => {
+    const { dialog } = await import('electron')
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [
+        {
+          name: 'Documents',
+          extensions: ['pdf', 'docx', 'pptx', 'xlsx', 'txt', 'html'],
+        },
+        {
+          name: 'All Files',
+          extensions: ['*'],
+        },
+      ],
+    })
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null
+    }
+
+    return { filePath: result.filePaths[0] }
+  }))
+  ipcMain.handle(channels['document:translate'], safeHandler(
+    async (_event: unknown, _input: unknown) => {
+      throw new Error('Document translation not yet implemented (Phase 9 stub)')
+    },
+  ))
 }
 
 async function createMainWindow(): Promise<void> {
