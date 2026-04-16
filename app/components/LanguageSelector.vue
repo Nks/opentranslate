@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import {computed} from 'vue'
-import {useVModel} from '@vueuse/core'
-import type {Language} from '@shared/types/language'
+import { computed } from 'vue'
+import { useVModel } from '@vueuse/core'
+import type { Language } from '@shared/types/language'
 
 interface Props {
   languages: Language[]
