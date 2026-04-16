@@ -23,15 +23,15 @@ function formatDate(iso: string): string {
     <div class="flex items-start justify-between gap-4">
       <div class="flex-1 min-w-0">
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">
-          {{ props.entry.sourceLanguageCode }} → {{ props.entry.targetLanguageCode }}
-          · {{ props.entry.provider }}
-          · {{ formatDate(props.entry.createdAt) }}
+          {{ entry.sourceLanguageCode }} → {{ entry.targetLanguageCode }}
+          · {{ entry.provider }}
+          · {{ formatDate(entry.createdAt) }}
         </p>
         <p class="text-sm font-medium truncate">
-          {{ props.entry.sourceText }}
+          {{ entry.sourceText }}
         </p>
         <p class="text-sm text-gray-600 dark:text-gray-300 truncate mt-1">
-          {{ props.entry.translatedText }}
+          {{ entry.translatedText }}
         </p>
       </div>
       <div class="flex gap-1 shrink-0">
@@ -39,7 +39,7 @@ function formatDate(iso: string): string {
           size="xs"
           variant="ghost"
           aria-label="Reopen in editor"
-          @click="emit('reopen', props.entry)"
+          @click="emit('reopen', entry)"
         >
           Open
         </UButton>
@@ -48,7 +48,7 @@ function formatDate(iso: string): string {
           variant="ghost"
           color="red"
           aria-label="Delete entry"
-          @click="emit('delete', props.entry.id)"
+          @click="emit('delete', entry.id)"
         >
           Delete
         </UButton>

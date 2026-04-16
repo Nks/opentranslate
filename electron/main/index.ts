@@ -138,7 +138,8 @@ function registerIpcHandlers(): void {
   try {
     const historyDb = createHistoryStore(join(userDataDir, 'history.db'))
     historyHandlers = createHistoryHandlers({
-      history: historyDb, settings: store,
+      history: historyDb,
+      settings: store,
     })
   } catch {
     // better-sqlite3 native module may fail if not rebuilt for Electron ABI.

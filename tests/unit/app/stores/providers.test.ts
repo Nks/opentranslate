@@ -25,10 +25,18 @@ describe('providers store', () => {
     const store = useProvidersStore()
     store.languages = [
       {
-        code: 'en', name: 'English', providerCode: 'en', supportsSource: true, supportsTarget: true,
+        code: 'en',
+        name: 'English',
+        providerCode: 'en',
+        supportsSource: true,
+        supportsTarget: true,
       },
       {
-        code: 'xx', name: 'TargetOnly', providerCode: 'xx', supportsSource: false, supportsTarget: true,
+        code: 'xx',
+        name: 'TargetOnly',
+        providerCode: 'xx',
+        supportsSource: false,
+        supportsTarget: true,
       },
     ]
 
@@ -40,10 +48,18 @@ describe('providers store', () => {
     const store = useProvidersStore()
     store.languages = [
       {
-        code: 'en', name: 'English', providerCode: 'en', supportsSource: true, supportsTarget: true,
+        code: 'en',
+        name: 'English',
+        providerCode: 'en',
+        supportsSource: true,
+        supportsTarget: true,
       },
       {
-        code: 'ja', name: 'Japanese', providerCode: 'ja', supportsSource: true, supportsTarget: false,
+        code: 'ja',
+        name: 'Japanese',
+        providerCode: 'ja',
+        supportsSource: true,
+        supportsTarget: false,
       },
     ]
 
@@ -55,10 +71,18 @@ describe('providers store', () => {
     const store = useProvidersStore()
     store.descriptors = [
       {
-        id: 'google', displayName: 'Google', description: '', settingsFields: [], secretFields: [],
+        id: 'google',
+        displayName: 'Google',
+        description: '',
+        settingsFields: [],
+        secretFields: [],
       },
       {
-        id: 'libretranslate', displayName: 'Libre', description: '', settingsFields: [], secretFields: [],
+        id: 'libretranslate',
+        displayName: 'Libre',
+        description: '',
+        settingsFields: [],
+        secretFields: [],
       },
     ]
     store.activeProviderId = 'libretranslate'

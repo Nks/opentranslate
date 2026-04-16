@@ -21,20 +21,20 @@ function onChange(value: string | null) {
 </script>
 
 <template>
-  <UFormField :label="props.label">
+  <UFormField :label="label">
     <USelect
       :model-value="modelValue"
-      :aria-label="props.label"
+      :aria-label="label"
       @update:model-value="onChange"
     >
       <option
-        v-if="props.autoDetectOption"
+        v-if="autoDetectOption"
         :value="null"
       >
         Auto Detect
       </option>
       <option
-        v-for="lang in props.languages"
+        v-for="lang in languages"
         :key="lang.code"
         :value="lang.code"
       >

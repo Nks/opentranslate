@@ -160,6 +160,11 @@ export function createHistoryStore(dbPath: string): HistoryStore {
   }
 
   return {
-    add, list, search, deleteEntry, clear, close,
+    add,
+    list,
+    search,
+    deleteEntry,
+    clear,
+    close,
   }
 }

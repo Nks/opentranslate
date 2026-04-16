@@ -1,26 +1,19 @@
 import {
-  useTranslationStore,
-} from '@app/stores/translation'
-import {
-  useProvidersStore,
-} from '@app/stores/providers'
-import {
-  useSettingsStore,
-} from '@app/stores/settings'
-import {
-  useApi,
-} from './useApi'
-
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  useDebounceFn, type PromisifyFn,
+} from '@vueuse/core'
+import { useTranslationStore } from '@app/stores/translation'
+import { useProvidersStore } from '@app/stores/providers'
+import { useSettingsStore } from '@app/stores/settings'
+import { useApi } from './useApi'
 
 export function useTranslation() {
   const translationStore = useTranslationStore()
   const providersStore = useProvidersStore()
   const settingsStore = useSettingsStore()
 
-  function scheduleTranslate() {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
+  async function executeTranslate() {
+    if (!providersStore.activeProviderId) {
+      return
     }
 
     const text = translationStore.sourceText.trim()
@@ -32,38 +25,38 @@ export function useTranslation() {
       return
     }
 
-    debounceTimer = setTimeout(async () => {
-      if (!providersStore.activeProviderId) {
-        return
+    translationStore.loading = true
+    translationStore.error = null
+
+    try {
+      const api = useApi()
+      const result = await api.translation.translate({
+        text: translationStore.sourceText,
+        source: providersStore.sourceSelection,
+        targetLanguage: providersStore.targetLanguage ?? 'en',
+      })
+
+      if (result) {
+        translationStore.translatedText = result.translatedText
+        translationStore.detectedSourceLanguage = result.detectedSourceLanguage ?? null
       }
-
-      translationStore.loading = true
-      translationStore.error = null
-
-      try {
-        const api = useApi()
-        const result = await api.translation.translate({
-          text: translationStore.sourceText,
-          source: providersStore.sourceSelection,
-          targetLanguage: providersStore.targetLanguage ?? 'en',
-        })
-
-        if (result) {
-          translationStore.translatedText = result.translatedText
-          translationStore.detectedSourceLanguage = result.detectedSourceLanguage ?? null
-        }
-      } catch (err) {
-        translationStore.error = err instanceof Error ? err.message : String(err)
-      } finally {
-        translationStore.loading = false
-      }
-    }, settingsStore.app.debounceMs)
+    } catch (err) {
+      translationStore.error = err instanceof Error ? err.message : String(err)
+    } finally {
+      translationStore.loading = false
+    }
   }
 
+  type DebouncedTranslate = PromisifyFn<typeof executeTranslate> & { cancel: () => void }
+
+  const scheduleTranslate = useDebounceFn(
+    executeTranslate,
+    settingsStore.app.debounceMs,
+  ) as DebouncedTranslate
+
   function cancelTranslation() {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
-      debounceTimer = null
+    if (typeof scheduleTranslate.cancel === 'function') {
+      scheduleTranslate.cancel()
     }
 
     try {
@@ -88,9 +81,7 @@ export function useTranslation() {
 
     try {
       const api = useApi()
-      const result = await api.providers.switch({
-        providerId,
-      })
+      const result = await api.providers.switch({ providerId })
 
       providersStore.activeProviderId = providerId
       providersStore.languages = result.languages
@@ -99,7 +90,7 @@ export function useTranslation() {
       providersStore.targetLanguage = result.selection.target
 
       if (translationStore.sourceText.trim().length > 0) {
-        scheduleTranslate()
+        void scheduleTranslate()
       }
     } catch (err) {
       providersStore.error = err instanceof Error ? err.message : String(err)

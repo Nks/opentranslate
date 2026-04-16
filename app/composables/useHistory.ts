@@ -1,5 +1,8 @@
+import { useDebounceFn } from '@vueuse/core'
 import { useHistoryStore } from '@app/stores/history'
 import { useApi } from '@app/composables/useApi'
+
+const SEARCH_DEBOUNCE_MS = 300
 
 export function useHistory() {
   const store = useHistoryStore()
@@ -12,9 +15,7 @@ export function useHistory() {
       const api = useApi()
 
       if (store.searchQuery.trim().length > 0) {
-        store.entries = await api.history.search({
-          query: store.searchQuery,
-        })
+        store.entries = await api.history.search({ query: store.searchQuery })
       } else {
         store.entries = await api.history.list({})
       }
@@ -24,6 +25,8 @@ export function useHistory() {
       store.loading = false
     }
   }
+
+  const debouncedLoad = useDebounceFn(loadEntries, SEARCH_DEBOUNCE_MS)
 
   async function deleteEntry(id: string) {
     try {
@@ -47,10 +50,13 @@ export function useHistory() {
 
   function setSearchQuery(query: string) {
     store.searchQuery = query
-    void loadEntries()
+    void debouncedLoad()
   }
 
   return {
-    loadEntries, deleteEntry, clearAll, setSearchQuery,
+    loadEntries,
+    deleteEntry,
+    clearAll,
+    setSearchQuery,
   }
 }

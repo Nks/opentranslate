@@ -446,7 +446,7 @@ export default [
       '@stylistic/object-property-newline': [
         'error',
         {
-          allowAllPropertiesOnSameLine: true,
+          allowAllPropertiesOnSameLine: false,
         },
       ],
 

@@ -34,7 +34,8 @@ describe('history store', () => {
   afterEach(async () => {
     store.close()
     await rm(dir, {
-      recursive: true, force: true,
+      recursive: true,
+      force: true,
     })
   })
 
@@ -88,7 +89,8 @@ describe('history store', () => {
   it('clears all entries', () => {
     store.add(ENTRY, 'forever', true)
     store.add({
-      ...ENTRY, sourceText: 'two',
+      ...ENTRY,
+      sourceText: 'two',
     }, 'forever', true)
     store.clear()
 
@@ -98,7 +100,8 @@ describe('history store', () => {
   it('applies last-100-entries retention', () => {
     for (let idx = 0; idx < 105; idx++) {
       store.add({
-        ...ENTRY, sourceText: `entry-${idx}`,
+        ...ENTRY,
+        sourceText: `entry-${idx}`,
       }, 'last-100-entries', true)
     }
 
@@ -110,12 +113,14 @@ describe('history store', () => {
   it('lists with offset for pagination', () => {
     for (let idx = 0; idx < 5; idx++) {
       store.add({
-        ...ENTRY, sourceText: `entry-${idx}`,
+        ...ENTRY,
+        sourceText: `entry-${idx}`,
       }, 'forever', true)
     }
 
     const page = store.list({
-      limit: 2, offset: 2,
+      limit: 2,
+      offset: 2,
     })
 
     expect(page).toHaveLength(2)
