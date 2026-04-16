@@ -1,4 +1,6 @@
-import type { ProviderId } from './provider-id'
+import type {
+  ProviderId,
+} from './provider-id'
 
 export interface HistoryEntry {
   id: string

@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest'
-import { historyEntrySchema } from '@shared/schemas/history-entry'
+import {
+  describe, expect, it,
+} from 'vitest'
+import {
+  historyEntrySchema,
+} from '@shared/schemas/history-entry'
 
 const validEntry = {
   id: '01HF000000000000000000000A',
@@ -17,15 +21,24 @@ describe('historyEntrySchema', () => {
   })
 
   it('rejects empty sourceText', () => {
-    expect(historyEntrySchema.safeParse({ ...validEntry, sourceText: '' }).success).toBe(false)
+    expect(historyEntrySchema.safeParse({
+      ...validEntry,
+      sourceText: '',
+    }).success).toBe(false)
   })
 
   it('rejects unknown provider', () => {
-    expect(historyEntrySchema.safeParse({ ...validEntry, provider: 'deepl' }).success).toBe(false)
+    expect(historyEntrySchema.safeParse({
+      ...validEntry,
+      provider: 'deepl',
+    }).success).toBe(false)
   })
 
   it('rejects non-ISO createdAt', () => {
-    expect(historyEntrySchema.safeParse({ ...validEntry, createdAt: 'yesterday' }).success).toBe(
+    expect(historyEntrySchema.safeParse({
+      ...validEntry,
+      createdAt: 'yesterday',
+    }).success).toBe(
       false,
     )
   })

@@ -1,6 +1,13 @@
-import type { ProviderId } from './provider-id'
+import type {
+  ProviderId,
+} from './provider-id'
 
-export type SourceLanguageSelection = { mode: 'auto' } | { mode: 'explicit'; code: string }
+export type SourceLanguageSelection = {
+  mode: 'auto'
+} | {
+  mode: 'explicit'
+  code: string
+}
 
 export interface TranslationInput {
   text: string

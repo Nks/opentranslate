@@ -1,4 +1,6 @@
-import { ErrorCategory, type ErrorCategoryId } from '@shared/types/errors'
+import {
+  ErrorCategory, type ErrorCategoryId,
+} from '@shared/types/errors'
 
 export class AppError extends Error {
   public readonly category: ErrorCategoryId
@@ -10,6 +12,7 @@ export class AppError extends Error {
     this.name = 'AppError'
     this.category = category
     this.retryable = retryable
+
     if (cause !== undefined) {
       this.cause = cause
     }
@@ -28,21 +31,29 @@ const TLS_CODES = new Set([
 
 function extractCode(err: unknown): string | undefined {
   if (err && typeof err === 'object' && 'code' in err) {
-    const code = (err as { code: unknown }).code
+    const code = (err as {
+      code: unknown
+    }).code
+
     if (typeof code === 'string') {
       return code
     }
   }
+
   return undefined
 }
 
 function extractStatus(err: unknown): number | undefined {
   if (err && typeof err === 'object' && 'status' in err) {
-    const status = (err as { status: unknown }).status
+    const status = (err as {
+      status: unknown
+    }).status
+
     if (typeof status === 'number') {
       return status
     }
   }
+
   return undefined
 }
 
@@ -52,29 +63,36 @@ export function toErrorCategory(err: unknown): ErrorCategoryId {
   }
 
   const code = extractCode(err)
+
   if (code) {
     if (NETWORK_CODES.has(code)) {
       return ErrorCategory.NetworkUnavailable
     }
+
     if (CONNECTION_CODES.has(code)) {
       return ErrorCategory.EndpointUnreachable
     }
+
     if (TLS_CODES.has(code)) {
       return ErrorCategory.TlsError
     }
   }
 
   const status = extractStatus(err)
+
   if (status !== undefined) {
     if (status === 401 || status === 403) {
       return ErrorCategory.AuthenticationFailure
     }
+
     if (status === 429) {
       return ErrorCategory.RateLimited
     }
+
     if (status === 402) {
       return ErrorCategory.QuotaExceeded
     }
+
     if (status === 400) {
       return ErrorCategory.InvalidProviderResponse
     }

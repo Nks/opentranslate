@@ -1,8 +1,18 @@
-import { context } from 'esbuild'
-import { spawn } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
-import { dirname, resolve } from 'node:path'
-import { createRequire } from 'node:module'
+import {
+  context,
+} from 'esbuild'
+import {
+  spawn,
+} from 'node:child_process'
+import {
+  fileURLToPath,
+} from 'node:url'
+import {
+  dirname, resolve,
+} from 'node:path'
+import {
+  createRequire,
+} from 'node:module'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = resolve(scriptDir, '..')
@@ -23,7 +33,9 @@ const sharedEsbuildOptions = {
   target: 'node22',
   sourcemap: true,
   format: 'cjs',
-  outExtension: { '.js': '.cjs' },
+  outExtension: {
+    '.js': '.cjs',
+  },
   external: ['electron'],
   tsconfig: resolve(rootDir, 'tsconfig.json'),
   alias: esbuildAlias,
@@ -48,7 +60,10 @@ await preloadCtx.rebuild()
 const nuxt = spawn('pnpm', ['exec', 'nuxt', 'dev', '--port', String(NUXT_PORT)], {
   cwd: rootDir,
   stdio: 'inherit',
-  env: { ...process.env, NUXT_HOST: 'localhost' },
+  env: {
+    ...process.env,
+    NUXT_HOST: 'localhost',
+  },
 })
 
 let electronProcess = null
@@ -61,7 +76,11 @@ function launchElectron() {
   electronProcess = spawn(electronBinary, [resolve(rootDir, 'dist-electron/main.cjs')], {
     cwd: rootDir,
     stdio: 'inherit',
-    env: { ...process.env, ELECTRON_RENDERER_URL: NUXT_URL, NODE_ENV: 'development' },
+    env: {
+      ...process.env,
+      ELECTRON_RENDERER_URL: NUXT_URL,
+      NODE_ENV: 'development',
+    },
   })
   electronProcess.on('exit', () => {
     shutdown(0)
@@ -70,11 +89,14 @@ function launchElectron() {
 
 async function waitForNuxtReady() {
   const deadline = Date.now() + 60_000
+
   while (Date.now() < deadline) {
     try {
       const response = await fetch(NUXT_URL)
+
       if (response.ok) {
         nuxtReady = true
+
         return
       }
     } catch {
@@ -82,6 +104,7 @@ async function waitForNuxtReady() {
     }
     await new Promise((res) => setTimeout(res, 300))
   }
+
   throw new Error(`Nuxt dev server did not become ready at ${NUXT_URL}`)
 }
 
@@ -93,6 +116,7 @@ function shutdown(code) {
       // already exited
     }
   }
+
   try {
     nuxt.kill()
   } catch {
@@ -107,6 +131,7 @@ process.on('SIGINT', () => shutdown(0))
 process.on('SIGTERM', () => shutdown(0))
 
 await waitForNuxtReady()
+
 if (nuxtReady) {
   launchElectron()
 }

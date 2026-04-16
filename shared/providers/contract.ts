@@ -1,7 +1,15 @@
-import type { Language } from '@shared/types/language'
-import type { ProviderCapabilities } from '@shared/types/capabilities'
-import type { ProviderId } from '@shared/types/provider-id'
-import type { HealthStatus } from '@shared/types/health'
+import type {
+  Language,
+} from '@shared/types/language'
+import type {
+  ProviderCapabilities,
+} from '@shared/types/capabilities'
+import type {
+  ProviderId,
+} from '@shared/types/provider-id'
+import type {
+  HealthStatus,
+} from '@shared/types/health'
 import type {
   LanguageDetectionResult,
   SourceLanguageSelection,

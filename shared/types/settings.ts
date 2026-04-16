@@ -1,4 +1,6 @@
-import type { ProviderId } from './provider-id'
+import type {
+  ProviderId,
+} from './provider-id'
 
 export type ThemePreference = 'system' | 'light' | 'dark'
 export type HistoryRetentionMode = 'forever' | 'last-30-days' | 'last-100-entries'

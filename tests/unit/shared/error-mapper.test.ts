@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest'
-import { AppError, ErrorCategory, toErrorCategory } from '@shared/errors'
+import {
+  describe, expect, it,
+} from 'vitest'
+import {
+  AppError, ErrorCategory, toErrorCategory,
+} from '@shared/errors'
 
 describe('toErrorCategory', () => {
   it('returns category from AppError directly', () => {
@@ -9,14 +13,18 @@ describe('toErrorCategory', () => {
 
   it('maps node DNS errors to network_unavailable', () => {
     for (const code of ['ENOTFOUND', 'EAI_AGAIN', 'ENETUNREACH']) {
-      const err = Object.assign(new Error('dns'), { code })
+      const err = Object.assign(new Error('dns'), {
+        code,
+      })
       expect(toErrorCategory(err)).toBe(ErrorCategory.NetworkUnavailable)
     }
   })
 
   it('maps connection errors to endpoint_unreachable', () => {
     for (const code of ['ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET']) {
-      const err = Object.assign(new Error('conn'), { code })
+      const err = Object.assign(new Error('conn'), {
+        code,
+      })
       expect(toErrorCategory(err)).toBe(ErrorCategory.EndpointUnreachable)
     }
   })
@@ -28,22 +36,32 @@ describe('toErrorCategory', () => {
       'SELF_SIGNED_CERT_IN_CHAIN',
       'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
     ]) {
-      const err = Object.assign(new Error('tls'), { code })
+      const err = Object.assign(new Error('tls'), {
+        code,
+      })
       expect(toErrorCategory(err)).toBe(ErrorCategory.TlsError)
     }
   })
 
   it('maps 401/403 HTTP-like errors to authentication_failure', () => {
-    expect(toErrorCategory({ status: 401 })).toBe(ErrorCategory.AuthenticationFailure)
-    expect(toErrorCategory({ status: 403 })).toBe(ErrorCategory.AuthenticationFailure)
+    expect(toErrorCategory({
+      status: 401,
+    })).toBe(ErrorCategory.AuthenticationFailure)
+    expect(toErrorCategory({
+      status: 403,
+    })).toBe(ErrorCategory.AuthenticationFailure)
   })
 
   it('maps 429 HTTP-like errors to rate_limited', () => {
-    expect(toErrorCategory({ status: 429 })).toBe(ErrorCategory.RateLimited)
+    expect(toErrorCategory({
+      status: 429,
+    })).toBe(ErrorCategory.RateLimited)
   })
 
   it('maps 402 HTTP-like errors to quota_exceeded', () => {
-    expect(toErrorCategory({ status: 402 })).toBe(ErrorCategory.QuotaExceeded)
+    expect(toErrorCategory({
+      status: 402,
+    })).toBe(ErrorCategory.QuotaExceeded)
   })
 
   it('falls back to internal_app_error for unknown input', () => {

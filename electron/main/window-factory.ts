@@ -1,4 +1,6 @@
-import type { BrowserWindowConstructorOptions } from 'electron'
+import type {
+  BrowserWindowConstructorOptions,
+} from 'electron'
 
 export interface WindowOptionsInput {
   preloadPath: string
