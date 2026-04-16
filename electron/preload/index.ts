@@ -30,6 +30,14 @@ import type {
 import type {
   Language,
 } from '@shared/types/language'
+import type {
+  HistoryEntry,
+} from '@shared/types/history'
+import type {
+  HistoryAddRequestShape,
+  HistoryListRequestShape,
+  HistorySearchRequestShape,
+} from '@electron/ipc/channels'
 
 const allowedChannels = new Set<string>(Object.values(channels))
 
@@ -73,6 +81,19 @@ const api = {
   languages: {
     list: (input: LanguageListRequestShape): Promise<Language[]> =>
       invoke('language:list', input),
+  },
+  history: {
+    add: (input: HistoryAddRequestShape): Promise<HistoryEntry | null> =>
+      invoke('history:add', input),
+    list: (input: HistoryListRequestShape): Promise<HistoryEntry[]> =>
+      invoke('history:list', input),
+    search: (input: HistorySearchRequestShape): Promise<HistoryEntry[]> =>
+      invoke('history:search', input),
+    delete: (input: { id: string }): Promise<void> =>
+      invoke('history:delete', input),
+    clear: (): Promise<void> => invoke('history:clear'),
+    toggle: (input: { enabled: boolean }): Promise<void> =>
+      invoke('history:toggle', input),
   },
 } as const
 

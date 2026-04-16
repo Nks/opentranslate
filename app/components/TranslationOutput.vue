@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useClipboard } from '@vueuse/core'
+
 interface Props {
   text: string
   provider: string | null
@@ -12,11 +14,10 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-async function copyToClipboard() {
-  if (typeof navigator !== 'undefined' && navigator.clipboard) {
-    await navigator.clipboard.writeText(props.text)
-  }
+const { copy: copyText } = useClipboard()
 
+async function copyToClipboard() {
+  await copyText(props.text)
   emit('copy')
 }
 </script>
@@ -25,14 +26,14 @@ async function copyToClipboard() {
   <div class="flex flex-col h-full">
     <div class="relative flex-1">
       <UTextarea
-        :model-value="props.text"
+        :model-value="text"
         readonly
         aria-label="Translated text"
         :rows="10"
         class="flex-1"
       />
       <div
-        v-if="props.loading"
+        v-if="loading"
         class="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-900/50"
       >
         <UIcon
@@ -42,11 +43,11 @@ async function copyToClipboard() {
       </div>
     </div>
     <div class="flex items-center justify-between mt-2 px-1 text-sm text-gray-500 dark:text-gray-400">
-      <span v-if="props.provider">
-        {{ props.provider }}
+      <span v-if="provider">
+        {{ provider }}
       </span>
       <UButton
-        v-if="props.text.length > 0"
+        v-if="text.length > 0"
         size="xs"
         variant="ghost"
         aria-label="Copy translation"

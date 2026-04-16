@@ -9,11 +9,13 @@ describe('StatusBar', () => {
   it('shows Ready when not loading and no error', () => {
     const wrapper = mount(StatusBar, {
       props: {
-        loading: false, error: null,
+        loading: false,
+        error: null,
       },
       global: {
         stubs: {
-          UIcon: true, UButton: true,
+          UIcon: true,
+          UButton: true,
         },
       },
     })
@@ -24,7 +26,8 @@ describe('StatusBar', () => {
   it('shows error message when error is set', () => {
     const wrapper = mount(StatusBar, {
       props: {
-        loading: false, error: 'Network failed',
+        loading: false,
+        error: 'Network failed',
       },
       global: {
         stubs: {
@@ -43,7 +46,8 @@ describe('StatusBar', () => {
   it('emits retry when retry button is clicked', async () => {
     const wrapper = mount(StatusBar, {
       props: {
-        loading: false, error: 'failed',
+        loading: false,
+        error: 'failed',
       },
       global: {
         stubs: {

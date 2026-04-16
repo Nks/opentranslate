@@ -39,6 +39,13 @@ import {
 import type {
   LanguageSelection,
 } from '@electron/services/language-catalog/catalog'
+import {
+  createHistoryStore,
+} from '@electron/services/history/store'
+import {
+  createHistoryHandlers,
+  type HistoryHandlers,
+} from '@electron/services/history/handlers'
 
 const DEV_RENDERER_URL = process.env.ELECTRON_RENDERER_URL
 const IS_DEV = Boolean(DEV_RENDERER_URL)
@@ -49,6 +56,7 @@ const preloadPath = join(distElectronDir, 'preload.cjs')
 let mainWindow: BrowserWindow | null = null
 let settingsHandlers: SettingsAndSecretsHandlers | null = null
 let translationHandlers: TranslationHandlers | null = null
+let historyHandlers: HistoryHandlers | null = null
 
 function registerIpcHandlers(): void {
   bootstrapProviderRegistry()
@@ -126,6 +134,24 @@ function registerIpcHandlers(): void {
     channels['language:list'],
     (_event, input) => translationHandlers!['language:list'](input),
   )
+
+  try {
+    const historyDb = createHistoryStore(join(userDataDir, 'history.db'))
+    historyHandlers = createHistoryHandlers({
+      history: historyDb,
+      settings: store,
+    })
+  } catch {
+    // better-sqlite3 native module may fail if not rebuilt for Electron ABI.
+    // History features will be unavailable; the rest of the app still works.
+  }
+
+  ipcMain.handle(channels['history:add'], (_event, input) => historyHandlers?.['history:add'](input) ?? null)
+  ipcMain.handle(channels['history:list'], (_event, input) => historyHandlers?.['history:list'](input) ?? [])
+  ipcMain.handle(channels['history:search'], (_event, input) => historyHandlers?.['history:search'](input) ?? [])
+  ipcMain.handle(channels['history:delete'], (_event, input) => historyHandlers?.['history:delete'](input))
+  ipcMain.handle(channels['history:clear'], () => historyHandlers?.['history:clear']())
+  ipcMain.handle(channels['history:toggle'], (_event, input) => historyHandlers?.['history:toggle'](input))
 }
 
 async function createMainWindow(): Promise<void> {

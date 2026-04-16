@@ -16,6 +16,9 @@ import type {
   Language,
 } from '@shared/types/language'
 import type {
+  HistoryEntry,
+} from '@shared/types/history'
+import type {
   ProviderCapabilities,
 } from '@shared/types/capabilities'
 import type {
@@ -47,6 +50,12 @@ export const channels = {
   'translation:cancel': 'translation:cancel',
   'translation:detect': 'translation:detect',
   'language:list': 'language:list',
+  'history:add': 'history:add',
+  'history:list': 'history:list',
+  'history:search': 'history:search',
+  'history:delete': 'history:delete',
+  'history:clear': 'history:clear',
+  'history:toggle': 'history:toggle',
 } as const
 
 export type ChannelName = keyof typeof channels
@@ -145,6 +154,48 @@ export interface ChannelContract {
     request: LanguageListRequestShape
     response: Language[]
   }
+  'history:add': {
+    request: HistoryAddRequestShape
+    response: HistoryEntry | null
+  }
+  'history:list': {
+    request: HistoryListRequestShape
+    response: HistoryEntry[]
+  }
+  'history:search': {
+    request: HistorySearchRequestShape
+    response: HistoryEntry[]
+  }
+  'history:delete': {
+    request: { id: string }
+    response: void
+  }
+  'history:clear': {
+    request: void
+    response: void
+  }
+  'history:toggle': {
+    request: { enabled: boolean }
+    response: void
+  }
+}
+
+export interface HistoryAddRequestShape {
+  sourceText: string
+  translatedText: string
+  sourceLanguageCode: string
+  targetLanguageCode: string
+  provider: string
+}
+
+export interface HistoryListRequestShape {
+  limit?: number
+  offset?: number
+}
+
+export interface HistorySearchRequestShape {
+  query: string
+  limit?: number
 }
 
 export type ChannelRequest<Name extends ChannelName> = ChannelContract[Name]['request']
