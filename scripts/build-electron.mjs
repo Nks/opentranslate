@@ -29,7 +29,7 @@ const sharedOptions = {
   outExtension: {
     '.js': '.cjs',
   },
-  external: ['electron'],
+  external: ['electron', 'better-sqlite3'],
   tsconfig: resolve(rootDir, 'tsconfig.json'),
   alias: {
     '@shared': resolve(rootDir, 'shared'),

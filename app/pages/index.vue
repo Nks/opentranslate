@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, onMounted } from 'vue'
 import { useTranslationStore } from '@app/stores/translation'
 import { useProvidersStore } from '@app/stores/providers'
 import { useTranslation } from '@app/composables/useTranslation'
@@ -13,11 +14,13 @@ const {
 
 async function loadProviders() {
   try {
-    const api = (window as unknown as { api: { providers: { list: () => Promise<unknown[]> } } }).api
+    const api = (window as unknown as {
+      api: { providers: { list: () => Promise<unknown[]> } }
+    }).api
     const descriptors = await api.providers.list()
     providersStore.descriptors = descriptors as typeof providersStore.descriptors
   } catch {
-    // outside Electron — skip
+    // outside Electron
   }
 }
 
@@ -32,14 +35,9 @@ function onSourceInput(value: string) {
 
 function onSourceLanguageChange(code: string | null) {
   if (code === null) {
-    providersStore.sourceSelection = {
-      mode: 'auto',
-    }
+    providersStore.sourceSelection = { mode: 'auto' }
   } else {
-    providersStore.sourceSelection = {
-      mode: 'explicit',
-      code,
-    }
+    providersStore.sourceSelection = { mode: 'explicit', code }
   }
 
   scheduleTranslate()
@@ -88,6 +86,17 @@ const sourceCode = computed<string | null>(() =>
           label="Target"
           @update:model-value="onTargetLanguageChange"
         />
+        <div class="ml-auto flex gap-2">
+          <NuxtLink to="/history">
+            <UButton
+              size="xs"
+              variant="ghost"
+              aria-label="Translation history"
+            >
+              History
+            </UButton>
+          </NuxtLink>
+        </div>
       </div>
 
       <!-- Two-pane translation area -->

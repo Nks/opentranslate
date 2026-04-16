@@ -19,6 +19,7 @@
   "packageManager": "pnpm@10.33.0",
   "type": "module",
   "scripts": {
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
     "dev": "node scripts/dev.mjs",
     "build:electron": "node scripts/build-electron.mjs",
     "build:renderer": "nuxt build",
@@ -33,6 +34,7 @@
     "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "@eslint/js": "^9.17.0",
     "@nuxt/test-utils": "^4.0.2",
     "@nuxt/ui": "^4.6.1",
