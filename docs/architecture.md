@@ -507,6 +507,76 @@ redacts known credential field names (`api_key`, `apiKey`,
 
 ---
 
+## 8.3 Translation Orchestration (Phase 5)
+
+Two bounded contexts are implemented in Phase 5: **translation** and
+**language-catalog**. Both live under `electron/services/`.
+
+### 8.3.1 Language catalog (`electron/services/language-catalog/`)
+
+Owns the per-provider supported-language cache and revalidation logic.
+
+- **`refreshLanguages(adapter)`** — calls `adapter.getSupportedLanguages()`,
+  stores the result in an in-memory `Map<string, Language[]>` keyed by
+  provider id, and returns the fresh list.
+- **`getLanguages(providerId)`** — returns the cached list. Returns an empty
+  array if never refreshed; never throws.
+- **`revalidateSelection(current, catalog)`** — pure function. Given a
+  `{ source, target }` selection and a catalog of languages for the active
+  provider, returns a corrected selection: if the current source or target
+  is not in the catalog, it is reset to `null` (auto-detect for source,
+  first-available for target). Called on every provider switch (§10.6 of
+  the spec).
+
+### 8.3.2 Translation orchestrator (`electron/services/translation/`)
+
+Owns the single-request lifecycle: debounce, cancel, latest-wins.
+
+**Flow:**
+
+1. Renderer sends `translation:translate` IPC with `{ text, source, target }`.
+2. Orchestrator receives the request. If a prior request is in-flight, it is
+   cancelled via `AbortController.abort()`.
+3. The orchestrator increments a monotonic sequence number. Only the response
+   whose sequence number equals the current sequence may update the return
+   value; stale responses are discarded silently.
+4. The active provider adapter's `translateText()` is called with the
+   composed `AbortSignal` (external + timeout per `requestTimeoutMs`).
+5. On success the orchestrator returns the `TranslationOutput` to the
+   renderer. On cancellation it returns `null`. On error it maps to
+   `AppError` and returns the normalized error to the renderer.
+
+**Debounce** is NOT handled by the orchestrator. The renderer owns debounce
+timing (configurable `debounceMs` in `AppSettings`, default 350 ms) so the
+user sees immediate feedback in the input pane while network calls are
+throttled on the caller side. The orchestrator receives already-debounced
+requests and executes them immediately.
+
+**Provider switching:**
+
+When the renderer sends `provider:switch`, the orchestrator:
+
+1. Cancels any in-flight translation.
+2. Asks the language catalog to refresh the new provider's language list.
+3. Revalidates the current language selection against the new catalog.
+4. Returns the revalidated selection + capabilities of the new provider.
+
+### 8.3.3 Phase 5 IPC channels
+
+- `translation:translate` — request: `TranslationInput`, response:
+  `TranslationOutput | null` (null = cancelled)
+- `translation:cancel` — request: `void`, response: `void`; aborts the
+  current in-flight request if any
+- `translation:detect` — request: `{ text: string }`, response:
+  `LanguageDetectionResult`
+- `provider:switch` — request: `{ providerId: string }`, response:
+  `{ languages: Language[], capabilities: ProviderCapabilities,
+  selection: { source: SourceLanguageSelection, target: string | null } }`
+- `language:list` — request: `{ providerId: string }`, response:
+  `Language[]` (cached; triggers refresh if empty)
+
+---
+
 ## 9. Testing Strategy
 
 | Tier | Runner | Scope |

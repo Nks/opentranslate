@@ -7,6 +7,20 @@ import type {
 import type {
   SettingsUpdate,
 } from '@electron/services/settings/store'
+import type {
+  TranslationInput,
+  TranslationOutput,
+  LanguageDetectionResult,
+} from '@shared/types/translation'
+import type {
+  Language,
+} from '@shared/types/language'
+import type {
+  ProviderCapabilities,
+} from '@shared/types/capabilities'
+import type {
+  SourceLanguageSelection,
+} from '@shared/types/translation'
 
 /**
  * IPC channel registry — single source of truth for main ↔ renderer messaging.
@@ -24,10 +38,15 @@ export const channels = {
   'app:get-version': 'app:get-version',
   'app:get-platform': 'app:get-platform',
   'providers:list': 'providers:list',
+  'provider:switch': 'provider:switch',
   'settings:get': 'settings:get',
   'settings:update': 'settings:update',
   'secrets:set': 'secrets:set',
   'secrets:test': 'secrets:test',
+  'translation:translate': 'translation:translate',
+  'translation:cancel': 'translation:cancel',
+  'translation:detect': 'translation:detect',
+  'language:list': 'language:list',
 } as const
 
 export type ChannelName = keyof typeof channels
@@ -56,6 +75,27 @@ export interface SecretsTestResponseShape {
   lastUpdated: string | null
 }
 
+export interface ProviderSwitchRequestShape {
+  providerId: string
+}
+
+export interface ProviderSwitchResponseShape {
+  languages: Language[]
+  capabilities: ProviderCapabilities
+  selection: {
+    source: SourceLanguageSelection
+    target: string | null
+  }
+}
+
+export interface LanguageListRequestShape {
+  providerId: string
+}
+
+export interface TranslationDetectRequestShape {
+  text: string
+}
+
 export interface ChannelContract {
   'app:get-version': {
     request: void
@@ -68,6 +108,10 @@ export interface ChannelContract {
   'providers:list': {
     request: void
     response: readonly ProviderDescriptorDto[]
+  }
+  'provider:switch': {
+    request: ProviderSwitchRequestShape
+    response: ProviderSwitchResponseShape
   }
   'settings:get': {
     request: void
@@ -84,6 +128,22 @@ export interface ChannelContract {
   'secrets:test': {
     request: SecretsTestRequestShape
     response: SecretsTestResponseShape
+  }
+  'translation:translate': {
+    request: TranslationInput
+    response: TranslationOutput | null
+  }
+  'translation:cancel': {
+    request: void
+    response: void
+  }
+  'translation:detect': {
+    request: TranslationDetectRequestShape
+    response: LanguageDetectionResult
+  }
+  'language:list': {
+    request: LanguageListRequestShape
+    response: Language[]
   }
 }
 
