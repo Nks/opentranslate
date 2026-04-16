@@ -1,16 +1,14 @@
-import {
-  defineConfig,
-} from 'vitest/config'
-import {
-  fileURLToPath,
-} from 'node:url'
+import { defineConfig } from 'vitest/config'
+import { fileURLToPath } from 'node:url'
 import {
   dirname, resolve,
 } from 'node:path'
+import vue from '@vitejs/plugin-vue'
 
 const rootDir = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
+  plugins: [vue()],
   resolve: {
     alias: {
       '@shared': resolve(rootDir, 'shared'),
@@ -27,7 +25,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      include: ['shared/**/*.ts', 'electron/**/*.ts'],
+      include: ['shared/**/*.ts', 'electron/**/*.ts', 'app/**/*.{ts,vue}'],
       exclude: [
         '**/*.d.ts',
         '**/*.test.ts',
