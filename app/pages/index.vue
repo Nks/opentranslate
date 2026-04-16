@@ -54,6 +54,29 @@ const sourceCode = computed<string | null>(() =>
     : null,
 )
 
+function swapLanguages() {
+  if (providersStore.sourceSelection.mode !== 'explicit') {
+    return
+  }
+
+  const currentSource = providersStore.sourceSelection.code
+  const currentTarget = providersStore.targetLanguage
+
+  if (currentTarget) {
+    providersStore.sourceSelection = { mode: 'explicit', code: currentTarget }
+  }
+  if (currentSource) {
+    providersStore.targetLanguage = currentSource
+  }
+
+  if (translationStore.translatedText) {
+    translationStore.sourceText = translationStore.translatedText
+    translationStore.translatedText = ''
+  }
+
+  scheduleTranslate()
+}
+
 const navItems: NavigationMenuItem[] = [
   {
     label: 'History',
@@ -96,6 +119,7 @@ const navItems: NavigationMenuItem[] = [
           icon="i-fluent-arrow-swap-24-regular"
           aria-label="Swap languages"
           :disabled="providersStore.sourceSelection.mode === 'auto'"
+          @click="swapLanguages"
         />
         <LanguageSelector
           :languages="providersStore.targetLanguages"
