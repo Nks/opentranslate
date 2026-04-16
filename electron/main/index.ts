@@ -1,5 +1,5 @@
 import {
-  app, BrowserWindow, ipcMain, safeStorage, session,
+  app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, safeStorage, session,
 } from 'electron'
 import {
   join,
@@ -49,6 +49,9 @@ import {
 import {
   safeHandler as _safeHandler,
 } from '@electron/services/ipc/safe-handler'
+import {
+  createChordDetector,
+} from '@electron/services/shortcuts/chord-detector'
 
 const DEV_RENDERER_URL = process.env.ELECTRON_RENDERER_URL
 const IS_DEV = Boolean(DEV_RENDERER_URL)
@@ -314,6 +317,63 @@ function setContentSecurityPolicy(): void {
   }
 }
 
+function registerGlobalShortcut(): void {
+  const detector = createChordDetector({ windowMs: 500 })
+
+  detector.onChord(() => {
+    const text = clipboard.readText().trim()
+
+    if (text.length === 0) {
+      return
+    }
+
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore()
+      }
+
+      mainWindow.show()
+      mainWindow.focus()
+    }
+  })
+
+  // Register Cmd+C / Ctrl+C globally. Each press calls detector.tap().
+  // First tap: normal copy proceeds (clipboard already updated by the OS
+  // before Electron's handler fires). Second tap within 500ms: chord fires.
+  const accelerator = 'CommandOrControl+C'
+  const registered = globalShortcut.register(accelerator, () => {
+    detector.tap()
+  })
+
+  if (!registered) {
+    // eslint-disable-next-line no-console
+    console.error(`[shortcuts] Failed to register ${accelerator}`)
+
+    detector.destroy()
+
+    const message = process.platform === 'darwin'
+      ? 'Could not register the quick-translate shortcut (Cmd+C+C). ' +
+      'On macOS, go to System Settings → Privacy & Security → ' +
+      'Accessibility and grant access to OpenTranslate Desktop.'
+      : 'Could not register the quick-translate shortcut (Ctrl+C+C). ' +
+        'Another application may already be using this key combination.'
+
+    void dialog.showMessageBox({
+      type: 'warning',
+      title: 'Shortcut Registration Failed',
+      message: 'Quick Translate shortcut could not be registered',
+      detail: message,
+      buttons: ['OK'],
+    })
+
+    return
+  }
+
+  app.on('will-quit', () => {
+    detector.destroy()
+  })
+}
+
 function bootstrap(): void {
   if (!ensureSingleInstance()) {
     return
@@ -331,6 +391,10 @@ function bootstrap(): void {
     }
   })
 
+  app.on('will-quit', () => {
+    globalShortcut.unregisterAll()
+  })
+
   app.whenReady().then(() => {
     if (!process.env.ELECTRON_SMOKE_TEST) {
       setContentSecurityPolicy()
@@ -338,6 +402,7 @@ function bootstrap(): void {
 
     registerIpcHandlers()
     void createMainWindow()
+    registerGlobalShortcut()
   })
 }
 
