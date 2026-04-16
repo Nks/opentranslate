@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useClipboard } from '@vueuse/core'
+import { ref, onMounted } from 'vue'
+import { useClipboard, onKeyStroke } from '@vueuse/core'
 
 const sourceText = ref<string>('')
 const translatedText = ref<string>('')
@@ -42,21 +42,12 @@ function closeOverlay() {
   }
 }
 
-function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    closeOverlay()
-  }
-}
+onKeyStroke('Escape', closeOverlay)
 
 onMounted(() => {
-  document.addEventListener('keydown', onKeydown)
-
   loading.value = false
 })
 
-onUnmounted(() => {
-  document.removeEventListener('keydown', onKeydown)
-})
 </script>
 
 <template>
