@@ -8,9 +8,20 @@
     "shared/**/*.ts",
     "electron/**/*.ts",
     "app/**/*.ts",
+    "app/**/*.d.ts",
     "tests/**/*.ts",
-    "scripts/**/*.ts",
-    "*.config.ts"
+    "scripts/**/*.ts"
   ],
-  "exclude": ["node_modules", "dist", "dist-electron", "out", "release", ".nuxt", ".output"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "dist-electron",
+    "out",
+    "release",
+    ".nuxt",
+    ".output",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "nuxt.config.ts"
+  ]
 }

@@ -72,6 +72,9 @@ export default [
       'build/**',
       '**/*.d.ts',
       'pnpm-lock.yaml',
+      'vitest.config.ts',
+      'playwright.config.ts',
+      'nuxt.config.ts',
     ],
   },
 
