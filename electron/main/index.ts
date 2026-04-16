@@ -56,7 +56,7 @@ const IS_DEV = Boolean(DEV_RENDERER_URL)
 /** Bind `IS_DEV` so callers do not have to pass it on every registration. */
 function safeHandler<TArgs extends unknown[], TResult>(
   fn: (...args: TArgs) => TResult | Promise<TResult>,
-): (...args: TArgs) => Promise<unknown> {
+): (...args: TArgs) => Promise<TResult> {
   return _safeHandler(fn, IS_DEV)
 }
 

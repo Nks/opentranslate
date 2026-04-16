@@ -137,6 +137,49 @@ accordingly in `defaultAppSettings`.
 
 ---
 
+## Technical Debt
+
+### B-029: Audit IPC serialization overhead — remove if redundant
+The `safeHandler()`, `serialize()` (JSON round-trip), and `stripReactive()`
+layers were added to fix "An object could not be cloned" errors. The
+actual root cause was Vue reactive proxies crossing the context bridge,
+now fixed by `wrapApi()` in `app/composables/useApi.ts`.
+
+Investigate whether the main-process-side serialization is still needed:
+- `electron/services/ipc/safe-handler.ts` — `serialize()` JSON round-trips
+  every return value. May be redundant since main process never returns
+  Vue reactive objects.
+- `safeHandler()` error wrapping — still valuable for converting `AppError`
+  (non-clonable `cause`) to plain `Error`. Keep this.
+- `stripReactive()` in preload — may be redundant since `wrapApi()` already
+  serializes at the renderer level before context bridge.
+
+Test: remove `serialize()` from `safeHandler`, keep error wrapping only.
+If no "object could not be cloned" errors recur, the cleanup is safe.
+Remove `stripReactive()` from preload if `wrapApi()` covers all paths.
+
+---
+
+## Branding
+
+### B-028: Remove all DeepL references from the application
+Audit and remove every mention of "DeepL" from user-facing text,
+code comments, documentation, and architecture docs. The product is
+OpenTranslate Desktop — referencing a competitor's brand in the
+codebase, specs, or UI is unnecessary. Replace "DeepL-style" with
+descriptive terms like "two-pane translator layout" or "desktop
+translation workflow".
+
+Files to audit:
+- `docs/opentranslate-desktop-spec.md`
+- `docs/opentranslate-desktop-prd.md`
+- `docs/architecture.md`
+- `AGENTS.md`
+- `README.md`
+- All code comments mentioning "DeepL"
+
+---
+
 ## Translation UI
 
 ### B-025: Rich text support in textareas

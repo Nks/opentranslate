@@ -45,18 +45,6 @@ import type {
 
 const allowedChannels = new Set<string>(Object.values(channels))
 
-/**
- * Strip Vue reactive proxies and non-clonable Symbols from IPC arguments.
- * Electron's structured clone algorithm fails on reactive objects.
- */
-function stripReactive(value: unknown): unknown {
-  if (value === undefined || value === null) {
-    return value
-  }
-
-  return JSON.parse(JSON.stringify(value))
-}
-
 async function invoke<Name extends ChannelName>(
   channel: Name,
   ...args: ChannelRequest<Name> extends void ? [] : [ChannelRequest<Name>]
@@ -65,11 +53,10 @@ async function invoke<Name extends ChannelName>(
     throw new Error(`preload: channel "${channel}" is not registered`)
   }
 
-  // Serialize args to strip Vue reactive proxies before IPC transfer
-  const safeArgs = args.map(stripReactive) as typeof args
-
+  // Arguments are already serialized by wrapApi() in the renderer before
+  // they cross the context bridge. No additional stripping needed here.
   try {
-    return await ipcRenderer.invoke(channel, ...safeArgs) as ChannelResponse<Name>
+    return await ipcRenderer.invoke(channel, ...args) as ChannelResponse<Name>
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     // eslint-disable-next-line no-console

@@ -1,42 +1,29 @@
 /**
- * IPC safe-handler utilities extracted from main/index.ts.
+ * IPC safe-handler utility.
  *
- * `serialize` strips frozen arrays, getters, and symbols so Electron's
- * structured clone never chokes. `safeHandler` wraps any IPC callback
- * with serialization and error normalisation.
+ * Wraps any IPC callback with error normalisation so thrown `AppError`
+ * objects (which have non-clonable `cause`) are converted to plain
+ * `Error` before crossing the IPC boundary.
+ *
+ * Return-value serialization was removed — the renderer's `wrapApi()`
+ * handles argument serialization, and main-process return values are
+ * already plain objects (no Vue reactivity). See B-029.
  */
 
 /**
- * Force a value through a JSON round-trip so Electron's structured clone
- * never chokes on frozen arrays, getters, or symbols.
- */
-export function serialize<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T
-}
-
-/**
- * Wrap an IPC handler so:
- * 1. Return values are serialized (no clone errors).
- * 2. Thrown errors are caught and re-thrown as a plain `Error` with full
- *    details in the message (so Electron can clone them and the renderer
- *    sees useful error text, not "An object could not be cloned").
+ * Wrap an IPC handler so thrown errors become plain `Error` objects
+ * that Electron's structured clone can transfer to the renderer.
  *
- * @param fn   - The actual handler implementation.
- * @param isDev - When `true`, stack traces are appended to the error detail.
+ * @param fn    The actual handler implementation.
+ * @param isDev When `true`, stack traces are appended to the error detail.
  */
 export function safeHandler<TArgs extends unknown[], TResult>(
   fn: (...args: TArgs) => TResult | Promise<TResult>,
   isDev = false,
-): (...args: TArgs) => Promise<unknown> {
+): (...args: TArgs) => Promise<TResult> {
   return async (...args: TArgs) => {
     try {
-      const result = await fn(...args)
-
-      if (result === undefined || result === null) {
-        return result
-      }
-
-      return serialize(result)
+      return await fn(...args)
     } catch (err) {
       const message = err instanceof Error
         ? `${err.name}: ${err.message}`
