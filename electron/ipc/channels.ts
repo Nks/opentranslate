@@ -56,6 +56,9 @@ export const channels = {
   'history:delete': 'history:delete',
   'history:clear': 'history:clear',
   'history:toggle': 'history:toggle',
+  'document:pick': 'document:pick',
+  'document:translate': 'document:translate',
+  'document:status': 'document:status',
 } as const
 
 export type ChannelName = keyof typeof channels
@@ -178,6 +181,39 @@ export interface ChannelContract {
     request: { enabled: boolean }
     response: void
   }
+  'document:pick': {
+    request: void
+    response: DocumentPickResponseShape | null
+  }
+  'document:translate': {
+    request: DocumentTranslateRequestShape
+    response: DocumentTranslateResponseShape | null
+  }
+  'document:status': {
+    request: void
+    response: DocumentStatusResponseShape
+  }
+}
+
+export interface DocumentPickResponseShape {
+  filePath: string
+}
+
+export interface DocumentTranslateRequestShape {
+  filePath: string
+  sourceLanguage: SourceLanguageSelection
+  targetLanguage: string
+}
+
+export interface DocumentTranslateResponseShape {
+  outputPath: string
+  provider: string
+}
+
+export interface DocumentStatusResponseShape {
+  supported: boolean
+  formats?: string[]
+  message?: string
 }
 
 export interface HistoryAddRequestShape {

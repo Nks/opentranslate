@@ -96,6 +96,15 @@ const sourceCode = computed<string | null>(() =>
               History
             </UButton>
           </NuxtLink>
+          <NuxtLink to="/documents">
+            <UButton
+              size="xs"
+              variant="ghost"
+              aria-label="Document translation"
+            >
+              Documents
+            </UButton>
+          </NuxtLink>
         </div>
       </div>
 
