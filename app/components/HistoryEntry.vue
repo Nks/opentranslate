@@ -10,7 +10,7 @@ interface Emits {
   delete: [id: string]
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 function formatDate(iso: string): string {
@@ -22,7 +22,7 @@ function formatDate(iso: string): string {
   <UCard class="mb-2">
     <div class="flex items-start justify-between gap-4">
       <div class="flex-1 min-w-0">
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">
+        <p class="text-sm text-muted mb-1">
           {{ entry.sourceLanguageCode }} → {{ entry.targetLanguageCode }}
           · {{ entry.provider }}
           · {{ formatDate(entry.createdAt) }}
@@ -30,7 +30,7 @@ function formatDate(iso: string): string {
         <p class="text-sm font-medium truncate">
           {{ entry.sourceText }}
         </p>
-        <p class="text-sm text-gray-600 dark:text-gray-300 truncate mt-1">
+        <p class="text-sm text-muted truncate mt-1">
           {{ entry.translatedText }}
         </p>
       </div>

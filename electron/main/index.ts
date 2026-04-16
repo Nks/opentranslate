@@ -46,9 +46,19 @@ import {
   createHistoryHandlers,
   type HistoryHandlers,
 } from '@electron/services/history/handlers'
+import {
+  safeHandler as _safeHandler,
+} from '@electron/services/ipc/safe-handler'
 
 const DEV_RENDERER_URL = process.env.ELECTRON_RENDERER_URL
 const IS_DEV = Boolean(DEV_RENDERER_URL)
+
+/** Bind `IS_DEV` so callers do not have to pass it on every registration. */
+function safeHandler<TArgs extends unknown[], TResult>(
+  fn: (...args: TArgs) => TResult | Promise<TResult>,
+): (...args: TArgs) => Promise<TResult> {
+  return _safeHandler(fn, IS_DEV)
+}
 
 const distElectronDir = app.getAppPath()
 const preloadPath = join(distElectronDir, 'preload.cjs')
@@ -61,9 +71,9 @@ let historyHandlers: HistoryHandlers | null = null
 function registerIpcHandlers(): void {
   bootstrapProviderRegistry()
 
-  ipcMain.handle(channels['app:get-version'], () => app.getVersion())
-  ipcMain.handle(channels['app:get-platform'], () => process.platform)
-  ipcMain.handle(channels['providers:list'], () => listProviderDtos())
+  ipcMain.handle(channels['app:get-version'], safeHandler(() => app.getVersion()))
+  ipcMain.handle(channels['app:get-platform'], safeHandler(() => process.platform))
+  ipcMain.handle(channels['providers:list'], safeHandler(() => listProviderDtos()))
 
   const userDataDir = app.getPath('userData')
   const store = createSettingsStore({
@@ -80,19 +90,24 @@ function registerIpcHandlers(): void {
     vault,
   })
 
-  ipcMain.handle(channels['settings:get'], () => settingsHandlers!['settings:get']())
-  ipcMain.handle(
-    channels['settings:update'],
-    (_event, patch) => settingsHandlers!['settings:update'](patch),
-  )
-  ipcMain.handle(
-    channels['secrets:set'],
-    (_event, input) => settingsHandlers!['secrets:set'](input),
-  )
-  ipcMain.handle(
-    channels['secrets:test'],
-    (_event, input) => settingsHandlers!['secrets:test'](input),
-  )
+  ipcMain.handle(channels['settings:get'], safeHandler(
+    () => settingsHandlers!['settings:get'](),
+  ))
+  ipcMain.handle(channels['settings:update'], safeHandler(
+    (_event: unknown, patch: unknown) => settingsHandlers!['settings:update'](patch as {
+      app?: Record<string, unknown>
+      providers?: Record<string, unknown>
+    }),
+  ))
+  ipcMain.handle(channels['secrets:set'], safeHandler(
+    (_event: unknown, input: unknown) => settingsHandlers!['secrets:set'](input as {
+      providerId: string
+      secret: string
+    }),
+  ))
+  ipcMain.handle(channels['secrets:test'], safeHandler(
+    (_event: unknown, input: unknown) => settingsHandlers!['secrets:test'](input as { providerId: string }),
+  ))
 
   const orchestrator = createTranslationOrchestrator()
   const catalog = createLanguageCatalog()
@@ -112,28 +127,26 @@ function registerIpcHandlers(): void {
     currentSelection: () => currentSelection,
   })
 
-  ipcMain.handle(channels['provider:switch'], async (_event, input) => {
-    const result = await translationHandlers!['provider:switch'](input)
-    currentSelection = result.selection
+  ipcMain.handle(channels['provider:switch'], safeHandler(
+    async (_event: unknown, input: unknown) => {
+      const result = await translationHandlers!['provider:switch'](input as { providerId: string })
+      currentSelection = result.selection
 
-    return result
-  })
-  ipcMain.handle(
-    channels['translation:translate'],
-    (_event, input) => translationHandlers!['translation:translate'](input),
-  )
-  ipcMain.handle(
-    channels['translation:cancel'],
+      return result
+    },
+  ))
+  ipcMain.handle(channels['translation:translate'], safeHandler(
+    (_event: unknown, input: unknown) => translationHandlers!['translation:translate'](input as Parameters<TranslationHandlers['translation:translate']>[0]),
+  ))
+  ipcMain.handle(channels['translation:cancel'], safeHandler(
     () => translationHandlers!['translation:cancel'](),
-  )
-  ipcMain.handle(
-    channels['translation:detect'],
-    (_event, input) => translationHandlers!['translation:detect'](input),
-  )
-  ipcMain.handle(
-    channels['language:list'],
-    (_event, input) => translationHandlers!['language:list'](input),
-  )
+  ))
+  ipcMain.handle(channels['translation:detect'], safeHandler(
+    (_event: unknown, input: unknown) => translationHandlers!['translation:detect'](input as { text: string }),
+  ))
+  ipcMain.handle(channels['language:list'], safeHandler(
+    (_event: unknown, input: unknown) => translationHandlers!['language:list'](input as { providerId: string }),
+  ))
 
   try {
     const historyDb = createHistoryStore(join(userDataDir, 'history.db'))
@@ -143,15 +156,83 @@ function registerIpcHandlers(): void {
     })
   } catch {
     // better-sqlite3 native module may fail if not rebuilt for Electron ABI.
-    // History features will be unavailable; the rest of the app still works.
   }
 
-  ipcMain.handle(channels['history:add'], (_event, input) => historyHandlers?.['history:add'](input) ?? null)
-  ipcMain.handle(channels['history:list'], (_event, input) => historyHandlers?.['history:list'](input) ?? [])
-  ipcMain.handle(channels['history:search'], (_event, input) => historyHandlers?.['history:search'](input) ?? [])
-  ipcMain.handle(channels['history:delete'], (_event, input) => historyHandlers?.['history:delete'](input))
-  ipcMain.handle(channels['history:clear'], () => historyHandlers?.['history:clear']())
-  ipcMain.handle(channels['history:toggle'], (_event, input) => historyHandlers?.['history:toggle'](input))
+  ipcMain.handle(channels['history:add'], safeHandler(
+    (_event: unknown, input: unknown) => historyHandlers?.['history:add'](input as Parameters<NonNullable<typeof historyHandlers>['history:add']>[0]) ?? null,
+  ))
+  ipcMain.handle(channels['history:list'], safeHandler(
+    (_event: unknown, input: unknown) => historyHandlers?.['history:list'](input as {
+      limit?: number
+      offset?: number
+    }) ?? [],
+  ))
+  ipcMain.handle(channels['history:search'], safeHandler(
+    (_event: unknown, input: unknown) => historyHandlers?.['history:search'](input as {
+      query: string
+      limit?: number
+    }) ?? [],
+  ))
+  ipcMain.handle(channels['history:delete'], safeHandler(
+    (_event: unknown, input: unknown) => {
+      historyHandlers?.['history:delete'](input as { id: string })
+
+      return null
+    },
+  ))
+  ipcMain.handle(channels['history:clear'], safeHandler(
+    () => historyHandlers?.['history:clear'](),
+  ))
+  ipcMain.handle(channels['history:toggle'], safeHandler(
+    (_event: unknown, input: unknown) => historyHandlers?.['history:toggle'](input as { enabled: boolean }),
+  ))
+
+  // Document channels — capability check + file pick + translate.
+  // Actual document translation is stubbed until Google v3 Advanced lands.
+  ipcMain.handle(channels['document:status'], safeHandler(() => {
+    const adapter = orchestrator.getAdapter()
+
+    if (!adapter) {
+      return {
+        supported: false,
+        message: 'No provider selected',
+      }
+    }
+
+    return adapter.supportsDocumentTranslation().then((supported) => ({
+      supported,
+      message: supported
+        ? 'Document translation available'
+        : 'Document translation not supported by this provider',
+    }))
+  }))
+  ipcMain.handle(channels['document:pick'], safeHandler(async () => {
+    const { dialog } = await import('electron')
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [
+        {
+          name: 'Documents',
+          extensions: ['pdf', 'docx', 'pptx', 'xlsx', 'txt', 'html'],
+        },
+        {
+          name: 'All Files',
+          extensions: ['*'],
+        },
+      ],
+    })
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null
+    }
+
+    return { filePath: result.filePaths[0] }
+  }))
+  ipcMain.handle(channels['document:translate'], safeHandler(
+    async (_event: unknown, _input: unknown) => {
+      throw new Error('Document translation not yet implemented (Phase 9 stub)')
+    },
+  ))
 }
 
 async function createMainWindow(): Promise<void> {
@@ -199,13 +280,14 @@ function ensureSingleInstance(): boolean {
 
 function setContentSecurityPolicy(): void {
   try {
-    // Nuxt injects inline <script> tags for hydration + config payload,
-    // so 'unsafe-inline' is required in script-src. The real security
-    // boundary is contextIsolation + sandbox + no nodeIntegration, not CSP.
+    // Nuxt needs 'unsafe-inline' for hydration scripts.
+    // Vite dev needs 'unsafe-eval' for HMR + source maps.
+    // The real security boundary is contextIsolation + sandbox + no
+    // nodeIntegration, not CSP.
     const csp = IS_DEV
       ? [
           "default-src 'self'",
-          `script-src 'self' 'unsafe-inline' ${DEV_RENDERER_URL ?? ''}`,
+          `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${DEV_RENDERER_URL ?? ''}`,
           `style-src 'self' 'unsafe-inline' ${DEV_RENDERER_URL ?? ''}`,
           `connect-src 'self' ${DEV_RENDERER_URL ?? ''} ws://localhost:*`,
           "img-src 'self' data:",

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useClipboard, onKeyStroke } from '@vueuse/core'
+import { useApi } from '@app/composables/useApi'
 
 const sourceText = ref<string>('')
 const translatedText = ref<string>('')
@@ -18,11 +19,7 @@ async function copyTranslation() {
 
 function openInFull() {
   try {
-    const api = (window as unknown as {
-      api: {
-        quickTranslate: { openFull: () => Promise<void> }
-      }
-    }).api
+    const api = useApi()
     void api.quickTranslate.openFull()
   } catch {
     // fallback
@@ -31,11 +28,7 @@ function openInFull() {
 
 function closeOverlay() {
   try {
-    const api = (window as unknown as {
-      api: {
-        quickTranslate: { close: () => Promise<void> }
-      }
-    }).api
+    const api = useApi()
     void api.quickTranslate.close()
   } catch {
     window.close()
@@ -47,22 +40,21 @@ onKeyStroke('Escape', closeOverlay)
 onMounted(() => {
   loading.value = false
 })
-
 </script>
 
 <template>
-  <div class="h-screen flex flex-col bg-white dark:bg-gray-900 rounded-lg shadow-xl overflow-hidden select-none">
+  <div class="h-screen flex flex-col bg-default rounded-lg shadow-xl overflow-hidden select-none">
     <!-- Header (draggable) -->
     <div
-      class="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+      class="flex items-center justify-between px-4 py-2 bg-elevated border-b border-default"
       style="-webkit-app-region: drag"
     >
-      <span class="text-xs text-gray-500 dark:text-gray-400">
+      <span class="text-xs text-muted">
         <template v-if="detectedLanguage">{{ detectedLanguage }}</template>
         <template v-else>Auto</template>
         → {{ targetLanguage }}
       </span>
-      <span class="text-xs text-gray-400">{{ provider }}</span>
+      <span class="text-xs text-dimmed">{{ provider }}</span>
     </div>
 
     <!-- Content -->
@@ -73,12 +65,12 @@ onMounted(() => {
       >
         <UIcon
           name="i-fluent-arrow-sync-24-regular"
-          class="animate-spin text-primary-500 text-xl"
+          class="animate-spin text-primary text-xl"
         />
       </div>
       <div
         v-else-if="error"
-        class="text-red-600 dark:text-red-400 text-sm"
+        class="text-error text-sm"
       >
         {{ error }}
       </div>
@@ -92,7 +84,7 @@ onMounted(() => {
 
     <!-- Footer -->
     <div
-      class="flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-gray-700"
+      class="flex items-center justify-between px-4 py-2 border-t border-default"
       style="-webkit-app-region: no-drag"
     >
       <UButton

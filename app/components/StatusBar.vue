@@ -13,15 +13,15 @@ const emit = defineEmits<Emits>()
 </script>
 
 <template>
-  <div class="flex items-center gap-2 px-4 py-2 text-sm border-t border-gray-200 dark:border-gray-700">
+  <div class="flex items-center gap-2 px-4 py-2 text-sm border-t border-default">
     <UIcon
       v-if="loading"
       name="i-fluent-arrow-sync-24-regular"
-      class="animate-spin text-primary-500"
+      class="animate-spin text-primary"
     />
     <span
       v-if="error"
-      class="text-red-600 dark:text-red-400 flex-1 truncate"
+      class="text-error flex-1 truncate"
     >
       {{ error }}
     </span>
@@ -36,7 +36,7 @@ const emit = defineEmits<Emits>()
     </UButton>
     <span
       v-if="!loading && !error"
-      class="text-gray-400"
+      class="text-dimmed"
     >
       Ready
     </span>

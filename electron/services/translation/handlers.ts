@@ -36,6 +36,7 @@ export interface ProviderSwitchResponse {
     source: SourceLanguageSelection
     target: string | null
   }
+  error: string | null
 }
 
 export interface TranslationHandlers {
@@ -87,8 +88,25 @@ export function createTranslationHandlers(
 
       deps.orchestrator.setAdapter(adapter)
 
-      const languages = await deps.catalog.refreshLanguages(adapter)
-      const capabilities = await adapter.getCapabilities()
+      // Attempt to connect. If it fails (wrong endpoint, auth, network),
+      // still activate the provider so the user can fix settings — but
+      // return the error so the UI can show it.
+      let languages: Language[] = []
+      let capabilities: ProviderCapabilities = {
+        textTranslation: false,
+        languageDetection: false,
+        supportedLanguagesDiscovery: false,
+        documentTranslation: false,
+      }
+      let connectionError: string | null = null
+
+      try {
+        languages = await deps.catalog.refreshLanguages(adapter)
+        capabilities = await adapter.getCapabilities()
+      } catch (err) {
+        connectionError = err instanceof Error ? err.message : String(err)
+      }
+
       const selection = deps.catalog.revalidateSelection(
         deps.currentSelection(),
         languages,
@@ -98,6 +116,7 @@ export function createTranslationHandlers(
         languages,
         capabilities,
         selection,
+        error: connectionError,
       }
     },
 

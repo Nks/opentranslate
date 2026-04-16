@@ -37,6 +37,10 @@ import type {
   HistoryAddRequestShape,
   HistoryListRequestShape,
   HistorySearchRequestShape,
+  DocumentPickResponseShape,
+  DocumentTranslateRequestShape,
+  DocumentTranslateResponseShape,
+  DocumentStatusResponseShape,
 } from '@electron/ipc/channels'
 
 const allowedChannels = new Set<string>(Object.values(channels))
@@ -49,7 +53,17 @@ async function invoke<Name extends ChannelName>(
     throw new Error(`preload: channel "${channel}" is not registered`)
   }
 
-  return ipcRenderer.invoke(channel, ...args) as Promise<ChannelResponse<Name>>
+  // Arguments are already serialized by wrapApi() in the renderer before
+  // they cross the context bridge. No additional stripping needed here.
+  try {
+    return await ipcRenderer.invoke(channel, ...args) as ChannelResponse<Name>
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    // eslint-disable-next-line no-console
+    console.error(`[IPC:${channel}]`, message, err)
+
+    throw new Error(`[${channel}] ${message}`)
+  }
 }
 
 const api = {
@@ -94,6 +108,22 @@ const api = {
     clear: (): Promise<void> => invoke('history:clear'),
     toggle: (input: { enabled: boolean }): Promise<void> =>
       invoke('history:toggle', input),
+  },
+  documents: {
+    pick: (): Promise<DocumentPickResponseShape | null> =>
+      invoke('document:pick'),
+    translate: (
+      input: DocumentTranslateRequestShape,
+    ): Promise<DocumentTranslateResponseShape | null> =>
+      invoke('document:translate', input),
+    status: (): Promise<DocumentStatusResponseShape> =>
+      invoke('document:status'),
+  },
+  quickTranslate: {
+    openFull: (): Promise<void> =>
+      invoke('quick-translate:open-full' as never),
+    close: (): Promise<void> =>
+      invoke('quick-translate:close' as never),
   },
 } as const
 

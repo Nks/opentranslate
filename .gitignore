@@ -39,3 +39,4 @@ openapi.json
 .data
 .swarm
 ruvector.db
+docker-compose.override.yml

@@ -36,15 +36,17 @@ function reopenEntry(entry: HistoryEntry) {
 
 <template>
   <UApp>
-    <div class="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+    <div class="min-h-screen flex flex-col bg-default">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-default">
         <div class="flex items-center gap-3">
-          <NuxtLink
+          <UButton
             to="/"
-            class="text-sm text-primary-600 dark:text-primary-400"
-          >
-            ← Translate
-          </NuxtLink>
+            variant="ghost"
+            size="xs"
+            icon="i-fluent-arrow-left-24-regular"
+            label="Translate"
+            aria-label="Back to translate"
+          />
           <h1 class="text-lg font-semibold">
             History
           </h1>
@@ -77,20 +79,20 @@ function reopenEntry(entry: HistoryEntry) {
         >
           <UIcon
             name="i-fluent-arrow-sync-24-regular"
-            class="animate-spin text-primary-500"
+            class="animate-spin text-primary"
           />
         </div>
 
         <div
           v-else-if="historyStore.error"
-          class="text-red-600 dark:text-red-400 py-4"
+          class="text-error py-4"
         >
           {{ historyStore.error }}
         </div>
 
         <div
           v-else-if="!historyStore.hasEntries"
-          class="text-gray-400 text-center py-8"
+          class="text-dimmed text-center py-8"
         >
           <template v-if="historyStore.searchQuery">
             No results for "{{ historyStore.searchQuery }}"

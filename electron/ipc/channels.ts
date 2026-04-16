@@ -98,6 +98,7 @@ export interface ProviderSwitchResponseShape {
     source: SourceLanguageSelection
     target: string | null
   }
+  error: string | null
 }
 
 export interface LanguageListRequestShape {

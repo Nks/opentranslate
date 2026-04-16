@@ -29,20 +29,21 @@ async function copyToClipboard() {
         :model-value="text"
         readonly
         aria-label="Translated text"
-        :rows="10"
-        class="flex-1"
+        variant="none"
+        class="flex-1 w-full [&_textarea]:h-full [&_textarea]:w-full [&_textarea]:resize-none"
+        :ui="{ root: 'h-full w-full', base: 'h-full w-full' }"
       />
       <div
         v-if="loading"
-        class="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-900/50"
+        class="absolute inset-0 flex items-center justify-center bg-elevated/50"
       >
         <UIcon
           name="i-fluent-arrow-sync-24-regular"
-          class="animate-spin text-primary-500"
+          class="animate-spin text-primary"
         />
       </div>
     </div>
-    <div class="flex items-center justify-between mt-2 px-1 text-sm text-gray-500 dark:text-gray-400">
+    <div class="flex items-center justify-between mt-2 px-1 text-sm text-muted">
       <span v-if="provider">
         {{ provider }}
       </span>
