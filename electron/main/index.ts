@@ -1,5 +1,5 @@
 import {
-  app, BrowserWindow, ipcMain, safeStorage,
+  app, BrowserWindow, ipcMain, safeStorage, session,
 } from 'electron'
 import {
   join,
@@ -197,6 +197,38 @@ function ensureSingleInstance(): boolean {
   return true
 }
 
+function setContentSecurityPolicy(): void {
+  try {
+    const csp = IS_DEV
+      ? [
+          "default-src 'self'",
+          `script-src 'self' ${DEV_RENDERER_URL ?? ''}`,
+          `style-src 'self' 'unsafe-inline' ${DEV_RENDERER_URL ?? ''}`,
+          `connect-src 'self' ${DEV_RENDERER_URL ?? ''} ws://localhost:*`,
+          "img-src 'self' data:",
+          "font-src 'self' data:",
+        ].join('; ')
+      : [
+          "default-src 'self'",
+          "script-src 'self'",
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data:",
+          "font-src 'self' data:",
+        ].join('; ')
+
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [csp],
+        },
+      })
+    })
+  } catch {
+    // CSP setup may fail in test environments
+  }
+}
+
 function bootstrap(): void {
   if (!ensureSingleInstance()) {
     return
@@ -215,6 +247,10 @@ function bootstrap(): void {
   })
 
   app.whenReady().then(() => {
+    if (!process.env.ELECTRON_SMOKE_TEST) {
+      setContentSecurityPolicy()
+    }
+
     registerIpcHandlers()
     void createMainWindow()
   })
