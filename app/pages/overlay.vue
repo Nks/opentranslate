@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useClipboard, onKeyStroke } from '@vueuse/core'
 import { useApi } from '@app/composables/useApi'
+import { useHandleError } from '@app/composables/useHandleError'
 
 const sourceText = ref<string>('')
 const translatedText = ref<string>('')
@@ -12,6 +13,7 @@ const loading = ref<boolean>(true)
 const error = ref<string | null>(null)
 
 const { copy: copyText } = useClipboard()
+const handleError = useHandleError()
 
 async function copyTranslation() {
   await copyText(translatedText.value)
@@ -21,8 +23,8 @@ function openInFull() {
   try {
     const api = useApi()
     void api.quickTranslate.openFull()
-  } catch {
-    // fallback
+  } catch (err) {
+    handleError(err)
   }
 }
 
@@ -30,7 +32,8 @@ function closeOverlay() {
   try {
     const api = useApi()
     void api.quickTranslate.close()
-  } catch {
+  } catch (err) {
+    handleError(err)
     window.close()
   }
 }

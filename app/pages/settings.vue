@@ -4,9 +4,11 @@ import type { TabsItem } from '@nuxt/ui'
 import { useSettingsStore } from '@app/stores/settings'
 import { useProvidersStore } from '@app/stores/providers'
 import { useApi } from '@app/composables/useApi'
+import { useHandleError } from '@app/composables/useHandleError'
 
 const settingsStore = useSettingsStore()
 const providersStore = useProvidersStore()
+const handleError = useHandleError()
 
 const activeTab = ref<string>('general')
 const saving = ref<boolean>(false)
@@ -62,8 +64,8 @@ async function loadSettings() {
     for (const [id, val] of Object.entries(result.providers)) {
       providerSettings.value[id] = val as Record<string, unknown>
     }
-  } catch {
-    // outside Electron
+  } catch (err) {
+    handleError(err)
   }
 }
 
@@ -101,8 +103,8 @@ async function onProviderFieldChange(providerId: string, key: string, value: unk
     try {
       const api = useApi()
       await api.providers.switch({ providerId })
-    } catch {
-      // connection may still fail — error shown on translate page
+    } catch (err) {
+      handleError(err)
     }
   }
 }
@@ -111,8 +113,8 @@ async function onSecretChange(providerId: string, _key: string, value: string) {
   try {
     const api = useApi()
     await api.secrets.set({ providerId, secret: value })
-  } catch {
-    // outside Electron
+  } catch (err) {
+    handleError(err)
   }
 }
 
@@ -121,8 +123,8 @@ async function loadProviders() {
     const api = useApi()
     const descriptors = await api.providers.list()
     providersStore.descriptors = descriptors as typeof providersStore.descriptors
-  } catch {
-    // outside Electron
+  } catch (err) {
+    handleError(err)
   }
 }
 

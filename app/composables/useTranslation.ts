@@ -5,6 +5,7 @@ import { useTranslationStore } from '@app/stores/translation'
 import { useProvidersStore } from '@app/stores/providers'
 import { useSettingsStore } from '@app/stores/settings'
 import { useApi } from './useApi'
+import { useHandleError } from './useHandleError'
 
 /**
  * Composable encapsulating the core translation workflow.
@@ -16,6 +17,7 @@ export function useTranslation() {
   const translationStore = useTranslationStore()
   const providersStore = useProvidersStore()
   const settingsStore = useSettingsStore()
+  const handleError = useHandleError()
 
   async function executeTranslate() {
     if (!providersStore.activeProviderId) {
@@ -68,8 +70,8 @@ export function useTranslation() {
     try {
       const api = useApi()
       void api.translation.cancel()
-    } catch {
-      // api unavailable outside Electron
+    } catch (err) {
+      handleError(err)
     }
   }
 

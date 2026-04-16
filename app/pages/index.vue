@@ -5,6 +5,7 @@ import { useTranslationStore } from '@app/stores/translation'
 import { useProvidersStore } from '@app/stores/providers'
 import { useTranslation } from '@app/composables/useTranslation'
 import { useApi } from '@app/composables/useApi'
+import { useHandleError } from '@app/composables/useHandleError'
 
 const translationStore = useTranslationStore()
 const providersStore = useProvidersStore()
@@ -13,14 +14,15 @@ const {
   clearInput,
   switchProvider,
 } = useTranslation()
+const handleError = useHandleError()
 
 async function loadProviders() {
   try {
     const api = useApi()
     const descriptors = await api.providers.list()
     providersStore.descriptors = descriptors as typeof providersStore.descriptors
-  } catch {
-    // outside Electron
+  } catch (err) {
+    handleError(err)
   }
 }
 

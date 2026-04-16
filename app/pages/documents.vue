@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useProvidersStore } from '@app/stores/providers'
 import { useClipboard, onKeyStroke } from '@vueuse/core'
 import { useApi } from '@app/composables/useApi'
+import { useHandleError } from '@app/composables/useHandleError'
 
 const providersStore = useProvidersStore()
 
@@ -15,6 +16,7 @@ const supported = ref<boolean>(false)
 const statusMessage = ref<string>('Checking provider capability...')
 
 const { copy: copyPath } = useClipboard()
+const handleError = useHandleError()
 
 /** Extract the filename portion from an absolute file path. */
 function extractFileName(path: string): string {
@@ -29,9 +31,10 @@ async function checkDocumentSupport() {
     statusMessage.value = status.message ?? (status.supported
       ? 'Document translation available'
       : 'Document translation not supported by the active provider')
-  } catch {
+  } catch (err) {
     supported.value = false
     statusMessage.value = 'Unable to check document support'
+    handleError(err)
   }
 }
 
