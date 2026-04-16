@@ -4,6 +4,12 @@ import { useApi } from '@app/composables/useApi'
 
 const SEARCH_DEBOUNCE_MS = 300
 
+/**
+ * Composable for translation history operations.
+ *
+ * Provides CRUD actions (load, delete, clear) and debounced search.
+ * All IPC calls go through `useApi()`.
+ */
 export function useHistory() {
   const store = useHistoryStore()
 

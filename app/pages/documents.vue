@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useProvidersStore } from '@app/stores/providers'
 import { useClipboard, onKeyStroke } from '@vueuse/core'
+import { useApi } from '@app/composables/useApi'
 
 const providersStore = useProvidersStore()
 
@@ -15,15 +16,14 @@ const statusMessage = ref<string>('Checking provider capability...')
 
 const { copy: copyPath } = useClipboard()
 
+/** Extract the filename portion from an absolute file path. */
+function extractFileName(path: string): string {
+  return path.split('/').pop() ?? path
+}
+
 async function checkDocumentSupport() {
   try {
-    const api = (window as unknown as {
-      api: {
-        documents: {
-          status: () => Promise<{ supported: boolean, message?: string }>
-        }
-      }
-    }).api
+    const api = useApi()
     const status = await api.documents.status()
     supported.value = status.supported
     statusMessage.value = status.message ?? (status.supported
@@ -37,18 +37,12 @@ async function checkDocumentSupport() {
 
 async function pickFile() {
   try {
-    const api = (window as unknown as {
-      api: {
-        documents: {
-          pick: () => Promise<{ filePath: string } | null>
-        }
-      }
-    }).api
+    const api = useApi()
     const result = await api.documents.pick()
 
     if (result) {
       filePath.value = result.filePath
-      fileName.value = result.filePath.split('/').pop() ?? result.filePath
+      fileName.value = extractFileName(result.filePath)
       outputPath.value = null
       error.value = null
     }
@@ -67,17 +61,7 @@ async function translateDocument() {
   outputPath.value = null
 
   try {
-    const api = (window as unknown as {
-      api: {
-        documents: {
-          translate: (input: {
-            filePath: string
-            sourceLanguage: { mode: 'auto' }
-            targetLanguage: string
-          }) => Promise<{ outputPath: string } | null>
-        }
-      }
-    }).api
+    const api = useApi()
     const result = await api.documents.translate({
       filePath: filePath.value,
       sourceLanguage: { mode: 'auto' },
@@ -105,15 +89,17 @@ onKeyStroke('Escape', () => {
 
 <template>
   <UApp>
-    <div class="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+    <div class="min-h-screen flex flex-col bg-default">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-default">
         <div class="flex items-center gap-3">
-          <NuxtLink
+          <UButton
             to="/"
-            class="text-sm text-primary-600 dark:text-primary-400"
-          >
-            ← Translate
-          </NuxtLink>
+            variant="ghost"
+            size="xs"
+            icon="i-fluent-arrow-left-24-regular"
+            label="Translate"
+            aria-label="Back to translate"
+          />
           <h1 class="text-lg font-semibold">
             Documents
           </h1>
@@ -124,10 +110,10 @@ onKeyStroke('Escape', () => {
         <!-- Capability status -->
         <div
           :class="[
-            'text-sm px-4 py-2 rounded-lg',
+            'text-sm px-4 py-2 rounded-lg bg-elevated',
             supported
-              ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-              : 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400',
+              ? 'text-success'
+              : 'text-warning',
           ]"
         >
           {{ statusMessage }}
@@ -137,17 +123,17 @@ onKeyStroke('Escape', () => {
         <div
           class="w-full max-w-md border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors"
           :class="supported
-            ? 'border-gray-300 dark:border-gray-600 hover:border-primary-400'
-            : 'border-gray-200 dark:border-gray-700 opacity-50 cursor-not-allowed'"
+            ? 'border-default hover:border-primary'
+            : 'border-default opacity-50 cursor-not-allowed'"
           @click="supported ? pickFile() : undefined"
         >
           <UIcon
             name="i-fluent-document-arrow-up-24-regular"
-            class="text-3xl text-gray-400 mb-3"
+            class="text-3xl text-dimmed mb-3"
           />
           <p
             v-if="!fileName"
-            class="text-gray-500 dark:text-gray-400"
+            class="text-muted"
           >
             Click to select a file or drag and drop
           </p>
@@ -173,7 +159,7 @@ onKeyStroke('Escape', () => {
         <!-- Output -->
         <div
           v-if="outputPath"
-          class="text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-4 py-3 rounded-lg"
+          class="text-sm text-success bg-elevated px-4 py-3 rounded-lg"
         >
           <p class="font-medium mb-1">
             Translation saved:
@@ -195,7 +181,7 @@ onKeyStroke('Escape', () => {
         <!-- Error -->
         <div
           v-if="error"
-          class="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-lg max-w-md"
+          class="text-sm text-error bg-elevated px-4 py-3 rounded-lg max-w-md"
         >
           {{ error }}
         </div>

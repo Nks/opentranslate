@@ -115,6 +115,12 @@ export default [
       'vue/require-typed-ref': 'error',
       'vue/define-props-declaration': ['error', 'type-based'],
       'vue/define-emits-declaration': ['error', 'type-based'],
+      // Catch unused variables in Vue SFCs (props binding is allowed)
+      'vue/no-unused-refs': 'error',
+      'vue/no-unused-properties': ['error', {
+        groups: ['setup'],
+        ignorePublicMembers: true,
+      }],
       'no-restricted-syntax': ['error', {
         selector: 'CallExpression[callee.name="ref"]:not([typeArguments])',
         message: 'ref() must have an explicit type parameter, e.g., ref<boolean>(false)',

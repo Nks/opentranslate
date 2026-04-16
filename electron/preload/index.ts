@@ -37,9 +37,25 @@ import type {
   HistoryAddRequestShape,
   HistoryListRequestShape,
   HistorySearchRequestShape,
+  DocumentPickResponseShape,
+  DocumentTranslateRequestShape,
+  DocumentTranslateResponseShape,
+  DocumentStatusResponseShape,
 } from '@electron/ipc/channels'
 
 const allowedChannels = new Set<string>(Object.values(channels))
+
+/**
+ * Strip Vue reactive proxies and non-clonable Symbols from IPC arguments.
+ * Electron's structured clone algorithm fails on reactive objects.
+ */
+function stripReactive(value: unknown): unknown {
+  if (value === undefined || value === null) {
+    return value
+  }
+
+  return JSON.parse(JSON.stringify(value))
+}
 
 async function invoke<Name extends ChannelName>(
   channel: Name,
@@ -49,7 +65,18 @@ async function invoke<Name extends ChannelName>(
     throw new Error(`preload: channel "${channel}" is not registered`)
   }
 
-  return ipcRenderer.invoke(channel, ...args) as Promise<ChannelResponse<Name>>
+  // Serialize args to strip Vue reactive proxies before IPC transfer
+  const safeArgs = args.map(stripReactive) as typeof args
+
+  try {
+    return await ipcRenderer.invoke(channel, ...safeArgs) as ChannelResponse<Name>
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    // eslint-disable-next-line no-console
+    console.error(`[IPC:${channel}]`, message, err)
+
+    throw new Error(`[${channel}] ${message}`)
+  }
 }
 
 const api = {
@@ -94,6 +121,22 @@ const api = {
     clear: (): Promise<void> => invoke('history:clear'),
     toggle: (input: { enabled: boolean }): Promise<void> =>
       invoke('history:toggle', input),
+  },
+  documents: {
+    pick: (): Promise<DocumentPickResponseShape | null> =>
+      invoke('document:pick'),
+    translate: (
+      input: DocumentTranslateRequestShape,
+    ): Promise<DocumentTranslateResponseShape | null> =>
+      invoke('document:translate', input),
+    status: (): Promise<DocumentStatusResponseShape> =>
+      invoke('document:status'),
+  },
+  quickTranslate: {
+    openFull: (): Promise<void> =>
+      invoke('quick-translate:open-full' as never),
+    close: (): Promise<void> =>
+      invoke('quick-translate:close' as never),
   },
 } as const
 
