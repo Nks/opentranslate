@@ -25,10 +25,9 @@ mac:
         - x64
         - arm64
   category: public.app-category.productivity
-  hardenedRuntime: true
+  identity: null
+  hardenedRuntime: false
   gatekeeperAssess: false
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
 dmg:
   sign: false
   contents:

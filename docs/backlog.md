@@ -316,3 +316,18 @@ modal window.
 Add "Preferences…" (⌘+,) to the macOS application menu, "Settings" to
 the Windows/Linux Edit or Help menu. Use Electron's `Menu.setApplicationMenu`
 to build a proper native menu bar with: File, Edit, View, Window, Help.
+
+---
+
+## Packaging & Distribution
+
+### B-032: Apple code signing and notarization
+Enable macOS code signing and notarization for production distribution.
+Follow the step-by-step guide in `docs/apple-signing.md`:
+- Enroll in Apple Developer Program ($99/year)
+- Create Developer ID Application certificate
+- Configure `electron-builder.yml`: restore `hardenedRuntime: true`,
+  entitlements, and add `notarize.teamId`
+- Set CI secrets: `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`,
+  `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`
+- Verify with `codesign --verify` and `spctl --assess`
