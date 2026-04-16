@@ -164,4 +164,62 @@ describe('throwGoogleHttpError', () => {
       expect((err as AppError).category).toBe(ErrorCategory.EndpointUnreachable)
     }
   })
+
+  it('maps 400 INVALID_ARGUMENT without language keyword to InvalidProviderResponse', () => {
+    try {
+      throwGoogleHttpError(400, {
+        error: {
+          status: 'INVALID_ARGUMENT',
+          message: 'Request contains an invalid value',
+        },
+      })
+      expect.fail('expected throw')
+    } catch (err) {
+      expect((err as AppError).category).toBe(ErrorCategory.InvalidProviderResponse)
+    }
+  })
+
+  it('maps 400 with no error body to InvalidProviderResponse', () => {
+    try {
+      throwGoogleHttpError(400, null)
+      expect.fail('expected throw')
+    } catch (err) {
+      expect((err as AppError).category).toBe(ErrorCategory.InvalidProviderResponse)
+    }
+  })
+
+  it('maps 400 with empty error object to InvalidProviderResponse', () => {
+    try {
+      throwGoogleHttpError(400, {
+        error: {},
+      })
+      expect.fail('expected throw')
+    } catch (err) {
+      expect((err as AppError).category).toBe(ErrorCategory.InvalidProviderResponse)
+      expect((err as AppError).message).toContain('http 400')
+    }
+  })
+
+  it('maps 401 to AuthenticationFailure', () => {
+    try {
+      throwGoogleHttpError(401, {
+        error: {
+          status: 'UNAUTHENTICATED',
+          message: 'bad token',
+        },
+      })
+      expect.fail('expected throw')
+    } catch (err) {
+      expect((err as AppError).category).toBe(ErrorCategory.AuthenticationFailure)
+    }
+  })
+
+  it('maps 429 to RateLimited', () => {
+    try {
+      throwGoogleHttpError(429, null)
+      expect.fail('expected throw')
+    } catch (err) {
+      expect((err as AppError).category).toBe(ErrorCategory.RateLimited)
+    }
+  })
 })

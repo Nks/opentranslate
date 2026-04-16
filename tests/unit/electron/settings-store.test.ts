@@ -194,4 +194,37 @@ describe('settings store', () => {
 
     expect(loaded.app.activeProvider).toBe(defaultAppSettings.activeProvider)
   })
+
+  it('reset() writes defaults and returns them', async () => {
+    const store = createSettingsStore({
+      userDataDir: dir,
+      providers,
+    })
+    await store.load()
+    await store.save({
+      app: {
+        ...defaultAppSettings,
+        debounceMs: 999,
+      },
+    })
+    const afterReset = await store.reset()
+
+    expect(afterReset.app.debounceMs).toBe(defaultAppSettings.debounceMs)
+    expect(afterReset.app).toEqual(defaultAppSettings)
+
+    const raw = await readFile(join(dir, SETTINGS_FILE), 'utf8')
+    const parsed = JSON.parse(raw)
+
+    expect(parsed.app.debounceMs).toBe(defaultAppSettings.debounceMs)
+  })
+
+  it('load() handles unexpected fs errors gracefully', async () => {
+    const store = createSettingsStore({
+      userDataDir: '/nonexistent/path/that/cannot/exist',
+      providers,
+    })
+    const loaded = await store.load()
+
+    expect(loaded.app).toEqual(defaultAppSettings)
+  })
 })
