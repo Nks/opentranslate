@@ -45,6 +45,20 @@ export function useTranslation() {
       if (result) {
         translationStore.translatedText = result.translatedText
         translationStore.detectedSourceLanguage = result.detectedSourceLanguage ?? null
+
+        // Add to history (fire-and-forget)
+        void api.history.add({
+          sourceText: translationStore.sourceText,
+          translatedText: result.translatedText,
+          sourceLanguageCode: result.detectedSourceLanguage ??
+            (providersStore.sourceSelection.mode === 'explicit'
+              ? providersStore.sourceSelection.code
+              : 'auto'),
+          targetLanguageCode: providersStore.targetLanguage ?? 'en',
+          provider: providersStore.activeProviderId ?? 'unknown',
+        }).catch(() => {
+          // History recording failure must not break translation
+        })
       }
     } catch (err) {
       translationStore.error = err instanceof Error ? err.message : String(err)
