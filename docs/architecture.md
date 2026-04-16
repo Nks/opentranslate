@@ -647,6 +647,75 @@ Per spec §18:
 
 ---
 
+## 8.6 Quick Translate Overlay (Phase 8)
+
+The `quick-translate` bounded context owns the global shortcut, clipboard
+read, overlay window lifecycle, and compact translation display.
+
+### 8.6.1 Shortcut chord detection
+
+The spec requires `Cmd+C+C` (macOS) / `Ctrl+C+C` (Win/Linux) — a rapid
+double-press of `C` while the modifier is held. Electron's `globalShortcut`
+API registers single key combos, not chords. The implementation uses a
+**chord detector** that:
+
+1. Registers `CommandOrControl+C` as a global shortcut.
+2. On first trigger, starts a 500ms window.
+3. If triggered again within the window, fires the `quick-translate`
+   action. Otherwise the trigger expires silently and the next press
+   restarts the sequence.
+4. The first press MUST NOT suppress the OS copy behavior — the system
+   clipboard copy completes normally. The detector acts on the *second*
+   press only.
+
+Configurable via `AppSettings.shortcuts.quickTranslate` (string like
+`CommandOrControl+C+C`). Can be disabled via
+`AppSettings.shortcuts.quickTranslateEnabled`.
+
+### 8.6.2 Clipboard read policy
+
+The clipboard is read **only** after the chord fires — never on a single
+copy, never on app startup, never on a timer. The read happens in the
+main process via `clipboard.readText()`. The text is passed directly to
+the orchestrator; it is not stored or logged.
+
+### 8.6.3 Overlay window
+
+A dedicated frameless `BrowserWindow`:
+
+- `frame: false`, `alwaysOnTop: true`, `skipTaskbar: true`
+- Small fixed size (e.g. 480×320)
+- Positioned near screen center (or near cursor on multi-monitor)
+- `show: false` on creation; shown after translation completes
+- Closes on `Esc` keypress (captured by the overlay page)
+- Shares the same preload bridge as the main window
+
+The overlay loads `app/pages/overlay.vue` via the Nuxt router (dev:
+localhost URL with `/overlay` path; prod: static build).
+
+### 8.6.4 Phase 8 IPC channels
+
+- `quick-translate:result` — main → renderer push: sends the translation
+  result + detected language + target language to the overlay window
+- `quick-translate:open-full` — renderer → main: user clicked "Open in
+  full app"; main copies text to main window store and focuses it
+- `quick-translate:close` — renderer → main: user pressed Esc or clicked
+  close; main hides the overlay
+
+### 8.6.5 Overlay page UI
+
+Compact card showing:
+
+- Detected source language label
+- Target language label (last-used, persisted)
+- Translated text (read-only)
+- Copy button (via `useClipboard`)
+- "Open in full app" button
+- Retry action (re-translates the clipboard text)
+- Esc to close (keyboard listener)
+
+---
+
 ## 9. Testing Strategy
 
 | Tier | Runner | Scope |
