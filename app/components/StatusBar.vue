@@ -16,7 +16,7 @@ const emit = defineEmits<Emits>()
   <div class="flex items-center gap-2 px-4 py-2 text-sm border-t border-gray-200 dark:border-gray-700">
     <UIcon
       v-if="loading"
-      name="i-heroicons-arrow-path"
+      name="i-fluent-arrow-sync-24-regular"
       class="animate-spin text-primary-500"
     />
     <span

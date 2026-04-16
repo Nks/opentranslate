@@ -10,8 +10,14 @@ export default defineNuxtConfig({
   devtools: {
     enabled: true,
   },
-  modules: ['@nuxt/ui', '@pinia/nuxt', '@vueuse/nuxt'],
+  modules: ['@nuxt/ui', '@pinia/nuxt', '@vueuse/nuxt', '@nuxt/fonts'],
   css: ['~/assets/css/main.css'],
+  icon: {
+    // Only use locally-bundled Fluent icons. No external API requests.
+    provider: 'server',
+    serverBundle: 'local',
+    collections: ['fluent'],
+  },
   app: {
     head: {
       title: 'OpenTranslate Desktop',
@@ -41,6 +47,14 @@ export default defineNuxtConfig({
         '@electron': new URL('./electron', import.meta.url).pathname,
         '@app': new URL('./app', import.meta.url).pathname,
       },
+    },
+    optimizeDeps: {
+      include: [
+        'zod',
+        'pinia',
+        'vue',
+        '@vueuse/core',
+      ],
     },
     server: {
       strictPort: true,

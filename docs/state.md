@@ -1,57 +1,58 @@
 # Project State — OpenTranslate Desktop
 
-_Last updated: 2026-04-15 (Phase 7 complete, awaiting merge)_
+_Last updated: 2026-04-15 (Phase 8 complete, awaiting merge)_
 
 ---
 
 ## Active Context
 
-- **Current branch:** `feature/history` (Phase 7 done, awaiting PR)
-- **Parent branch:** `develop` (Phase 0–6 merged)
-- **Last completed iteration:** Phase 7 — history service with better-sqlite3,
-  7 unit tests, 6 new IPC channels, architecture doc §8.5
+- **Current branch:** `feature/quick-translate` (Phase 8 done, awaiting PR)
+- **Parent branch:** `develop` (Phase 0–7 merged)
+- **Last completed iteration:** Phase 8 — quick translate overlay: chord
+  detector, frameless overlay window, quick translate service, overlay page UI
 
 ## Green-state verification
 
-- `pnpm lint` — 0 errors, 3 non-blocking warnings
+- `pnpm lint` — 0 errors, 0 warnings
 - `pnpm typecheck` — clean
-- `pnpm test` — **190 tests passing across 29 suites**
+- `pnpm test` — **207 tests passing across 33 suites**
 - `pnpm test:e2e` — 1 passing
 
 ## Phase progress
 
 | # | Phase | Status | Notes |
 |---|---|---|---|
-| 0–6 | Bootstrap → Main Window | **done** | |
-| T | Test Hardening | **done** | 90%+ coverage |
-| 7 | History | **done** | SQLite store + IPC channels + architecture doc |
-| 8 | Quick Translate Overlay | next | |
-| 9 | Documents Screen + Google v3 | pending | |
+| 0–7 | Bootstrap → History | **done** | |
+| T | Test Hardening | **done** | |
+| 8 | Quick Translate Overlay | **done** | chord detector, overlay window, service, UI |
+| 9 | Documents Screen + Google v3 | next | |
 | 10 | Settings UI | pending | |
 | 11 | Packaging | pending | |
 | 12 | Docs Hardening | pending | |
 
-## Phase 7 delivered
+## Phase 8 delivered
 
-- `docs/architecture.md` §8.5 — History bounded context: SQLite schema,
-  retention modes (forever / last-30-days / last-100-entries), search via
-  LIKE, disabled state semantics, 6 IPC channel specs
-- `electron/services/history/store.ts` — `createHistoryStore(dbPath)` with
-  `add` (retention-aware), `list` (paginated), `search` (LIKE on source +
-  translated text), `deleteEntry`, `clear`, `close`. WAL mode, prepared
-  statements, `crypto.randomUUID()` for IDs
-- `electron/ipc/channels.ts` — 6 new channels: `history:add/list/search/
-  delete/clear/toggle` with typed request/response contracts
-- `tests/unit/electron/history-store.test.ts` (7 tests)
-- `better-sqlite3` 12.9 + `@types/better-sqlite3`; added to
-  `pnpm.onlyBuiltDependencies`
-
-## Phase 7 deferred
-
-- History IPC handler wiring in `main/index.ts`
-- Preload surface for history channels
-- History page UI (`app/pages/history.vue`)
-- Auto-add on successful translation
+- `docs/architecture.md` §8.6 — chord detection mechanics, clipboard read
+  policy, overlay window spec, IPC channels, overlay UI spec
+- `electron/services/shortcuts/chord-detector.ts` — double-tap detector
+  with configurable window (default 500ms); fires only on second press
+  within window; first press passes through to OS copy
+- `electron/main/overlay-window.ts` — pure factory for frameless,
+  always-on-top, sandboxed overlay `BrowserWindow` options (480×320,
+  centered, skip taskbar, same security as main window)
+- `electron/services/quick-translate/service.ts` — reads clipboard text,
+  trims, translates via orchestrator, returns structured result with
+  source/translated/detected-lang/target/provider
+- `app/pages/overlay.vue` — compact card: header with lang pair + provider,
+  translated text body, footer with Copy/Open Full/Close buttons, Esc
+  keyboard listener, draggable header region
+- `tests/unit/electron/chord-detector.test.ts` (5 tests) — double-tap,
+  single-tap no-fire, outside-window no-fire, reset, re-trigger
+- `tests/unit/electron/overlay-window.test.ts` (6 tests) — security
+  invariants (frameless, alwaysOnTop, skipTaskbar, contextIsolation,
+  nodeIntegration off, compact dimensions)
+- `tests/unit/electron/quick-translate.test.ts` (3 tests) — translate +
+  result shape, empty clipboard returns null, whitespace trimming
 
 ## Update protocol
 
