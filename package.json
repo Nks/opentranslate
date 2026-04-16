@@ -34,13 +34,16 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@nuxt/test-utils": "^4.0.2",
     "@nuxt/ui": "^4.6.1",
     "@playwright/test": "^1.49.0",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@types/node": "^24.0.0",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
+    "@vitejs/plugin-vue": "^6.0.6",
     "@vitest/coverage-v8": "^2.1.8",
+    "@vue/test-utils": "^2.4.6",
     "electron": "^41.2.0",
     "electron-builder": "^25.1.8",
     "esbuild": "^0.28.0",
@@ -50,6 +53,8 @@
     "eslint-plugin-security-node": "^1.1.4",
     "eslint-plugin-sonarjs": "^4.0.2",
     "eslint-plugin-unused-imports": "^4.4.1",
+    "eslint-plugin-vue": "^10.8.0",
+    "happy-dom": "^20.9.0",
     "msw": "^2.13.3",
     "nuxt": "^4.4.2",
     "tsx": "^4.21.0",
@@ -60,7 +65,11 @@
     "vue-tsc": "^3.2.6"
   },
   "dependencies": {
+    "@pinia/nuxt": "^0.11.3",
     "google-auth-library": "^10.6.2",
+    "pinia": "^3.0.4",
+    "tailwindcss": "^4.2.2",
+    "vue": "^3.5.32",
     "zod": "^4.3.6"
   },
   "pnpm": {

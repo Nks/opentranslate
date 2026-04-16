@@ -24,7 +24,21 @@ import {
   bootstrapProviderRegistry,
   listProviders,
   listProviderDtos,
+  getProvider,
 } from '@electron/providers'
+import {
+  createTranslationOrchestrator,
+} from '@electron/services/translation/orchestrator'
+import {
+  createLanguageCatalog,
+} from '@electron/services/language-catalog/catalog'
+import {
+  createTranslationHandlers,
+  type TranslationHandlers,
+} from '@electron/services/translation/handlers'
+import type {
+  LanguageSelection,
+} from '@electron/services/language-catalog/catalog'
 
 const DEV_RENDERER_URL = process.env.ELECTRON_RENDERER_URL
 const IS_DEV = Boolean(DEV_RENDERER_URL)
@@ -34,6 +48,7 @@ const preloadPath = join(distElectronDir, 'preload.cjs')
 
 let mainWindow: BrowserWindow | null = null
 let settingsHandlers: SettingsAndSecretsHandlers | null = null
+let translationHandlers: TranslationHandlers | null = null
 
 function registerIpcHandlers(): void {
   bootstrapProviderRegistry()
@@ -51,6 +66,7 @@ function registerIpcHandlers(): void {
     userDataDir,
     safeStorage,
   })
+
   settingsHandlers = createSettingsAndSecretsHandlers({
     store,
     vault,
@@ -68,6 +84,47 @@ function registerIpcHandlers(): void {
   ipcMain.handle(
     channels['secrets:test'],
     (_event, input) => settingsHandlers!['secrets:test'](input),
+  )
+
+  const orchestrator = createTranslationOrchestrator()
+  const catalog = createLanguageCatalog()
+  let currentSelection: LanguageSelection = {
+    source: {
+      mode: 'auto',
+    },
+    target: null,
+  }
+
+  translationHandlers = createTranslationHandlers({
+    orchestrator,
+    catalog,
+    store,
+    vault,
+    getDescriptor: getProvider,
+    currentSelection: () => currentSelection,
+  })
+
+  ipcMain.handle(channels['provider:switch'], async (_event, input) => {
+    const result = await translationHandlers!['provider:switch'](input)
+    currentSelection = result.selection
+
+    return result
+  })
+  ipcMain.handle(
+    channels['translation:translate'],
+    (_event, input) => translationHandlers!['translation:translate'](input),
+  )
+  ipcMain.handle(
+    channels['translation:cancel'],
+    () => translationHandlers!['translation:cancel'](),
+  )
+  ipcMain.handle(
+    channels['translation:detect'],
+    (_event, input) => translationHandlers!['translation:detect'](input),
+  )
+  ipcMain.handle(
+    channels['language:list'],
+    (_event, input) => translationHandlers!['language:list'](input),
   )
 }
 

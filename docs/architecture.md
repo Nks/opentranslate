@@ -577,6 +577,76 @@ When the renderer sends `provider:switch`, the orchestrator:
 
 ---
 
+## 8.4 Main Translation Window (Phase 6)
+
+The renderer is a Nuxt 4 SPA (SSR off) running inside Electron. It
+communicates with the main process exclusively via `window.api` (typed
+preload bridge). It has no `fetch`, no HTTP client, no direct provider
+access (enforced by `eslint-plugin-boundaries`).
+
+### 8.4.1 Component hierarchy
+
+```
+app/
+  pages/
+    index.vue            Translate page (default route)
+  components/
+    TranslationInput.vue   source textarea, char counter, clear button
+    TranslationOutput.vue  output textarea, copy button, provider badge
+    LanguageSelector.vue   dropdown sourced from language catalog
+    ProviderSelector.vue   dropdown sourced from provider registry
+    StatusBar.vue          loading indicator, error summary, retry
+  composables/
+    useTranslation.ts      debounced translate trigger, wires store → API
+  stores/
+    translation.ts         source text, output, source/target selection, loading, error
+    providers.ts           active provider, provider list, capabilities
+    settings.ts            mirrors AppSettings for UI (read via settings:get)
+```
+
+### 8.4.2 Pinia store boundaries
+
+| Store | Owns | Reads from IPC | Writes to IPC |
+|---|---|---|---|
+| `translation` | input text, translated output, loading flag, last error | `translation:translate` response | `translation:translate`, `translation:cancel` |
+| `providers` | active provider id, descriptor list, capabilities, language list, selection | `providers:list`, `provider:switch`, `language:list` | `provider:switch` |
+| `settings` | app settings mirror (theme, debounce, history toggle, shortcuts) | `settings:get` | `settings:update` |
+
+Stores do NOT call `window.api` directly in their actions. Instead, a
+composable (`useTranslation`) coordinates store writes with IPC calls
+so the call site is a single place and easy to mock in tests.
+
+### 8.4.3 Debounce
+
+Debounce lives in the renderer composable `useTranslation`. Default is
+`350ms` from `AppSettings.debounceMs`. When the user types, the
+composable debounces the IPC call; the orchestrator in main receives
+already-debounced requests and executes immediately. This keeps the
+input pane responsive while throttling network calls.
+
+### 8.4.4 Two-pane layout invariants
+
+Per spec §13:
+
+- Two-column layout at desktop width
+- Source and target language controls above text panes
+- Minimal interface chrome
+- Strong focus on input and output text areas
+- Fast copy interaction (one-click copy to clipboard)
+- Light and dark mode via Nuxt UI color mode (system default)
+
+### 8.4.5 Accessibility (a11y)
+
+Per spec §18:
+
+- Full keyboard navigation (`Tab` / `Shift+Tab` through all controls)
+- `aria-label` on all interactive elements
+- Visible focus ring via Nuxt UI focus utilities
+- Screen-reader labels on language selectors, provider selector, copy/clear buttons
+- User-scalable font size (rem-based, no fixed px on body text)
+
+---
+
 ## 9. Testing Strategy
 
 | Tier | Runner | Scope |

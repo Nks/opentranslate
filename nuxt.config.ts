@@ -10,7 +10,8 @@ export default defineNuxtConfig({
   devtools: {
     enabled: true,
   },
-  modules: ['@nuxt/ui'],
+  modules: ['@nuxt/ui', '@pinia/nuxt'],
+  css: ['~/assets/css/main.css'],
   app: {
     head: {
       title: 'OpenTranslate Desktop',
@@ -34,6 +35,13 @@ export default defineNuxtConfig({
     serverAppConfig: false,
   },
   vite: {
+    resolve: {
+      alias: {
+        '@shared': new URL('./shared', import.meta.url).pathname,
+        '@electron': new URL('./electron', import.meta.url).pathname,
+        '@app': new URL('./app', import.meta.url).pathname,
+      },
+    },
     server: {
       strictPort: true,
     },

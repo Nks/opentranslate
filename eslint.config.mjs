@@ -8,6 +8,7 @@ import antiTrojanSource from 'eslint-plugin-anti-trojan-source'
 import securityNode from 'eslint-plugin-security-node'
 import boundaries from 'eslint-plugin-boundaries'
 import sonarjs from 'eslint-plugin-sonarjs'
+import vue from 'eslint-plugin-vue'
 
 const nodeGlobals = {
   process: 'readonly',
@@ -44,6 +45,9 @@ const nodeGlobals = {
   RequestInit: 'readonly',
   BodyInit: 'readonly',
   File: 'readonly',
+  window: 'readonly',
+  document: 'readonly',
+  navigator: 'readonly',
 }
 
 const idLengthExceptions = ['_']
@@ -68,6 +72,9 @@ export default [
       'build/**',
       '**/*.d.ts',
       'pnpm-lock.yaml',
+      'vitest.config.ts',
+      'playwright.config.ts',
+      'nuxt.config.ts',
     ],
   },
 
@@ -82,8 +89,7 @@ export default [
     ...js.configs.recommended,
   },
 
-  // Vue SFC files — use vue-eslint-parser and delegate <script lang="ts"> to tsParser.
-  // Vue-specific rules land in Phase 6 with @nuxt/eslint-config.
+  // Vue SFC files — use vue-eslint-parser + vue plugin.
   {
     files: ['**/*.vue'],
     languageOptions: {
@@ -102,6 +108,27 @@ export default [
         extraFileExtensions: ['.vue'],
       },
     },
+    plugins: {
+      vue,
+    },
+    rules: {
+      'vue/require-typed-ref': 'error',
+      'vue/define-props-declaration': ['error', 'type-based'],
+      'vue/define-emits-declaration': ['error', 'type-based'],
+      'no-restricted-syntax': ['error', {
+        selector: 'CallExpression[callee.name="ref"]:not([typeArguments])',
+        message: 'ref() must have an explicit type parameter, e.g., ref<boolean>(false)',
+      }, {
+        selector: 'CallExpression[callee.name="computed"]:not([typeArguments])',
+        message: 'computed() must have an explicit type parameter, e.g., computed<string>(() => ...)',
+      }, {
+        selector: 'CallExpression[callee.name="defineProps"] > TSTypeParameterInstantiation > TSTypeLiteral',
+        message: 'Extract props type into `interface Props { ... }` then use `defineProps<Props>()`',
+      }, {
+        selector: 'CallExpression[callee.name="defineEmits"] > TSTypeParameterInstantiation > TSTypeLiteral',
+        message: 'Extract emits type into `interface Emits { ... }` then use `defineEmits<Emits>()`',
+      }],
+    },
   },
 
   // TypeScript rules
@@ -115,6 +142,7 @@ export default [
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: 'module',
+        project: true,
       },
     },
     plugins: {
@@ -155,7 +183,12 @@ export default [
 
       // --- TS safety ---
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/consistent-type-imports': ['error', {
+        prefer: 'type-imports',
+        fixStyle: 'separate-type-imports',
+      }],
+      '@typescript-eslint/prefer-optional-chain': 'error',
+      '@typescript-eslint/prefer-nullish-coalescing': 'error',
       '@typescript-eslint/no-empty-object-type': [
         'error',
         {
@@ -264,46 +297,48 @@ export default [
       'boundaries/no-ignored': 'off',
       'boundaries/no-private': 'off',
       'boundaries/no-unknown': 'off',
-      'boundaries/element-types': [
+      'boundaries/dependencies': [
         'error',
         {
           default: 'disallow',
           message: '${file.type} is not allowed to import ${dependency.type}',
           rules: [
             {
-              from: 'shared',
-              allow: ['shared'],
+              from: { type: 'shared' },
+              allow: { to: [{ type: 'shared' }] },
             },
             {
-              from: 'electron-providers',
-              allow: ['shared', 'electron-services', 'electron-providers'],
+              from: { type: 'electron-providers' },
+              allow: { to: [{ type: 'shared' }, { type: 'electron-services' }, { type: 'electron-providers' }] },
             },
             {
-              from: 'electron-services',
-              allow: ['shared', 'electron-providers', 'electron-services'],
+              from: { type: 'electron-services' },
+              allow: { to: [{ type: 'shared' }, { type: 'electron-providers' }, { type: 'electron-services' }] },
             },
             {
-              from: 'electron-ipc',
-              allow: ['shared', 'electron-ipc'],
+              from: { type: 'electron-ipc' },
+              allow: { to: [{ type: 'shared' }, { type: 'electron-ipc' }] },
             },
             {
-              from: 'electron-preload',
-              allow: ['shared', 'electron-ipc', 'electron-preload'],
+              from: { type: 'electron-preload' },
+              allow: { to: [{ type: 'shared' }, { type: 'electron-ipc' }, { type: 'electron-preload' }] },
             },
             {
-              from: 'electron-main',
-              allow: [
-                'shared',
-                'electron-providers',
-                'electron-services',
-                'electron-ipc',
-                'electron-preload',
-                'electron-main',
-              ],
+              from: { type: 'electron-main' },
+              allow: {
+                to: [
+                  { type: 'shared' },
+                  { type: 'electron-providers' },
+                  { type: 'electron-services' },
+                  { type: 'electron-ipc' },
+                  { type: 'electron-preload' },
+                  { type: 'electron-main' },
+                ],
+              },
             },
             {
-              from: 'app',
-              allow: ['shared', 'app'],
+              from: { type: 'app' },
+              allow: { to: [{ type: 'shared' }, { type: 'app' }] },
             },
           ],
         },
@@ -393,18 +428,20 @@ export default [
       // line by itself. Empty `{}` is exempt. Applies uniformly to object
       // literals, patterns, and import/export specifiers — authors get
       // predictable, easy-to-diff formatting.
+      // Objects with 1 property can stay inline: { ok: true }
+      // Objects with 2+ properties must break across lines.
       '@stylistic/object-curly-newline': [
         'error',
         {
           multiline: true,
-          minProperties: 1,
+          minProperties: 2,
           consistent: true,
         },
       ],
       '@stylistic/object-property-newline': [
         'error',
         {
-          allowAllPropertiesOnSameLine: false,
+          allowAllPropertiesOnSameLine: true,
         },
       ],
 
