@@ -199,10 +199,13 @@ function ensureSingleInstance(): boolean {
 
 function setContentSecurityPolicy(): void {
   try {
+    // Nuxt injects inline <script> tags for hydration + config payload,
+    // so 'unsafe-inline' is required in script-src. The real security
+    // boundary is contextIsolation + sandbox + no nodeIntegration, not CSP.
     const csp = IS_DEV
       ? [
           "default-src 'self'",
-          `script-src 'self' ${DEV_RENDERER_URL ?? ''}`,
+          `script-src 'self' 'unsafe-inline' ${DEV_RENDERER_URL ?? ''}`,
           `style-src 'self' 'unsafe-inline' ${DEV_RENDERER_URL ?? ''}`,
           `connect-src 'self' ${DEV_RENDERER_URL ?? ''} ws://localhost:*`,
           "img-src 'self' data:",
@@ -210,7 +213,7 @@ function setContentSecurityPolicy(): void {
         ].join('; ')
       : [
           "default-src 'self'",
-          "script-src 'self'",
+          "script-src 'self' 'unsafe-inline'",
           "style-src 'self' 'unsafe-inline'",
           "img-src 'self' data:",
           "font-src 'self' data:",

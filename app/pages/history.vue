@@ -76,7 +76,7 @@ function reopenEntry(entry: HistoryEntry) {
           class="flex items-center justify-center py-8"
         >
           <UIcon
-            name="i-heroicons-arrow-path"
+            name="i-fluent-arrow-sync-24-regular"
             class="animate-spin text-primary-500"
           />
         </div>

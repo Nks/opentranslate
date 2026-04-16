@@ -72,7 +72,7 @@ onMounted(() => {
         class="flex items-center justify-center h-full"
       >
         <UIcon
-          name="i-heroicons-arrow-path"
+          name="i-fluent-arrow-sync-24-regular"
           class="animate-spin text-primary-500 text-xl"
         />
       </div>

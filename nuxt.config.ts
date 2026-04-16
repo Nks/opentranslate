@@ -12,6 +12,12 @@ export default defineNuxtConfig({
   },
   modules: ['@nuxt/ui', '@pinia/nuxt', '@vueuse/nuxt', '@nuxt/fonts'],
   css: ['~/assets/css/main.css'],
+  icon: {
+    // Only use locally-bundled Fluent icons. No external API requests.
+    provider: 'server',
+    serverBundle: 'local',
+    collections: ['fluent'],
+  },
   app: {
     head: {
       title: 'OpenTranslate Desktop',

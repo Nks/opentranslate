@@ -37,7 +37,7 @@ async function copyToClipboard() {
         class="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-900/50"
       >
         <UIcon
-          name="i-heroicons-arrow-path"
+          name="i-fluent-arrow-sync-24-regular"
           class="animate-spin text-primary-500"
         />
       </div>
