@@ -795,3 +795,82 @@ that phase lands. The phase-specific updates are:
 
 If the code deviates from the doc, the doc is wrong or the code is wrong.
 Decide, update the doc first, then reconcile the code in the same PR.
+
+---
+
+## 11. Packaging (Phase 11)
+
+### 11.1 Build pipeline
+
+The full packaging pipeline runs three stages sequentially:
+
+1. **`pnpm build:electron`** — esbuild bundles `electron/main/index.ts` →
+   `dist-electron/main.cjs` and `electron/preload/index.ts` →
+   `dist-electron/preload.cjs`. CJS format required for Electron.
+2. **`pnpm build:renderer`** — `nuxt build` generates static SPA output in
+   `.output/public/` (SSR is off).
+3. **`electron-builder`** — reads `electron-builder.yml`, packs `dist-electron/`
+   + `.output/public/` + production `node_modules` into an asar archive,
+   rebuilds native modules (better-sqlite3) for the target Electron ABI, and
+   produces platform-specific installers.
+
+### 11.2 Platform targets
+
+| Platform | Target | Arch | Artifact |
+|---|---|---|---|
+| macOS | DMG | x64, arm64 | `OpenTranslate Desktop-<ver>-<arch>.dmg` |
+| Windows | NSIS installer | x64 | `OpenTranslate Desktop Setup <ver>.exe` |
+| Windows | ZIP (portable) | x64 | `OpenTranslate Desktop-<ver>-win.zip` |
+| Linux | AppImage | x64 | `OpenTranslate Desktop-<ver>.AppImage` |
+| Linux | deb | x64 | `opentranslate-desktop_<ver>_amd64.deb` |
+
+### 11.3 Native modules
+
+`better-sqlite3` ships a C++ addon that must be compiled against Electron's
+Node ABI (not the system Node). electron-builder handles this via `npmRebuild: true`
+in `electron-builder.yml`. The `.node` binary is excluded from asar via
+`asarUnpack: ['**/*.{node,dll}']`.
+
+### 11.4 Code signing
+
+Code signing is **documented only** — no signing certificates or secrets are
+stored in the repository. The `electron-builder.yml` references macOS
+entitlements at `build/entitlements.mac.plist` (JIT, unsigned memory, network
+client). Actual signing requires:
+
+- **macOS:** Apple Developer ID certificate + `CSC_LINK` / `CSC_KEY_PASSWORD`
+  env vars. Notarization via `@electron/notarize` (not included until a cert
+  is available).
+- **Windows:** Authenticode certificate. Set via `CSC_LINK` / `CSC_KEY_PASSWORD`
+  or `WIN_CSC_LINK` / `WIN_CSC_KEY_PASSWORD`.
+- **Linux:** No code signing required for AppImage/deb.
+
+### 11.5 Build resources
+
+```
+build/
+  entitlements.mac.plist    macOS hardened runtime entitlements
+  icon.png                  1024x1024 app icon (electron-builder generates all sizes)
+```
+
+electron-builder reads `build/` as `directories.buildResources`. It auto-generates
+`.icns` (macOS) and `.ico` (Windows) from `icon.png`.
+
+### 11.6 CI release workflow
+
+`.github/workflows/release.yml` runs on `v*` tags pushed to `main`:
+
+1. Checkout + setup pnpm/Node
+2. Install dependencies
+3. Full build (electron + renderer)
+4. Package per platform (matrix: macOS, Windows, Linux)
+5. Upload artifacts to GitHub Release
+
+The existing `ci.yml` handles lint/typecheck/test on every push/PR. The release
+workflow runs packaging only.
+
+### 11.7 Scripts
+
+- `pnpm package` — full local packaging: build + electron-builder for current OS
+- `pnpm package:dir` — unpacked directory output for inspection (no installer)
+- `scripts/package.mjs` — orchestrates the build + electron-builder invocation

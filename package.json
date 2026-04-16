@@ -1,6 +1,6 @@
 {
   "name": "opentranslate-desktop",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "MIT-licensed desktop translator with a DeepL-style workflow. Electron + Nuxt 4 + Nuxt UI + TypeScript.",
   "license": "MIT",
@@ -18,13 +18,15 @@
   },
   "packageManager": "pnpm@10.33.0",
   "type": "module",
+  "main": "dist-electron/main.cjs",
   "scripts": {
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "dev": "node scripts/dev.mjs",
     "build:electron": "node scripts/build-electron.mjs",
     "build:renderer": "nuxt build",
     "build": "pnpm run typecheck && pnpm run build:electron && pnpm run build:renderer",
-    "package": "echo \"packaging lands in Phase 11 (feature/packaging)\" && exit 0",
+    "package": "node scripts/package.mjs && pnpm rebuild better-sqlite3",
+    "package:dir": "node scripts/package.mjs --dir && pnpm rebuild better-sqlite3",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -65,7 +67,8 @@
     "undici": "^8.1.0",
     "vitest": "^2.1.8",
     "vue-eslint-parser": "^10.4.0",
-    "vue-tsc": "^3.2.6"
+    "vue-tsc": "^3.2.6",
+    "yaml": "^2.8.3"
   },
   "dependencies": {
     "@iconify-json/fluent": "^1.2.45",
