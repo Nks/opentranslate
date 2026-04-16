@@ -35,6 +35,15 @@ const nodeGlobals = {
   AbortSignal: 'readonly',
   crypto: 'readonly',
   NodeJS: 'readonly',
+  Response: 'readonly',
+  Request: 'readonly',
+  Headers: 'readonly',
+  FormData: 'readonly',
+  Blob: 'readonly',
+  ReadableStream: 'readonly',
+  RequestInit: 'readonly',
+  BodyInit: 'readonly',
+  File: 'readonly',
 }
 
 const idLengthExceptions = ['_']
@@ -163,6 +172,7 @@ export default [
       'id-length': ['error', {
         min: 2,
         exceptions: idLengthExceptions,
+        properties: 'never',
       }],
 
       // --- Force path aliases: no relative parent imports ---
@@ -266,7 +276,7 @@ export default [
             },
             {
               from: 'electron-providers',
-              allow: ['shared', 'electron-providers'],
+              allow: ['shared', 'electron-services', 'electron-providers'],
             },
             {
               from: 'electron-services',

@@ -354,6 +354,159 @@ registry. None of them contain a hardcoded list of provider ids.
 
 ---
 
+## 8.2 Provider Integration (Phase 4)
+
+The `provider-integration` bounded context lives entirely under
+`electron/providers/<id>/`. Each provider folder is a fully self-contained
+module that satisfies the `ProviderDescriptor` contract (§8.1.3).
+
+### 8.2.1 Per-provider file layout
+
+```
+electron/providers/<id>/
+  descriptor.ts      defineProvider<TSettings>({...}) — declarative
+  adapter.ts         implements TranslationProvider for this provider
+  http-client.ts     provider-specific endpoint methods + auth + dispatcher
+  mapper.ts          native → shared type + error conversion (ACL seam)
+```
+
+Only `descriptor.ts` is exported from the barrel. Every other file is an
+internal implementation detail of that provider.
+
+**Shared transport kernel.** Transport mechanics (fetch, abort,
+timeout, dispatcher, response parsing, error wrapping) live in
+`electron/services/http/provider-http.ts`. Each provider's
+`http-client.ts` composes that kernel with its own `errorMapper`,
+optional `authHeader` contributor, and endpoint methods. The provider
+still owns its high-level API surface (`listLanguages`, `detect`,
+`translate`, per-provider probes). This avoids ~150 lines of
+duplication between adapters and keeps the response-parsing /
+network-error contract in a single tested place.
+
+The `electron-services` layer may be imported by `electron-providers`
+(enforced by `eslint-plugin-boundaries`). Services still cannot import
+from providers.
+
+### 8.2.2 HTTP client pattern
+
+Each provider owns its HTTP client. Shared rules:
+
+- All HTTP traffic runs in the main process. Renderer has no `fetch` access
+  to any provider host (enforced by `eslint-plugin-boundaries`).
+- Every request passes through an `AbortSignal` piped from the translation
+  orchestration layer so stale requests can be cancelled (Phase 5).
+- Every request has a configurable timeout, taken from provider settings
+  (`requestTimeoutMs`). The adapter wraps the `AbortSignal` with a timeout
+  via `AbortSignal.any([externalSignal, AbortSignal.timeout(timeoutMs)])`.
+- Google authenticates via `google-auth-library` using a service account
+  JSON file read from `credentialsJsonPath`. The raw credential bytes are
+  read only inside `http-client.ts` and never held in settings JSON.
+- LibreTranslate uses plain `fetch`. Self-signed TLS is handled by a custom
+  `undici.Agent` built with `connect: { rejectUnauthorized: false }` only
+  when `allowSelfSignedTls` is true; otherwise the system default agent.
+- Every non-2xx response is converted to `AppError` by the mapper before
+  leaving the adapter.
+
+### 8.2.3 Anti-corruption mappers (ACL seams)
+
+Three mapping seams — still one per provider plus the shared error mapper:
+
+1. **Google native → shared** (`electron/providers/google/mapper.ts`)
+   Converts:
+   - `translations[].translatedText` → `TranslationOutput.translatedText`
+   - `translations[].detectedSourceLanguage` → `TranslationOutput.detectedSourceLanguage`
+   - `detections[][].language` + `.confidence` → `LanguageDetectionResult`
+   - `languages.list` → `Language[]`
+   - gRPC / REST errors (`PERMISSION_DENIED`, `UNAUTHENTICATED`,
+     `RESOURCE_EXHAUSTED`, `INVALID_ARGUMENT`, `UNAVAILABLE`) →
+     `ErrorCategory` via `mapGoogleError(err)` which throws `AppError`.
+
+2. **LibreTranslate native → shared** (`electron/providers/libretranslate/mapper.ts`)
+   Converts:
+   - `/languages` JSON `[{code, name, targets}]` → `Language[]` (where
+     `targets` drives `supportsSource` / `supportsTarget`)
+   - `/detect` response `[{language, confidence}]` → `LanguageDetectionResult`
+   - `/translate` response `{translatedText}` → `TranslationOutput`
+   - `/translate_file` response `{translatedFileUrl}` (capability-gated)
+   - HTTP status + body `error` string → `ErrorCategory` via
+     `mapLibreTranslateError(err)` which throws `AppError`.
+
+3. **Error → domain** (`shared/errors/mapper.ts` + `shared/errors/http-mapper.ts`)
+   `toErrorCategory` stays the generic fallback. A new
+   `mapHttpStatusToCategory(status)` helper lives in
+   `shared/errors/http-mapper.ts` and is called by every provider mapper.
+   Provider-specific 400 disambiguation (unsupported language vs. invalid
+   response) happens inside the provider mapper, not in the shared helper.
+
+### 8.2.4 Language normalization
+
+Both providers return different shapes for "list of supported languages".
+A shared helper `shared/providers/normalize-language.ts::normalizeLanguage`
+converts a provider-native shape into the canonical `Language` type:
+
+```
+normalizeLanguage({
+  providerCode,
+  name,
+  supportsSource,
+  supportsTarget,
+}) → Language
+```
+
+Each provider mapper builds its native list and pipes items through
+`normalizeLanguage`. The mapper decides `code` (the BCP-47-like identifier
+the app uses) — Google and LibreTranslate both happen to use BCP-47, so
+`code === providerCode` in both cases. A third provider with a different
+code scheme would apply its own translation inside its mapper.
+
+### 8.2.5 Capability probing
+
+`TranslationProvider.getCapabilities()` and `supportsDocumentTranslation()`
+are implemented per provider and MUST reflect runtime reality, not
+configuration alone:
+
+- **Google:** text + detect + list-languages always available when credentials
+  validate. Document translation (`documentTranslation: true`) only when the
+  configured edition is `advanced` AND `location` is set AND the Advanced
+  endpoint responds 200 to a dry probe.
+- **LibreTranslate:** text + detect + list-languages are available iff
+  `/languages` returns 200. Document translation (`documentTranslation:
+  true`) only when `/frontend/settings` or a HEAD probe of `/translate_file`
+  indicates support — many public and self-hosted deployments disable it.
+
+The Settings UI renders gated features only when
+`isFeatureAvailable(feature, readiness, appEnabled)` returns true, where
+`readiness.capabilities` was produced by `getCapabilities()` at the most
+recent health check.
+
+### 8.2.6 Secrets integration
+
+- Google credentials: service-account JSON file path stored in settings
+  under `credentialsJsonPath`. The Google HTTP client reads the file from
+  disk inside `http-client.ts` only when a request is about to run, never
+  at startup. Bytes never leave the main process.
+- LibreTranslate optional API key: stored in the secrets vault under
+  `providerId === 'libretranslate'`. The adapter calls
+  `vault.getMainOnly('libretranslate')` right before each request; the
+  plaintext is attached as `api_key` form field on the outbound request
+  and then discarded.
+
+Neither credential material is ever logged. The main-process logger
+redacts known credential field names (`api_key`, `apiKey`,
+`credentialsJsonPath` contents) before writing.
+
+
+
+- Filesystem errors during load → map to `ErrorCategory.InternalAppError`,
+  fall back to defaults, surface to the UI as a one-time "settings reset"
+  notice.
+- `safeStorage` unavailable → log a redacted WARN at startup; Settings UI
+  shows a "credentials not persistable on this system" badge (Phase 10).
+- Zod validation failure on load → the corrupted file is renamed aside,
+  defaults are used, a `ConfigCorrupted` notice is surfaced.
+
+---
+
 ## 9. Testing Strategy
 
 | Tier | Runner | Scope |

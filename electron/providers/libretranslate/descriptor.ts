@@ -8,6 +8,9 @@ import {
 import type {
   LibreTranslateProviderSettings,
 } from '@shared/types/provider-settings'
+import {
+  createLibreTranslateAdapter,
+} from '@electron/providers/libretranslate/adapter'
 
 export const libreTranslateProviderDescriptor = defineProvider<LibreTranslateProviderSettings>({
   id: 'libretranslate',
@@ -63,7 +66,5 @@ export const libreTranslateProviderDescriptor = defineProvider<LibreTranslatePro
       required: false,
     },
   ],
-  createAdapter: () => {
-    throw new Error('LibreTranslate adapter lands in Phase 4')
-  },
+  createAdapter: (deps) => createLibreTranslateAdapter(deps),
 })
