@@ -308,4 +308,56 @@ describe('Google adapter', () => {
 
     expect(await advancedNoLocation.supportsDocumentTranslation()).toBe(false)
   })
+
+  it('getCapabilities returns all four capability flags', async () => {
+    const {
+      fetch,
+    } = makeFakeFetch(() => ({
+      status: 200,
+      body: {
+        data: {
+          languages: [],
+        },
+      },
+    }))
+    const adapter = createGoogleAdapter({
+      settings: {
+        ...BASE_SETTINGS,
+        edition: 'advanced',
+        location: 'us-central1',
+      },
+      getSecret: noSecret,
+      authProvider: FAKE_AUTH,
+      fetchImpl: fetch,
+    })
+    const caps = await adapter.getCapabilities()
+
+    expect(caps.textTranslation).toBe(true)
+    expect(caps.languageDetection).toBe(true)
+    expect(caps.supportedLanguagesDiscovery).toBe(true)
+    expect(caps.documentTranslation).toBe(true)
+  })
+
+  it('reports health false when /languages returns error', async () => {
+    const {
+      fetch,
+    } = makeFakeFetch(() => ({
+      status: 500,
+      body: {
+        error: {
+          message: 'internal',
+        },
+      },
+    }))
+    const adapter = createGoogleAdapter({
+      settings: BASE_SETTINGS,
+      getSecret: noSecret,
+      authProvider: FAKE_AUTH,
+      fetchImpl: fetch,
+    })
+    const health = await adapter.getHealth()
+
+    expect(health.ok).toBe(false)
+    expect(health.details).toBeDefined()
+  })
 })

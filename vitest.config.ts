@@ -28,7 +28,15 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov'],
       include: ['shared/**/*.ts', 'electron/**/*.ts'],
-      exclude: ['**/*.d.ts', '**/*.test.ts'],
+      exclude: [
+        '**/*.d.ts',
+        '**/*.test.ts',
+        'shared/types/**/*.ts',
+        'shared/index.ts',
+        'shared/providers/contract.ts',
+        'electron/main/index.ts',
+        'electron/preload/index.ts',
+      ],
     },
   },
 })
