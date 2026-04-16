@@ -1,5 +1,9 @@
-import { z } from 'zod'
-import { PROVIDER_IDS } from '@shared/types/provider-id'
+import {
+  z,
+} from 'zod'
+import {
+  PROVIDER_IDS,
+} from '@shared/types/provider-id'
 
 const providerIdSchema = z.enum(PROVIDER_IDS)
 
@@ -10,5 +14,7 @@ export const historyEntrySchema = z.object({
   sourceLanguageCode: z.string().min(1),
   targetLanguageCode: z.string().min(1),
   provider: providerIdSchema,
-  createdAt: z.string().datetime({ offset: true }),
+  createdAt: z.string().datetime({
+    offset: true,
+  }),
 })

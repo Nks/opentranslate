@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest'
-import { channels, type ChannelName } from '@electron/ipc/channels'
+import {
+  describe, expect, it,
+} from 'vitest'
+import {
+  channels, type ChannelName,
+} from '@electron/ipc/channels'
 
 describe('ipc channel registry', () => {
   it('registers the baseline app:get-version channel', () => {

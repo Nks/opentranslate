@@ -1,7 +1,15 @@
-import { describe, expect, it } from 'vitest'
-import { isFeatureAvailable } from '@shared/capability-gate'
-import type { ProviderReadiness } from '@shared/types/provider-readiness'
-import type { ProviderCapabilities } from '@shared/types/capabilities'
+import {
+  describe, expect, it,
+} from 'vitest'
+import {
+  isFeatureAvailable,
+} from '@shared/capability-gate'
+import type {
+  ProviderReadiness,
+} from '@shared/types/provider-readiness'
+import type {
+  ProviderCapabilities,
+} from '@shared/types/capabilities'
 
 const fullCaps: ProviderCapabilities = {
   textTranslation: true,
@@ -10,7 +18,10 @@ const fullCaps: ProviderCapabilities = {
   documentTranslation: false,
 }
 
-const readyReadiness: ProviderReadiness = { state: 'ready', capabilities: fullCaps }
+const readyReadiness: ProviderReadiness = {
+  state: 'ready',
+  capabilities: fullCaps,
+}
 
 describe('isFeatureAvailable', () => {
   it('returns false when app feature flag disabled', () => {
@@ -18,12 +29,16 @@ describe('isFeatureAvailable', () => {
   })
 
   it('returns false when provider is unconfigured', () => {
-    const readiness: ProviderReadiness = { state: 'unconfigured' }
+    const readiness: ProviderReadiness = {
+      state: 'unconfigured',
+    }
     expect(isFeatureAvailable('textTranslation', readiness, true)).toBe(false)
   })
 
   it('returns false when provider configured but not yet ready', () => {
-    const readiness: ProviderReadiness = { state: 'configured' }
+    const readiness: ProviderReadiness = {
+      state: 'configured',
+    }
     expect(isFeatureAvailable('textTranslation', readiness, true)).toBe(false)
   })
 

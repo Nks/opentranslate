@@ -1,8 +1,14 @@
-import { describe, expect, it } from 'vitest'
-import { createWindowOptions } from '@electron/main/window-factory'
+import {
+  describe, expect, it,
+} from 'vitest'
+import {
+  createWindowOptions,
+} from '@electron/main/window-factory'
 
 describe('createWindowOptions', () => {
-  const options = createWindowOptions({ preloadPath: '/tmp/preload.cjs' })
+  const options = createWindowOptions({
+    preloadPath: '/tmp/preload.cjs',
+  })
 
   it('enforces contextIsolation = true', () => {
     expect(options.webPreferences?.contextIsolation).toBe(true)

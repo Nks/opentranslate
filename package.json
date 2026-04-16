@@ -48,6 +48,7 @@
     "eslint-plugin-anti-trojan-source": "^1.1.2",
     "eslint-plugin-boundaries": "^6.0.2",
     "eslint-plugin-security-node": "^1.1.4",
+    "eslint-plugin-sonarjs": "^4.0.2",
     "eslint-plugin-unused-imports": "^4.4.1",
     "nuxt": "^4.4.2",
     "tsx": "^4.21.0",

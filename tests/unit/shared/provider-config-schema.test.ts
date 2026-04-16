@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import {
+  describe, expect, it,
+} from 'vitest'
 import {
   googleProviderSettingsSchema,
   libreTranslateProviderSettingsSchema,
@@ -12,7 +14,10 @@ describe('googleProviderSettingsSchema', () => {
   })
 
   it('rejects unknown edition', () => {
-    const bad = { ...defaultGoogleProviderSettings, edition: 'ultra' }
+    const bad = {
+      ...defaultGoogleProviderSettings,
+      edition: 'ultra',
+    }
     expect(googleProviderSettingsSchema.safeParse(bad).success).toBe(false)
   })
 
@@ -26,7 +31,10 @@ describe('googleProviderSettingsSchema', () => {
   })
 
   it('rejects non-positive request timeout', () => {
-    const bad = { ...defaultGoogleProviderSettings, requestTimeoutMs: 0 }
+    const bad = {
+      ...defaultGoogleProviderSettings,
+      requestTimeoutMs: 0,
+    }
     expect(googleProviderSettingsSchema.safeParse(bad).success).toBe(false)
   })
 })
@@ -39,17 +47,26 @@ describe('libreTranslateProviderSettingsSchema', () => {
   })
 
   it('rejects non-http(s) endpoint', () => {
-    const bad = { ...defaultLibreTranslateProviderSettings, endpoint: 'ftp://example.com' }
+    const bad = {
+      ...defaultLibreTranslateProviderSettings,
+      endpoint: 'ftp://example.com',
+    }
     expect(libreTranslateProviderSettingsSchema.safeParse(bad).success).toBe(false)
   })
 
   it('accepts null apiKey', () => {
-    const ok = { ...defaultLibreTranslateProviderSettings, apiKey: null }
+    const ok = {
+      ...defaultLibreTranslateProviderSettings,
+      apiKey: null,
+    }
     expect(libreTranslateProviderSettingsSchema.safeParse(ok).success).toBe(true)
   })
 
   it('rejects empty apiKey string (use null instead)', () => {
-    const bad = { ...defaultLibreTranslateProviderSettings, apiKey: '' }
+    const bad = {
+      ...defaultLibreTranslateProviderSettings,
+      apiKey: '',
+    }
     expect(libreTranslateProviderSettingsSchema.safeParse(bad).success).toBe(false)
   })
 })

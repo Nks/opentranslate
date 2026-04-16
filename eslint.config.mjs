@@ -7,6 +7,7 @@ import unusedImports from 'eslint-plugin-unused-imports'
 import antiTrojanSource from 'eslint-plugin-anti-trojan-source'
 import securityNode from 'eslint-plugin-security-node'
 import boundaries from 'eslint-plugin-boundaries'
+import sonarjs from 'eslint-plugin-sonarjs'
 
 const nodeGlobals = {
   process: 'readonly',
@@ -80,7 +81,11 @@ export default [
       parser: vueParser,
       ecmaVersion: 2022,
       sourceType: 'module',
-      globals: { ...nodeGlobals, window: 'readonly', document: 'readonly' },
+      globals: {
+        ...nodeGlobals,
+        window: 'readonly',
+        document: 'readonly',
+      },
       parserOptions: {
         parser: tsParser,
         ecmaVersion: 2022,
@@ -106,9 +111,22 @@ export default [
     plugins: {
       '@typescript-eslint': tseslint,
       'unused-imports': unusedImports,
+      sonarjs,
     },
     rules: {
       ...tseslint.configs.recommended.rules,
+
+      // --- Redundancy detection (sonarjs) ---
+      // Catches `const x = foo(); return x` → `return foo()` and similar
+      // redundant-variable / redundant-branch / redundant-jump patterns.
+      'sonarjs/prefer-immediate-return': 'error',
+      'sonarjs/no-redundant-jump': 'error',
+      'sonarjs/no-useless-catch': 'error',
+      'sonarjs/no-identical-expressions': 'error',
+      'sonarjs/no-redundant-boolean': 'error',
+      'sonarjs/no-inverted-boolean-check': 'error',
+      'sonarjs/no-duplicated-branches': 'error',
+      'sonarjs/no-identical-functions': 'error',
 
       // --- Unused vars: delegate to unused-imports plugin ---
       'no-unused-vars': 'off',
@@ -131,7 +149,9 @@ export default [
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-empty-object-type': [
         'error',
-        { allowInterfaces: 'with-single-extends' },
+        {
+          allowInterfaces: 'with-single-extends',
+        },
       ],
       '@typescript-eslint/no-redeclare': 'error',
       'no-redeclare': 'off',
@@ -140,7 +160,10 @@ export default [
       curly: ['error', 'all'],
       eqeqeq: ['error', 'always'],
       'no-console': 'error',
-      'id-length': ['error', { min: 2, exceptions: idLengthExceptions }],
+      'id-length': ['error', {
+        min: 2,
+        exceptions: idLengthExceptions,
+      }],
 
       // --- Force path aliases: no relative parent imports ---
       'no-restricted-imports': [
@@ -161,7 +184,9 @@ export default [
   // Anti-trojan-source: catches bidi / zero-width unicode attacks globally
   {
     files: ['**/*.{js,mjs,cjs,ts,tsx,vue}'],
-    plugins: { 'anti-trojan-source': antiTrojanSource },
+    plugins: {
+      'anti-trojan-source': antiTrojanSource,
+    },
     rules: {
       'anti-trojan-source/no-bidi': 'error',
     },
@@ -170,7 +195,9 @@ export default [
   // security-node: only applies to Electron main-process code (node runtime)
   {
     files: ['electron/**/*.ts'],
-    plugins: { 'security-node': securityNode },
+    plugins: {
+      'security-node': securityNode,
+    },
     rules: {
       ...securityNode.configs.recommended.rules,
     },
@@ -180,17 +207,47 @@ export default [
   {
     name: 'opentranslate/boundaries',
     files: ['electron/**/*.ts', 'app/**/*.{ts,tsx,vue}', 'shared/**/*.ts'],
-    plugins: { boundaries },
+    plugins: {
+      boundaries,
+    },
     settings: {
       'boundaries/dependency-nodes': ['import', 'dynamic-import'],
       'boundaries/elements': [
-        { type: 'shared', pattern: 'shared/**/*', mode: 'full' },
-        { type: 'electron-providers', pattern: 'electron/providers/**/*', mode: 'full' },
-        { type: 'electron-services', pattern: 'electron/services/**/*', mode: 'full' },
-        { type: 'electron-ipc', pattern: 'electron/ipc/**/*', mode: 'full' },
-        { type: 'electron-preload', pattern: 'electron/preload/**/*', mode: 'full' },
-        { type: 'electron-main', pattern: 'electron/main/**/*', mode: 'full' },
-        { type: 'app', pattern: 'app/**/*', mode: 'full' },
+        {
+          type: 'shared',
+          pattern: 'shared/**/*',
+          mode: 'full',
+        },
+        {
+          type: 'electron-providers',
+          pattern: 'electron/providers/**/*',
+          mode: 'full',
+        },
+        {
+          type: 'electron-services',
+          pattern: 'electron/services/**/*',
+          mode: 'full',
+        },
+        {
+          type: 'electron-ipc',
+          pattern: 'electron/ipc/**/*',
+          mode: 'full',
+        },
+        {
+          type: 'electron-preload',
+          pattern: 'electron/preload/**/*',
+          mode: 'full',
+        },
+        {
+          type: 'electron-main',
+          pattern: 'electron/main/**/*',
+          mode: 'full',
+        },
+        {
+          type: 'app',
+          pattern: 'app/**/*',
+          mode: 'full',
+        },
       ],
     },
     rules: {
@@ -203,13 +260,22 @@ export default [
           default: 'disallow',
           message: '${file.type} is not allowed to import ${dependency.type}',
           rules: [
-            { from: 'shared', allow: ['shared'] },
-            { from: 'electron-providers', allow: ['shared', 'electron-providers'] },
+            {
+              from: 'shared',
+              allow: ['shared'],
+            },
+            {
+              from: 'electron-providers',
+              allow: ['shared', 'electron-providers'],
+            },
             {
               from: 'electron-services',
               allow: ['shared', 'electron-providers', 'electron-services'],
             },
-            { from: 'electron-ipc', allow: ['shared', 'electron-ipc'] },
+            {
+              from: 'electron-ipc',
+              allow: ['shared', 'electron-ipc'],
+            },
             {
               from: 'electron-preload',
               allow: ['shared', 'electron-ipc', 'electron-preload'],
@@ -225,7 +291,10 @@ export default [
                 'electron-main',
               ],
             },
-            { from: 'app', allow: ['shared', 'app'] },
+            {
+              from: 'app',
+              allow: ['shared', 'app'],
+            },
           ],
         },
       ],
@@ -268,8 +337,14 @@ export default [
       '@stylistic/member-delimiter-style': [
         'error',
         {
-          multiline: { delimiter: 'none', requireLast: false },
-          singleline: { delimiter: 'semi', requireLast: false },
+          multiline: {
+            delimiter: 'none',
+            requireLast: false,
+          },
+          singleline: {
+            delimiter: 'semi',
+            requireLast: false,
+          },
         },
       ],
 
@@ -297,7 +372,87 @@ export default [
       '@stylistic/quotes': [
         'error',
         'single',
-        { avoidEscape: true, allowTemplateLiterals: 'always' },
+        {
+          avoidEscape: true,
+          allowTemplateLiterals: 'always',
+        },
+      ],
+
+      // Forbid inline object literals: any brace pair with >=1 member must
+      // have its open brace on a line by itself and its close brace on a
+      // line by itself. Empty `{}` is exempt. Applies uniformly to object
+      // literals, patterns, and import/export specifiers — authors get
+      // predictable, easy-to-diff formatting.
+      '@stylistic/object-curly-newline': [
+        'error',
+        {
+          multiline: true,
+          minProperties: 1,
+          consistent: true,
+        },
+      ],
+      '@stylistic/object-property-newline': [
+        'error',
+        {
+          allowAllPropertiesOnSameLine: false,
+        },
+      ],
+
+      // Require a blank line before control-flow / return / function / class
+      // statements so code blocks breathe. First statement in a block is
+      // exempt (there is no previous statement).
+      '@stylistic/padding-line-between-statements': [
+        'error',
+        {
+          blankLine: 'always',
+          prev: '*',
+          next: 'return',
+        },
+        {
+          blankLine: 'always',
+          prev: '*',
+          next: 'if',
+        },
+        {
+          blankLine: 'always',
+          prev: '*',
+          next: 'for',
+        },
+        {
+          blankLine: 'always',
+          prev: '*',
+          next: 'while',
+        },
+        {
+          blankLine: 'always',
+          prev: '*',
+          next: 'do',
+        },
+        {
+          blankLine: 'always',
+          prev: '*',
+          next: 'switch',
+        },
+        {
+          blankLine: 'always',
+          prev: '*',
+          next: 'try',
+        },
+        {
+          blankLine: 'always',
+          prev: '*',
+          next: 'throw',
+        },
+        {
+          blankLine: 'always',
+          prev: '*',
+          next: 'function',
+        },
+        {
+          blankLine: 'always',
+          prev: '*',
+          next: 'class',
+        },
       ],
     },
   },

@@ -1,6 +1,12 @@
-import { z } from 'zod'
-import { PROVIDER_IDS } from '@shared/types/provider-id'
-import type { AppSettings } from '@shared/types/settings'
+import {
+  z,
+} from 'zod'
+import {
+  PROVIDER_IDS,
+} from '@shared/types/provider-id'
+import type {
+  AppSettings,
+} from '@shared/types/settings'
 
 const themeSchema = z.enum(['system', 'light', 'dark'])
 const retentionSchema = z.enum(['forever', 'last-30-days', 'last-100-entries'])

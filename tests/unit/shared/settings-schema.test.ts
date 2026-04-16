@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest'
-import { appSettingsSchema, defaultAppSettings } from '@shared/schemas/settings'
+import {
+  describe, expect, it,
+} from 'vitest'
+import {
+  appSettingsSchema, defaultAppSettings,
+} from '@shared/schemas/settings'
 
 describe('appSettingsSchema', () => {
   it('accepts default settings', () => {
@@ -8,23 +12,35 @@ describe('appSettingsSchema', () => {
   })
 
   it('rejects unknown activeProvider', () => {
-    const bad = { ...defaultAppSettings, activeProvider: 'deepl' }
+    const bad = {
+      ...defaultAppSettings,
+      activeProvider: 'deepl',
+    }
     const result = appSettingsSchema.safeParse(bad)
     expect(result.success).toBe(false)
   })
 
   it('rejects invalid debounceMs', () => {
-    const bad = { ...defaultAppSettings, debounceMs: -10 }
+    const bad = {
+      ...defaultAppSettings,
+      debounceMs: -10,
+    }
     expect(appSettingsSchema.safeParse(bad).success).toBe(false)
   })
 
   it('rejects invalid theme', () => {
-    const bad = { ...defaultAppSettings, theme: 'neon' }
+    const bad = {
+      ...defaultAppSettings,
+      theme: 'neon',
+    }
     expect(appSettingsSchema.safeParse(bad).success).toBe(false)
   })
 
   it('accepts null defaultTargetLanguage', () => {
-    const ok = { ...defaultAppSettings, defaultTargetLanguage: null }
+    const ok = {
+      ...defaultAppSettings,
+      defaultTargetLanguage: null,
+    }
     expect(appSettingsSchema.safeParse(ok).success).toBe(true)
   })
 

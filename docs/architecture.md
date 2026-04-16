@@ -192,16 +192,27 @@ All main ↔ renderer communication passes through `electron/ipc/channels.ts`.
 The registry names every channel, types its request + response, and is the
 single source of truth for the preload bridge.
 
-Phase-2 minimum:
+Phase-2 baseline:
 
 - `app:get-version` — returns the app version string; used by the smoke test
 - `app:get-platform` — returns `'darwin' | 'win32' | 'linux'`
+
+Phase-3 additions (settings + secrets):
+
+- `settings:get` — request: `void`, response: `{ app: AppSettings, providers: ProviderSettingsMap }`
+- `settings:update` — request: partial settings patch validated against the Zod schemas, response: the freshly-persisted full settings object
+- `secrets:set` — request: `{ providerId: ProviderId, secret: string }`, response: `{ stored: boolean }`; the secret bytes flow IN only, never OUT
+- `secrets:test` — request: `{ providerId: ProviderId }`, response: `{ present: boolean, lastUpdated: string | null }`; presence check only, never returns the value
+
+There is **no `secrets:get` channel**. The renderer has no legitimate reason
+to read a stored secret back, so the channel does not exist. Any future
+requirement must be satisfied by a main-process operation that *uses* the
+secret, not by exposing the secret.
 
 Later phases extend this registry:
 
 | Phase | Channels added |
 |---|---|
-| 3 | `settings:get`, `settings:update`, `secrets:set`, `secrets:test` |
 | 4 | `provider:list`, `provider:health`, `provider:capabilities`, `provider:languages` |
 | 5 | `translation:translate`, `translation:cancel`, `translation:detect` |
 | 7 | `history:add`, `history:list`, `history:search`, `history:delete`, `history:clear`, `history:toggle` |
@@ -225,6 +236,121 @@ Explicitly rejected — do not introduce without an ADR:
 - a third provider beyond Google Cloud Translation and LibreTranslate
 - writing to `docs/architecture.md` AFTER code that contradicts it — always
   update the doc first
+- a `secrets:get` IPC channel, or any preload method that returns raw
+  credential material, or any log line containing a credential value
+
+---
+
+## 8.1 Settings & Credentials (Phase 3)
+
+The `settings-and-credentials` bounded context is owned exclusively by
+`electron/services/settings/` and `electron/services/secrets/`. The renderer
+has no file-system or keychain access.
+
+### 8.1.1 Settings store (`electron/services/settings/store.ts`)
+
+- **Location:** JSON document at `app.getPath('userData') + '/settings.json'`.
+  `userData` resolves per-OS:
+  - macOS: `~/Library/Application Support/OpenTranslate Desktop/`
+  - Windows: `%APPDATA%/OpenTranslate Desktop/`
+  - Linux: `~/.config/OpenTranslate Desktop/`
+- **Shape:** `{ schemaVersion: number, app: AppSettings, providers: ProviderSettingsMap }`.
+- **Validation:** `settingsFileSchema` (Zod) runs on every load. Invalid or
+  corrupted files are renamed aside as `settings.json.corrupted-<ts>` and the
+  store falls back to the defaults from `shared/schemas/*`.
+- **Atomic write:** `tmp → fsync → rename`. Writing directly to
+  `settings.json` is forbidden because a crash mid-write would truncate the
+  only copy.
+- **Migration:** on load, a pure `migrate(previous, targetVersion)` function
+  walks migration steps. Phase 3 ships `schemaVersion = 1` and a no-op
+  migration ladder ready for future upgrades.
+- **No secrets:** `settings.json` must never contain a field whose name or
+  contents is a provider API key, credentials JSON path contents, or any
+  token. `ProviderSettings.credentialsJsonPath` is a *path*; the file it
+  points to is read ad-hoc by the Google adapter in a Phase 4 step, not
+  cached into settings.
+
+### 8.1.2 Secrets vault (`electron/services/secrets/vault.ts`)
+
+- **Primary backend:** Electron `safeStorage` API.
+  `safeStorage.isEncryptionAvailable()` → `encryptString` / `decryptString`.
+  Encrypted blobs are persisted to `userData/secrets.json` as
+  `{ [providerId]: { cipher: <base64>, lastUpdated: <iso-8601> } }`.
+  OS-level encryption (macOS Keychain, Linux secret service / libsecret,
+  Windows DPAPI) means the on-disk blob is unusable if the OS keychain seal
+  cannot be unlocked on this machine under this user.
+- **Fallback:** if `safeStorage.isEncryptionAvailable()` is `false` (typical
+  on headless Linux without a keyring daemon), the vault refuses to persist.
+  It runs in ephemeral in-memory mode for the current session, emits a
+  **redacted** warning via the main-process logger, and `secrets:test`
+  returns `{ present: false, … }` once the process exits.
+- **Logging:** the vault logs only the `providerId`, a boolean
+  `bytes-present`, and the `lastUpdated` ISO string. It never logs the
+  cipher, the plaintext, the byte length of the secret, or any derivative
+  hash. This is the redaction invariant.
+- **Never-in-renderer invariant (test-enforced):** an integration test
+  (`tests/integration/secrets-boundary.test.ts`) drives the registered IPC
+  handlers against a vault loaded with a sensitive fixture value and
+  asserts that no handler response contains the fixture byte sequence, in
+  any encoding, in any shape.
+
+### 8.1.3 Plug-and-play provider contract
+
+Providers are fully self-describing and register themselves via a contract:
+
+- **`shared/providers/descriptor.ts`** defines `ProviderDescriptor` — a
+  type-erased record with `id`, `displayName`, `description`,
+  `settingsSchema` (Zod), `defaultSettings`, `settingsFields` (UI field
+  metadata), `secretFields` (credential field metadata), and `createAdapter`.
+- Providers are declared with the typed DSL `defineProvider<TSettings>({...})`
+  which validates raw settings via the provider's Zod schema at adapter
+  instantiation time, then hands the strongly-typed object to the adapter
+  factory. The resulting descriptor is type-erased so the registry can hold
+  heterogeneous provider settings shapes.
+- **`electron/providers/registry.ts`** is the process-local runtime registry:
+  `registerProvider`, `getProvider`, `listProviders`, `hasProvider`.
+- **`electron/providers/index.ts`** is the barrel that imports every shipped
+  provider descriptor and calls `bootstrapProviderRegistry()` at startup.
+
+**To add a new provider, the developer only touches two places:**
+
+1. Create `electron/providers/<id>/descriptor.ts` exporting a
+   `defineProvider<TSettings>({...})` descriptor with its own Zod schema,
+   defaults, field metadata, and adapter factory.
+2. Add the descriptor to `shippedProviders` in `electron/providers/index.ts`.
+
+Translation orchestration, settings storage, IPC handlers, preload bridge
+surface, and the Settings UI all consume providers exclusively through the
+registry. None of them contain a hardcoded list of provider ids.
+
+- The settings store reads the registered providers and validates each
+  provider's slice against that provider's own schema on load and save.
+- The Settings UI (Phase 10) will auto-render each provider's form from its
+  `settingsFields` and `secretFields` metadata via the new `providers:list`
+  IPC channel, which returns `ProviderDescriptorDto` (the serializable
+  subset of the descriptor — no schemas, no factories, no defaults).
+- Secret storage is keyed by provider id strings. The secrets vault does not
+  know any provider by name.
+
+### 8.1.4 Responsibility split
+
+| Concern | Owner | Notes |
+|---|---|---|
+| `AppSettings` + `ProviderSettings` persistence | `settings/store.ts` | Zod-validated JSON, atomic write, migration |
+| Secret material persistence | `secrets/vault.ts` | `safeStorage`-encrypted JSON; fallback = ephemeral |
+| IPC handlers | `electron/main/index.ts` | registers 4 handlers from the channel registry |
+| Preload surface | `electron/preload/index.ts` | exposes typed `settings.*` + `secrets.set`/`secrets.test` (no `secrets.get`) |
+| Renderer store | `app/stores/settings.ts` (Phase 10) | mirrors sanitized settings for UI only |
+
+### 8.1.5 Error handling
+
+- Filesystem errors during load → map to `ErrorCategory.InternalAppError`,
+  fall back to defaults, surface to the UI as a one-time "settings reset"
+  notice.
+- `safeStorage` unavailable → log a redacted WARN at startup; Settings UI
+  shows a "credentials not persistable on this system" badge (Phase 10).
+- Zod validation failure on load → the corrupted file is renamed aside,
+  defaults are used, a `ConfigCorrupted` notice is surfaced.
 
 ---
 

@@ -1,13 +1,23 @@
-import { build } from 'esbuild'
-import { writeFile, mkdir } from 'node:fs/promises'
-import { fileURLToPath } from 'node:url'
-import { dirname, resolve } from 'node:path'
+import {
+  build,
+} from 'esbuild'
+import {
+  writeFile, mkdir,
+} from 'node:fs/promises'
+import {
+  fileURLToPath,
+} from 'node:url'
+import {
+  dirname, resolve,
+} from 'node:path'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = resolve(scriptDir, '..')
 const outDir = resolve(rootDir, 'dist-electron')
 
-await mkdir(outDir, { recursive: true })
+await mkdir(outDir, {
+  recursive: true,
+})
 
 const sharedOptions = {
   bundle: true,
@@ -16,7 +26,9 @@ const sharedOptions = {
   sourcemap: true,
   minify: false,
   format: 'cjs',
-  outExtension: { '.js': '.cjs' },
+  outExtension: {
+    '.js': '.cjs',
+  },
   external: ['electron'],
   tsconfig: resolve(rootDir, 'tsconfig.json'),
   alias: {

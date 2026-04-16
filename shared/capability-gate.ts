@@ -1,5 +1,9 @@
-import type { ProviderCapabilities } from './types/capabilities'
-import type { ProviderReadiness } from './types/provider-readiness'
+import type {
+  ProviderCapabilities,
+} from './types/capabilities'
+import type {
+  ProviderReadiness,
+} from './types/provider-readiness'
 
 export type FeatureKey = keyof ProviderCapabilities
 
@@ -11,8 +15,10 @@ export function isFeatureAvailable(
   if (!appEnabled) {
     return false
   }
+
   if (readiness.state !== 'ready') {
     return false
   }
-  return readiness.capabilities[feature] === true
+
+  return readiness.capabilities[feature]
 }
