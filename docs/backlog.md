@@ -160,6 +160,76 @@ Remove `stripReactive()` from preload if `wrapApi()` covers all paths.
 
 ---
 
+## Error Handling
+
+### B-031: No silent catch blocks — toast all frontend errors
+**Non-negotiable.** Every `try/catch` in `app/` that currently swallows
+errors silently (empty catch or `// outside Electron` comments) must
+display the error to the user via Nuxt UI's `useToast()`. This applies
+even when the code runs outside Electron (e.g., SSR, browser preview).
+
+Current violations (audit all `catch` blocks in `app/`):
+- `app/composables/useTranslation.ts` — `cancelTranslation` catch
+- `app/composables/useHistory.ts` — multiple catch blocks
+- `app/composables/useApi.ts` — thrown error is OK (already visible)
+- `app/pages/index.vue` — `loadProviders` catch
+- `app/pages/settings.vue` — `loadSettings`, `onSecretChange`,
+  `loadProviders`, `onProviderFieldChange` catch blocks
+- `app/pages/documents.vue` — `checkDocumentSupport` catch
+- `app/pages/overlay.vue` — `openInFull`, `closeOverlay` catch
+
+Create `app/composables/useHandleError.ts`:
+```ts
+export function useHandleError() {
+  const toast = useToast()
+
+  return (err: unknown) => {
+    toast.add({
+      title: 'Error',
+      description: err instanceof Error ? err.message : String(err),
+      color: 'error',
+    })
+  }
+}
+```
+
+Replace pattern:
+```ts
+// BEFORE (wrong)
+catch {
+  // outside Electron
+}
+
+// AFTER (correct)
+catch (err) {
+  handleError(err)
+}
+```
+
+Where `const handleError = useHandleError()` is called once per
+composable/setup. Never write the toast logic inline — always delegate
+to the utility.
+
+Add an ESLint rule (`no-empty` is already on; add `no-restricted-syntax`
+to flag catch blocks with empty bodies or only comments) to prevent
+future regressions.
+
+---
+
+## Internationalization
+
+### B-030: Application i18n support
+Add multi-language support for the application UI itself using
+`@nuxtjs/i18n`. All user-facing strings (labels, placeholders, error
+messages, settings names, status text) should be extracted into locale
+files. Ship with English as the default locale; add at least one
+additional locale (e.g., Ukrainian, Spanish, or German) as proof of
+the i18n pipeline. The selected UI language should be persisted in
+`AppSettings` and selectable in Settings → General. Use Nuxt UI's
+`LocaleSelect` component for the language picker.
+
+---
+
 ## Branding
 
 ### B-028: Remove all DeepL references from the application
