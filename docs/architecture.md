@@ -791,7 +791,8 @@ that phase lands. The phase-specific updates are:
   channels
 - Phase 10 — settings UI structure and validation flow
 - Phase 11 — packaging notes (signing, entitlements, artifacts)
-- Phase 12 — final polish; self-hosting guide cross-references
+- Phase 12 — docs hardening: provider guides, self-hosting, packaging,
+  security model, README rewrite
 
 If the code deviates from the doc, the doc is wrong or the code is wrong.
 Decide, update the doc first, then reconcile the code in the same PR.
