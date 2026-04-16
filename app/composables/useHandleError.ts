@@ -1,4 +1,4 @@
-import {useToast} from '#imports'
+import { useToast } from '#imports'
 
 export function useHandleError() {
   const toast = useToast()
