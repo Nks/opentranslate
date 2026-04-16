@@ -8,6 +8,9 @@ import {
 import type {
   GoogleProviderSettings,
 } from '@shared/types/provider-settings'
+import {
+  createGoogleAdapter,
+} from '@electron/providers/google/adapter'
 
 export const googleProviderDescriptor = defineProvider<GoogleProviderSettings>({
   id: 'google',
@@ -82,7 +85,5 @@ export const googleProviderDescriptor = defineProvider<GoogleProviderSettings>({
     },
   ],
   secretFields: [],
-  createAdapter: () => {
-    throw new Error('Google Cloud Translation adapter lands in Phase 4')
-  },
+  createAdapter: (deps) => createGoogleAdapter(deps),
 })

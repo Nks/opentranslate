@@ -4,3 +4,6 @@ export {
 export {
   AppError, toErrorCategory,
 } from './mapper'
+export {
+  mapHttpStatusToCategory,
+} from './http-mapper'
