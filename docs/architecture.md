@@ -716,6 +716,44 @@ Compact card showing:
 
 ---
 
+## 8.7 Document Translation (Phase 9)
+
+The `document-translation` bounded context owns the capability-gated
+file-in/file-out pipeline. All file I/O runs in the main process.
+
+### 8.7.1 Capability gating
+
+Document translation is enabled **only** when
+`isFeatureAvailable('documentTranslation', readiness, true)` returns `true`.
+The Documents page always renders but translation actions are disabled with
+a clear message when the active provider does not support documents.
+
+- **Google:** requires `edition === 'advanced'` + `location` set. V3
+  document endpoint deferred — for Phase 9 the gate reports correctly but
+  the actual HTTP call is a stub that throws "not yet implemented".
+- **LibreTranslate:** `/frontend/settings` probe at runtime.
+
+### 8.7.2 File handling
+
+1. User picks a file via native dialog (`dialog.showOpenDialog`) or
+   drag-and-drop (renderer sends the path via IPC).
+2. Main process validates file extension against provider-supported formats.
+3. Main process calls `adapter.translateDocument({ sourcePath, ... })`.
+4. Translated file saved as `<name>.<target-lang>.translated<ext>`
+   (e.g., `report.es.translated.pdf`).
+5. Provider-returned bytes are saved without modification.
+
+### 8.7.3 Phase 9 IPC channels
+
+- `document:pick` — request: `void`, response: `{ filePath: string } | null`
+  (native open dialog in main)
+- `document:translate` — request: `{ filePath, sourceLanguage, targetLanguage }`,
+  response: `{ outputPath: string } | null`
+- `document:status` — request: `void`, response:
+  `{ supported: boolean, formats?: string[], message?: string }`
+
+---
+
 ## 9. Testing Strategy
 
 | Tier | Runner | Scope |
