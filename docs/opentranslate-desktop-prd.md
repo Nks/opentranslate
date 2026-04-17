@@ -288,6 +288,8 @@ The app must normalize provider errors into explicit user-facing categories:
 
 The app must not erase prior successful translation output automatically on failed requests.
 
+Every failure must produce a visible, non-blocking notification to the user. No user-initiated action may fail silently, regardless of whether the failure originates from network, provider, permission, or file I/O.
+
 ## 11.4 Data Persistence
 
 The app must store locally:

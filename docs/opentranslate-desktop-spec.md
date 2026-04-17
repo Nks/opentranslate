@@ -538,6 +538,7 @@ All provider errors must be normalized into explicit categories.
 2. Raw diagnostic details are collapsed by default.
 3. Failed requests must not automatically erase the previous successful translation.
 4. Retry action is available where safe.
+5. Caught failures must always surface to the user as a visible notification. Silent failure modes are not permitted.
 
 ## 16. Performance Specification
 
