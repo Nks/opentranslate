@@ -22,6 +22,7 @@ export default defineConfig({
     environment: 'node',
     globals: false,
     passWithNoTests: true,
+    setupFiles: ['./tests/setup/nuxt-globals.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
