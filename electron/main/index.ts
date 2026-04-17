@@ -1,9 +1,12 @@
 import {
-  app, BrowserWindow, ipcMain, safeStorage, session,
+  app, BrowserWindow, clipboard, dialog, ipcMain, safeStorage, session, shell, systemPreferences,
 } from 'electron'
 import {
   join,
 } from 'node:path'
+import {
+  UiohookKey,
+} from 'uiohook-napi'
 import {
   createWindowOptions,
 } from '@electron/main/window-factory'
@@ -49,6 +52,12 @@ import {
 import {
   safeHandler as _safeHandler,
 } from '@electron/services/ipc/safe-handler'
+import {
+  createChordDetector,
+} from '@electron/services/shortcuts/chord-detector'
+import {
+  createKeyObserver,
+} from '@electron/services/shortcuts/key-observer'
 
 const DEV_RENDERER_URL = process.env.ELECTRON_RENDERER_URL
 const IS_DEV = Boolean(DEV_RENDERER_URL)
@@ -314,6 +323,129 @@ function setContentSecurityPolicy(): void {
   }
 }
 
+/**
+ * Prompt the user to grant Accessibility permission on macOS and open the
+ * relevant System Settings pane.
+ *
+ * Returns true if permission was already granted. A false return means the
+ * user was shown a dialog and will need to relaunch the app.
+ */
+function ensureAccessibilityPermission(): boolean {
+  if (process.platform !== 'darwin') {
+    return true
+  }
+
+  const trusted = systemPreferences.isTrustedAccessibilityClient(false)
+
+  if (trusted) {
+    return true
+  }
+
+  void dialog
+    .showMessageBox({
+      type: 'info',
+      title: 'Accessibility permission required',
+      message: 'Enable the Cmd+C+C quick translate shortcut',
+      detail:
+        'OpenTranslate Desktop needs Accessibility permission to detect the ' +
+        'Cmd+C+C chord anywhere on your Mac. Open System Settings → ' +
+        'Privacy & Security → Accessibility, enable OpenTranslate Desktop, ' +
+        'then relaunch the app.',
+      buttons: ['Open System Settings', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+    })
+    .then((result) => {
+      if (result.response === 0) {
+        // Triggers the native prompt and opens the Accessibility pane.
+        systemPreferences.isTrustedAccessibilityClient(true)
+        void shell.openExternal(
+          'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility',
+        )
+      }
+    })
+
+  return false
+}
+
+/**
+ * Quick-translate via Cmd+C+C / Ctrl+C+C chord detection.
+ *
+ * Uses a passive libuiohook listener (via `uiohook-napi`) to observe each
+ * Cmd+C keydown without consuming it. The focused app still performs the
+ * real copy, so the clipboard is populated naturally. When two Cmd+C
+ * presses land within the chord window, we read the clipboard, focus the
+ * main window, and push the text to the renderer.
+ *
+ * macOS requires Accessibility permission. If missing we surface a dialog
+ * and skip registration.
+ */
+function registerQuickTranslate(): void {
+  if (!ensureAccessibilityPermission()) {
+    return
+  }
+
+  const detector = createChordDetector({ windowMs: 500 })
+
+  detector.onChord(() => {
+    // Small delay so the focused app finishes writing the clipboard after
+    // the second physical Cmd+C press.
+    setTimeout(() => {
+      const text = clipboard.readText().trim()
+
+      if (text.length === 0) {
+        return
+      }
+
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) {
+          mainWindow.restore()
+        }
+
+        mainWindow.show()
+        mainWindow.focus()
+        mainWindow.webContents.send('quick-translate:text', text)
+      }
+    }, 100)
+  })
+
+  const observer = createKeyObserver({
+    keycode: UiohookKey.C,
+    modifier: process.platform === 'darwin' ? 'meta' : 'ctrl',
+    onKey: () => detector.tap(),
+  })
+
+  try {
+    observer.start()
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[shortcuts] key observer failed to start:', err)
+    detector.destroy()
+
+    const message = process.platform === 'darwin'
+      ? 'Could not start the global key observer. Check that ' +
+      'OpenTranslate Desktop has Accessibility permission in ' +
+      'System Settings → Privacy & Security → Accessibility.'
+      : 'Could not start the global key observer. The Cmd+C+C / Ctrl+C+C ' +
+        'shortcut will be unavailable until the app is restarted.'
+
+    void dialog.showMessageBox({
+      type: 'warning',
+      title: 'Quick Translate unavailable',
+      message: 'Quick translate shortcut could not be registered',
+      detail: message,
+      buttons: ['OK'],
+    })
+
+    return
+  }
+
+  app.on('will-quit', () => {
+    observer.stop()
+    detector.destroy()
+  })
+}
+
 function bootstrap(): void {
   if (!ensureSingleInstance()) {
     return
@@ -338,6 +470,7 @@ function bootstrap(): void {
 
     registerIpcHandlers()
     void createMainWindow()
+    registerQuickTranslate()
   })
 }
 

@@ -59,6 +59,14 @@ describe('electron-builder.yml', () => {
     expect(unpack).toContain('**/*.{node,dll}')
   })
 
+  it('uiohook-napi + node-gyp-build unpacked from asar', () => {
+    const config = loadConfig()
+    const unpack = config.asarUnpack as string[]
+
+    expect(unpack).toContain('**/node_modules/uiohook-napi/**')
+    expect(unpack).toContain('**/node_modules/node-gyp-build/**')
+  })
+
   it('npmRebuild is enabled for native modules', () => {
     const config = loadConfig()
 
@@ -152,6 +160,12 @@ describe('package.json packaging fields', () => {
     const pkg = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'))
 
     expect(pkg.dependencies['better-sqlite3']).toBeDefined()
+  })
+
+  it('uiohook-napi is in dependencies (for global key observer)', () => {
+    const pkg = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'))
+
+    expect(pkg.dependencies['uiohook-napi']).toBeDefined()
   })
 
   it('electron is in devDependencies (not bundled)', () => {

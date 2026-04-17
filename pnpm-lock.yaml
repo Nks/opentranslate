@@ -35,6 +35,9 @@ importers:
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
+      uiohook-napi:
+        specifier: ^1.5.5
+        version: 1.5.5
       vue:
         specifier: ^3.5.32
         version: 3.5.32(typescript@5.9.3)
@@ -6316,6 +6319,10 @@ packages:
     resolution: {integrity: sha512-v3Xu+yuwBXisp6QYTcH4UbH+xYJXqnq2m/LtQVWKWzYc1iehYnLixoQDN9FH6/j9/oybfd6W9Ghwkl8+UMKTKQ==}
     engines: {node: '>=0.8.0'}
     hasBin: true
+
+  uiohook-napi@1.5.5:
+    resolution: {integrity: sha512-oSlTdnECw2GBfsJPTbBQBeE4v/EXP0EZmX6BJq5nzH/JgFaBE8JpFwEA/kLhiEP7HxQw28FViWiYgdIZzWuuJQ==}
+    engines: {node: '>= 16'}
 
   ultrahtml@1.6.0:
     resolution: {integrity: sha512-R9fBn90VTJrqqLDwyMph+HGne8eqY1iPfYhPzZrvKpIfwkWZbcYlfpsb8B9dTvBfpy1/hqAD7Wi8EKfP9e8zdw==}
@@ -13815,6 +13822,10 @@ snapshots:
 
   uglify-js@3.19.3:
     optional: true
+
+  uiohook-napi@1.5.5:
+    dependencies:
+      node-gyp-build: 4.8.4
 
   ultrahtml@1.6.0: {}
 
