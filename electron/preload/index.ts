@@ -124,6 +124,11 @@ const api = {
       invoke('quick-translate:open-full' as never),
     close: (): Promise<void> =>
       invoke('quick-translate:close' as never),
+    onText: (callback: (text: string) => void): void => {
+      ipcRenderer.on('quick-translate:text', (_event, text: string) => {
+        callback(text)
+      })
+    },
   },
 } as const
 

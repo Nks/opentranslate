@@ -26,6 +26,20 @@ async function loadProviders() {
 
 onMounted(() => {
   void loadProviders()
+
+  // Register quick-translate listener directly on window.api (not through
+  // useApi/wrapApi) because onText takes a callback — wrapApi would
+  // JSON-serialize it, destroying the function reference.
+  const win = window as unknown as {
+    api?: { quickTranslate: { onText: (cb: (text: string) => void) => void } }
+  }
+
+  if (win.api?.quickTranslate?.onText) {
+    win.api.quickTranslate.onText((text: string) => {
+      translationStore.sourceText = text
+      scheduleTranslate()
+    })
+  }
 })
 
 function onSourceInput(value: string) {
