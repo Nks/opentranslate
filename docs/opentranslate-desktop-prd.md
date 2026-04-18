@@ -179,6 +179,8 @@ Users need to:
 3. Clipboard content must only be read after explicit shortcut invocation.
 4. The popup must show translated text, source detection, target language, and copy action.
 5. The popup must support opening the full app.
+6. The double-tap shortcut must observe the user's copy keystrokes without intercepting them, so a single copy action continues to work normally in every application.
+7. On macOS, the quick-translate shortcut requires the user to grant Accessibility permission. On first run the app must explain why the permission is needed and link the user to the correct system settings pane. Without this permission the quick-translate shortcut is unavailable while the rest of the app continues to work for in-window translation. Windows and Linux do not require a separate permission prompt.
 
 ## 10.3 Provider Requirements
 
@@ -285,6 +287,8 @@ The app must normalize provider errors into explicit user-facing categories:
 - internal application error
 
 The app must not erase prior successful translation output automatically on failed requests.
+
+Every failure must produce a visible, non-blocking notification to the user. No user-initiated action may fail silently, regardless of whether the failure originates from network, provider, permission, or file I/O.
 
 ## 11.4 Data Persistence
 

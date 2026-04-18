@@ -244,18 +244,26 @@ The main window contains the following regions.
 ### Behavior
 
 1. Single copy does nothing beyond normal OS copy behavior.
-2. The app reads clipboard only after the shortcut gesture is triggered.
-3. The overlay appears above the active application.
-4. The overlay displays:
+2. The shortcut is detected by passive global key observation and must not intercept, consume, or block the underlying copy keystroke; the focused application performs its normal copy behavior.
+3. The app reads clipboard only after the shortcut gesture is triggered.
+4. The overlay appears above the active application.
+5. The overlay displays:
    - detected source language
    - target language
    - translated text
    - copy translation button
    - open in full app button
    - retry action
-5. Overlay closes on `Esc`.
-6. Overlay remembers the last used target language.
-7. Overlay translation uses the currently active provider.
+6. Overlay closes on `Esc`.
+7. Overlay remembers the last used target language.
+8. Overlay translation uses the currently active provider.
+
+### Platform Prerequisites
+
+1. On macOS, passive global key observation requires the user to grant **Accessibility** permission to the application in System Settings under Privacy & Security.
+2. On first launch the app must detect whether the permission is granted, and when it is not, present a clear prompt explaining the requirement and offering a direct link to the relevant system settings pane.
+3. When the permission is not granted, the quick translate shortcut is inactive and the UI must reflect this state honestly without silently failing.
+4. Windows and Linux do not require an equivalent user-granted permission for the quick translate shortcut.
 
 ## 10.3 Translation History
 
@@ -530,6 +538,7 @@ All provider errors must be normalized into explicit categories.
 2. Raw diagnostic details are collapsed by default.
 3. Failed requests must not automatically erase the previous successful translation.
 4. Retry action is available where safe.
+5. Caught failures must always surface to the user as a visible notification. Silent failure modes are not permitted.
 
 ## 16. Performance Specification
 
