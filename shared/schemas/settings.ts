@@ -7,13 +7,32 @@ import {
 import type {
   AppSettings,
 } from '@shared/types/settings'
+import {
+  DEFAULT_QUICK_TRANSLATE_ACCELERATOR,
+  validateQuickTranslateShortcut,
+} from '@shared/shortcuts/quick-translate'
 
 const themeSchema = z.enum(['system', 'light', 'dark'])
 const retentionSchema = z.enum(['forever', 'last-30-days', 'last-100-entries'])
 const providerIdSchema = z.enum(PROVIDER_IDS)
 
+/**
+ * Accept any accelerator string that our quick-translate parser understands.
+ * Validation is platform-independent on purpose: `CommandOrControl+C+C`
+ * parses successfully regardless of the running OS.
+ */
+const quickTranslateAcceleratorSchema = z
+  .string()
+  .min(1)
+  .refine(
+    (value) => validateQuickTranslateShortcut(value, 'linux').length === 0,
+    {
+      message: 'Invalid quick-translate shortcut accelerator',
+    },
+  )
+
 const shortcutsSchema = z.object({
-  quickTranslate: z.string().min(1),
+  quickTranslate: quickTranslateAcceleratorSchema,
   openMain: z.string().min(1),
   quickTranslateEnabled: z.boolean(),
 })
@@ -43,7 +62,7 @@ export const defaultAppSettings: AppSettings = {
   historyEnabled: true,
   historyRetentionMode: 'forever',
   shortcuts: {
-    quickTranslate: 'CommandOrControl+C+C',
+    quickTranslate: DEFAULT_QUICK_TRANSLATE_ACCELERATOR,
     openMain: 'CommandOrControl+Shift+T',
     quickTranslateEnabled: true,
   },

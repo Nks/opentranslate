@@ -5,16 +5,18 @@ import {
   join,
 } from 'node:path'
 import {
-  UiohookKey,
-} from 'uiohook-napi'
-import {
   createWindowOptions,
 } from '@electron/main/window-factory'
+import {
+  createQuickTranslateController,
+  type QuickTranslateController,
+} from '@electron/main/quick-translate-controller'
 import {
   channels,
 } from '@electron/ipc/channels'
 import {
   createSettingsStore,
+  type SettingsStore,
 } from '@electron/services/settings/store'
 import {
   createSecretsVault,
@@ -53,11 +55,8 @@ import {
   safeHandler as _safeHandler,
 } from '@electron/services/ipc/safe-handler'
 import {
-  createChordDetector,
-} from '@electron/services/shortcuts/chord-detector'
-import {
-  createKeyObserver,
-} from '@electron/services/shortcuts/key-observer'
+  defaultAppSettings,
+} from '@shared/schemas/settings'
 
 const DEV_RENDERER_URL = process.env.ELECTRON_RENDERER_URL
 const IS_DEV = Boolean(DEV_RENDERER_URL)
@@ -76,8 +75,9 @@ let mainWindow: BrowserWindow | null = null
 let settingsHandlers: SettingsAndSecretsHandlers | null = null
 let translationHandlers: TranslationHandlers | null = null
 let historyHandlers: HistoryHandlers | null = null
+let quickTranslateController: QuickTranslateController | null = null
 
-function registerIpcHandlers(): void {
+function registerIpcHandlers(): SettingsStore {
   bootstrapProviderRegistry()
 
   ipcMain.handle(channels['app:get-version'], safeHandler(() => app.getVersion()))
@@ -103,10 +103,16 @@ function registerIpcHandlers(): void {
     () => settingsHandlers!['settings:get'](),
   ))
   ipcMain.handle(channels['settings:update'], safeHandler(
-    (_event: unknown, patch: unknown) => settingsHandlers!['settings:update'](patch as {
-      app?: Record<string, unknown>
-      providers?: Record<string, unknown>
-    }),
+    async (_event: unknown, patch: unknown) => {
+      const result = await settingsHandlers!['settings:update'](patch as {
+        app?: Record<string, unknown>
+        providers?: Record<string, unknown>
+      })
+
+      quickTranslateController?.applyFromSettings(result.app.shortcuts.quickTranslate)
+
+      return result
+    },
   ))
   ipcMain.handle(channels['secrets:set'], safeHandler(
     (_event: unknown, input: unknown) => settingsHandlers!['secrets:set'](input as {
@@ -242,6 +248,8 @@ function registerIpcHandlers(): void {
       throw new Error('Document translation not yet implemented (Phase 9 stub)')
     },
   ))
+
+  return store
 }
 
 async function createMainWindow(): Promise<void> {
@@ -368,81 +376,39 @@ function ensureAccessibilityPermission(): boolean {
   return false
 }
 
-/**
- * Quick-translate via Cmd+C+C / Ctrl+C+C chord detection.
- *
- * Uses a passive libuiohook listener (via `uiohook-napi`) to observe each
- * Cmd+C keydown without consuming it. The focused app still performs the
- * real copy, so the clipboard is populated naturally. When two Cmd+C
- * presses land within the chord window, we read the clipboard, focus the
- * main window, and push the text to the renderer.
- *
- * macOS requires Accessibility permission. If missing we surface a dialog
- * and skip registration.
- */
-function registerQuickTranslate(): void {
-  if (!ensureAccessibilityPermission()) {
-    return
-  }
-
-  const detector = createChordDetector({ windowMs: 500 })
-
-  detector.onChord(() => {
-    // Small delay so the focused app finishes writing the clipboard after
-    // the second physical Cmd+C press.
-    setTimeout(() => {
-      const text = clipboard.readText().trim()
-
-      if (text.length === 0) {
+function buildQuickTranslateController(): QuickTranslateController {
+  return createQuickTranslateController({
+    platform: process.platform,
+    ensureAccessibilityPermission,
+    readClipboardText: () => clipboard.readText(),
+    sendTextToMainWindow: (text) => {
+      if (!mainWindow) {
         return
       }
 
-      if (mainWindow) {
-        if (mainWindow.isMinimized()) {
-          mainWindow.restore()
-        }
-
-        mainWindow.show()
-        mainWindow.focus()
-        mainWindow.webContents.send('quick-translate:text', text)
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore()
       }
-    }, 100)
-  })
-
-  const observer = createKeyObserver({
-    keycode: UiohookKey.C,
-    modifier: process.platform === 'darwin' ? 'meta' : 'ctrl',
-    onKey: () => detector.tap(),
-  })
-
-  try {
-    observer.start()
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[shortcuts] key observer failed to start:', err)
-    detector.destroy()
-
-    const message = process.platform === 'darwin'
-      ? 'Could not start the global key observer. Check that ' +
-      'OpenTranslate Desktop has Accessibility permission in ' +
-      'System Settings → Privacy & Security → Accessibility.'
-      : 'Could not start the global key observer. The Cmd+C+C / Ctrl+C+C ' +
-        'shortcut will be unavailable until the app is restarted.'
-
-    void dialog.showMessageBox({
-      type: 'warning',
-      title: 'Quick Translate unavailable',
-      message: 'Quick translate shortcut could not be registered',
-      detail: message,
-      buttons: ['OK'],
-    })
-
-    return
-  }
-
-  app.on('will-quit', () => {
-    observer.stop()
-    detector.destroy()
+      mainWindow.show()
+      mainWindow.focus()
+      mainWindow.webContents.send('quick-translate:text', text)
+    },
+    showWarning: (input) => {
+      void dialog.showMessageBox({
+        type: 'warning',
+        title: input.title,
+        message: input.message,
+        detail: input.detail,
+        buttons: ['OK'],
+      })
+    },
+    logger: (message, err) => {
+      // eslint-disable-next-line no-console
+      console.error(message, err)
+    },
+    onAppExit: (listener) => {
+      app.on('will-quit', listener)
+    },
   })
 }
 
@@ -463,14 +429,26 @@ function bootstrap(): void {
     }
   })
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     if (!process.env.ELECTRON_SMOKE_TEST) {
       setContentSecurityPolicy()
     }
 
-    registerIpcHandlers()
+    const store = registerIpcHandlers()
     void createMainWindow()
-    registerQuickTranslate()
+
+    let accelerator = defaultAppSettings.shortcuts.quickTranslate
+
+    try {
+      const loaded = await store.load()
+      accelerator = loaded.app.shortcuts.quickTranslate
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[shortcuts] failed to load settings; using default accelerator', err)
+    }
+
+    quickTranslateController = buildQuickTranslateController()
+    quickTranslateController.start(accelerator)
   })
 }
 

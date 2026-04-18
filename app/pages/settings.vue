@@ -13,6 +13,7 @@ const handleError = useHandleError()
 const activeTab = ref<string>('general')
 const saving = ref<boolean>(false)
 const saveMessage = ref<string | null>(null)
+const platform = ref<NodeJS.Platform | 'unknown'>('unknown')
 
 const providerSettings = ref<Record<string, Record<string, unknown>>>({})
 const testingProvider = ref<string | null>(null)
@@ -128,9 +129,37 @@ async function loadProviders() {
   }
 }
 
+async function loadPlatform() {
+  try {
+    const api = useApi()
+    platform.value = await api.getPlatform()
+  } catch (err) {
+    handleError(err)
+  }
+}
+
+function onQuickTranslateShortcutChange(value: string) {
+  if (value.length === 0) {
+    // Clearing is rejected at the schema level; surface a toast rather
+    // than silently ignoring the action.
+    handleError(new Error('Shortcut cannot be empty. Record a new combo or keep the current one.'))
+
+    return
+  }
+  onAppSettingChange('shortcuts', {
+    ...settingsStore.app.shortcuts,
+    quickTranslate: value,
+  })
+}
+
+function onShortcutRecorderError(message: string) {
+  handleError(new Error(message))
+}
+
 onMounted(() => {
   void loadSettings()
   void loadProviders()
+  void loadPlatform()
 })
 
 const tabs: TabsItem[] = [
@@ -271,11 +300,16 @@ const tabs: TabsItem[] = [
 
           <!-- Shortcuts -->
           <div v-if="activeTab === 'shortcuts'" class="space-y-6">
-            <UFormField label="Quick translate shortcut">
-              <UInput
+            <UFormField
+              label="Quick translate shortcut"
+              help="Click the field, then press the key combo you want. The chord pattern (same key pressed twice) is fixed."
+            >
+              <ShortcutRecorder
                 :model-value="settingsStore.app.shortcuts.quickTranslate"
+                :platform="platform"
                 aria-label="Quick translate shortcut"
-                @update:model-value="(val: string) => onAppSettingChange('shortcuts', { ...settingsStore.app.shortcuts, quickTranslate: val })"
+                @update:model-value="onQuickTranslateShortcutChange"
+                @error="onShortcutRecorderError"
               />
             </UFormField>
 
