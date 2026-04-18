@@ -331,3 +331,102 @@ Follow the step-by-step guide in `docs/apple-signing.md`:
 - Set CI secrets: `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`,
   `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`
 - Verify with `codesign --verify` and `spctl --assess`
+
+---
+
+## Provider Expansion
+
+### B-035: Reverso provider — investigated, will not pursue
+Reverso was evaluated as a third provider alongside Google Cloud
+Translation and LibreTranslate. Conclusion: **not feasible**.
+- No public self-serve API. The `api-for-developers` page is an
+  enterprise sales contact form, not an SDK. No documented pricing,
+  no API key program, no free tier.
+- The only reachable endpoint is the unofficial
+  `api.reverso.net/translate/v1/translation`, gated by Cloudflare
+  with Origin/Referer checks. Automated access violates Reverso's
+  Terms of Service and risks cease-and-desist.
+- The unofficial endpoint breaks whenever Reverso tightens its WAF;
+  community wrappers have multi-month outage histories.
+- Capability gaps vs. the shared provider contract: no language-list
+  endpoint (would have to be hardcoded), no document translation,
+  no structured error taxonomy, no health check. Meeting the
+  contract would require faking capabilities, which conflicts with
+  the "Do not fake provider capabilities" rule in `AGENTS.md`.
+- No maintained Node library worth adopting. `reverso-api`
+  (s0ftik3, MIT) wraps the same ToS-violating endpoint and has low
+  adoption (~150 weekly npm downloads).
+
+**If a third provider is wanted later, evaluate instead:**
+- **DeepL API** — official, documented, 500k free chars/month,
+  MIT-compatible clients available. Natural peer to Google Cloud
+  Translation.
+- **Microsoft Translator (Azure)** — official, F0 free tier,
+  documented auth and endpoints. See B-036.
+
+Revisit Reverso only if it publishes a public developer program
+with clear ToS for open-source clients.
+
+**UX inspiration note:** Reverso's consumer desktop app uses
+`Ctrl+Alt+Space` as a global shortcut and surfaces bilingual example
+sentences from the `context.reverso.net` corpus. Worth referencing
+when iterating on the quick-translate overlay, independent of any
+Reverso API integration.
+
+### B-036: Microsoft Translator (Azure) provider — add as third option
+Azure AI Translator was evaluated as a third provider. Conclusion:
+**feasible with caveats** — add using the **F0 free tier** with a
+user-supplied subscription key + region.
+
+**Free tier (F0) summary:**
+- 2 million characters **per hour** quota (not per month). Over-quota
+  returns HTTP 429.
+- Free for 12 months on new Azure accounts, then requires upgrade to
+  S1 (pay-per-character) or a new account.
+- **Credit card required at Azure signup** for identity verification
+  ($1 auth, refunded). Non-trivial onboarding friction compared to
+  LibreTranslate.
+- Document translation is **not available on F0** — requires S1 with
+  a custom-domain resource and Azure Blob Storage. Capability must
+  report `documentTranslation: false` for any F0 key.
+
+**Endpoints (`api.cognitive.microsofttranslator.com`, API version `3.0`):**
+- `POST /translate?api-version=3.0&to=<lang>` — text translation
+- `POST /detect?api-version=3.0` — source language detection (also
+  auto-detected inside `/translate`)
+- `GET /languages?api-version=3.0` — supported languages (also serves
+  as a lightweight health probe; no dedicated health endpoint exists)
+- Document translation endpoints exist but are gated to S1+.
+
+**Auth:** subscription key + region via request headers
+`Ocp-Apim-Subscription-Key` and `Ocp-Apim-Subscription-Region`. Keys
+are rotatable in the Azure portal and scoped per-resource. Store via
+`safeStorage` in the existing secrets vault.
+
+**Implementation approach:**
+- Build a thin HTTP adapter (~200 LOC) in `electron/providers/microsoft/`
+  using Node `fetch`. Do **not** pull in `@azure-rest/ai-translation-text`
+  — the SDK is a thin wrapper over the same REST endpoints and drags
+  in the Azure Core pipeline + Identity chain we don't need for
+  API-key auth.
+- Normalize errors to shared categories: 401/403 → auth,
+  429 → rate-limited or quota, 400 → unsupported language / invalid,
+  408/5xx → network / internal. Error body shape:
+  `{ "error": { "code": <6-digit>, "message": "..." } }`.
+- Use `GET /languages` for the provider health check and to populate
+  the language selector. No quota-query API exists — track client-side
+  or surface 429 reactively.
+- Settings UI: key + region inputs, deep-link button to
+  `https://portal.azure.com/#create/Microsoft.CognitiveServicesTextTranslation`,
+  inline note that document translation is unavailable on F0, and a
+  note about the credit-card signup requirement.
+
+**Capability report on F0:**
+- `textTranslation: true`
+- `languageDetection: true`
+- `supportedLanguagesDiscovery: true`
+- `documentTranslation: false`
+
+**Out of scope for the initial adapter:** document translation
+(revisit separately if S1 support is ever added), Custom Translator
+models, transliteration endpoint, breaksentence endpoint.
