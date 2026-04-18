@@ -331,3 +331,44 @@ Follow the step-by-step guide in `docs/apple-signing.md`:
 - Set CI secrets: `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`,
   `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`
 - Verify with `codesign --verify` and `spctl --assess`
+
+---
+
+## Provider Expansion
+
+### B-035: Reverso provider — investigated, will not pursue
+Reverso was evaluated as a third provider alongside Google Cloud
+Translation and LibreTranslate. Conclusion: **not feasible**.
+- No public self-serve API. The `api-for-developers` page is an
+  enterprise sales contact form, not an SDK. No documented pricing,
+  no API key program, no free tier.
+- The only reachable endpoint is the unofficial
+  `api.reverso.net/translate/v1/translation`, gated by Cloudflare
+  with Origin/Referer checks. Automated access violates Reverso's
+  Terms of Service and risks cease-and-desist.
+- The unofficial endpoint breaks whenever Reverso tightens its WAF;
+  community wrappers have multi-month outage histories.
+- Capability gaps vs. the shared provider contract: no language-list
+  endpoint (would have to be hardcoded), no document translation,
+  no structured error taxonomy, no health check. Meeting the
+  contract would require faking capabilities, which conflicts with
+  the "Do not fake provider capabilities" rule in `AGENTS.md`.
+- No maintained Node library worth adopting. `reverso-api`
+  (s0ftik3, MIT) wraps the same ToS-violating endpoint and has low
+  adoption (~150 weekly npm downloads).
+
+**If a third provider is wanted later, evaluate instead:**
+- **DeepL API** — official, documented, 500k free chars/month,
+  MIT-compatible clients available. Natural peer to Google Cloud
+  Translation.
+- **Microsoft Translator (Azure)** — official, 2M free chars/month,
+  documented auth and endpoints.
+
+Revisit Reverso only if it publishes a public developer program
+with clear ToS for open-source clients.
+
+**UX inspiration note:** Reverso's consumer desktop app uses
+`Ctrl+Alt+Space` as a global shortcut and surfaces bilingual example
+sentences from the `context.reverso.net` corpus. Worth referencing
+when iterating on the quick-translate overlay, independent of any
+Reverso API integration.
