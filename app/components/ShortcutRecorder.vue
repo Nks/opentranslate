@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import {
-  computed, ref, watch,
-} from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import {
   formatShortcutForDisplay,
@@ -10,48 +8,35 @@ import {
 } from '@shared/shortcuts/quick-translate'
 
 interface Props {
-  /** Current accelerator string (e.g. `"CommandOrControl+C+C"`). */
-  modelValue: string
   /**
    * Host platform. `process.platform` isn't available in the renderer, so
-   * the parent page is responsible for passing the OS hint captured at
-   * mount time via `api.getPlatform()`.
+   * the parent is responsible for passing the OS hint captured via
+   * `api.getPlatform()`.
    */
   platform: NodeJS.Platform | 'darwin' | 'win32' | 'linux' | string
-  /** Optional label for accessibility. */
   ariaLabel?: string
 }
 
 interface Emits {
-  (e: 'update:modelValue', value: string): void
   (e: 'error', message: string): void
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+const model = defineModel<string>({ required: true })
 
 const recording = ref<boolean>(false)
 
-/**
- * Display copy of the current accelerator rendered with platform glyphs.
- * Parsing may throw (e.g. when a persisted value doesn't match current
- * rules); fall back to the raw string in that case.
- */
 const displayValue = computed<string>(() => {
   try {
-    const parsed = parseQuickTranslateShortcut(props.modelValue, props.platform)
+    const parsed = parseQuickTranslateShortcut(model.value, props.platform)
 
     return formatShortcutForDisplay(parsed, props.platform)
   } catch {
-    return props.modelValue
+    return model.value
   }
 })
 
-/**
- * Map a browser `KeyboardEvent.key` to our canonical key name. Only
- * accepts ASCII letters and F1..F24; everything else returns null so the
- * caller can keep listening for a valid trailing key.
- */
 function normalizeEventKey(key: string): string | null {
   if (key.length === 1 && /^[a-z0-9]$/i.test(key)) {
     return key.toUpperCase()
@@ -64,10 +49,6 @@ function normalizeEventKey(key: string): string | null {
   return null
 }
 
-/**
- * Pull the held modifiers off the native event in canonical order.
- * Never includes the non-modifier trailing key.
- */
 function collectModifiers(event: KeyboardEvent): ShortcutModifier[] {
   const out: ShortcutModifier[] = []
 
@@ -82,11 +63,6 @@ function collectModifiers(event: KeyboardEvent): ShortcutModifier[] {
   return out
 }
 
-/**
- * Convert a canonical modifier into the string token used inside
- * Electron-style accelerator strings. We stick with platform-neutral
- * names so the stored value is portable.
- */
 function modifierToToken(modifier: ShortcutModifier): string {
   switch (modifier) {
     case 'meta':
@@ -106,8 +82,6 @@ function buildAccelerator(
 ): string {
   const parts = modifiers.map(modifierToToken)
   parts.push(key)
-  // `chord: 'double'` is our fixed pattern for the quick-translate
-  // shortcut in this iteration — repeat the trailing key.
   parts.push(key)
 
   return parts.join('+')
@@ -123,14 +97,9 @@ function cancelRecording(): void {
 
 function clearShortcut(): void {
   recording.value = false
-  emit('update:modelValue', '')
+  model.value = ''
 }
 
-/**
- * Global keydown listener. We intentionally capture rather than bubble so
- * we intercept before any `<input>` focus handlers, and we always call
- * `preventDefault` so recording `Ctrl+W` etc. doesn't close the window.
- */
 useEventListener(
   typeof window === 'undefined' ? null : window,
   'keydown',
@@ -150,7 +119,6 @@ useEventListener(
     const keyName = normalizeEventKey(event.key)
 
     if (keyName === null) {
-      // User is still building the combo (pressed a modifier).
       return
     }
 
@@ -165,8 +133,6 @@ useEventListener(
     const accelerator = buildAccelerator(modifiers, keyName)
 
     try {
-      // Round-trip through the parser so we surface the same validation
-      // the main process and schema apply.
       parseQuickTranslateShortcut(accelerator, props.platform)
     } catch (err) {
       emit('error', err instanceof Error ? err.message : String(err))
@@ -175,14 +141,13 @@ useEventListener(
     }
 
     recording.value = false
-    emit('update:modelValue', accelerator)
+    model.value = accelerator
   },
   { capture: true },
 )
 
-// Reset recording state if the parent changes the value externally.
 watch(
-  () => props.modelValue,
+  () => model.value,
   () => {
     recording.value = false
   },
@@ -222,7 +187,7 @@ watch(
       Cancel
     </button>
     <button
-      v-else-if="modelValue"
+      v-else-if="model"
       type="button"
       aria-label="Clear shortcut"
       class="px-2 py-1 text-xs text-dimmed hover:text-error"

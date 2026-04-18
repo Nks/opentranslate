@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import {
-  describe, expect, it, beforeEach,
+  describe, expect, it,
 } from 'vitest'
 import {
   mount, flushPromises,
@@ -29,10 +29,6 @@ function pressKey(
 }
 
 describe('ShortcutRecorder', () => {
-  beforeEach(() => {
-    // Make sure no stale listeners remain from previous mounts.
-  })
-
   it('renders the current accelerator as a platform-aware glyph on macOS', () => {
     const wrapper = mount(ShortcutRecorder, {
       props: {
@@ -111,8 +107,6 @@ describe('ShortcutRecorder', () => {
     })
     await wrapper.find('button').trigger('click')
 
-    // Meta, Shift, Control are "modifier" keys — user hasn't completed the
-    // combo yet. We should still be recording.
     pressKey('Meta', { metaKey: true })
     pressKey('Shift', { shiftKey: true })
     pressKey('Control', { ctrlKey: true })
@@ -192,8 +186,6 @@ describe('ShortcutRecorder', () => {
     await wrapper.find('button').trigger('click')
     expect(wrapper.text()).toContain('Press shortcut')
 
-    // Vue SFC props aren't visible in our .ts-only tsconfig, so setProps
-    // is loosely typed. Cast to the widest known partial shape.
     await wrapper.setProps({
       modelValue: 'Ctrl+T+T',
       platform: 'linux',

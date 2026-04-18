@@ -77,7 +77,6 @@ function makeFakeObserver(): KeyObserver & {
   }
 }
 
-// Matches the subset of `UiohookKey` we touch in tests.
 const KEY_MAP = {
   C: 46,
   T: 20,
@@ -145,7 +144,6 @@ describe('quick translate registrar', () => {
     })
     registrar.apply('Ctrl+C+C', 'linux')
 
-    // Pull the observer options to trigger onKey manually.
     const firstCall = createObserver.mock.calls[0]
 
     if (!firstCall) {
@@ -212,7 +210,6 @@ describe('quick translate registrar', () => {
     }
     expect(second.reason).toMatch(/accessibility/i)
 
-    // Previous observer was NOT torn down because the replacement failed.
     expect(goodObserver.stopped()).toBe(false)
     expect(registrar.current()?.key).toBe('C')
   })

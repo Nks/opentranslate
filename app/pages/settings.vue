@@ -5,6 +5,7 @@ import { useSettingsStore } from '@app/stores/settings'
 import { useProvidersStore } from '@app/stores/providers'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
+import type { ShortcutsSettings } from '@shared/types/settings'
 
 const settingsStore = useSettingsStore()
 const providersStore = useProvidersStore()
@@ -138,22 +139,8 @@ async function loadPlatform() {
   }
 }
 
-function onQuickTranslateShortcutChange(value: string) {
-  if (value.length === 0) {
-    // Clearing is rejected at the schema level; surface a toast rather
-    // than silently ignoring the action.
-    handleError(new Error('Shortcut cannot be empty. Record a new combo or keep the current one.'))
-
-    return
-  }
-  onAppSettingChange('shortcuts', {
-    ...settingsStore.app.shortcuts,
-    quickTranslate: value,
-  })
-}
-
-function onShortcutRecorderError(message: string) {
-  handleError(new Error(message))
+function onShortcutsChange(value: ShortcutsSettings) {
+  onAppSettingChange('shortcuts', value)
 }
 
 onMounted(() => {
@@ -196,7 +183,6 @@ const tabs: TabsItem[] = [
       </div>
 
       <div class="flex-1 flex">
-        <!-- Tab sidebar -->
         <div class="w-48 border-r border-default p-2">
           <UTabs
             v-model="activeTab"
@@ -207,9 +193,7 @@ const tabs: TabsItem[] = [
           />
         </div>
 
-        <!-- Tab content -->
         <div class="flex-1 p-6 overflow-y-auto max-w-2xl">
-          <!-- General -->
           <div v-if="activeTab === 'general'" class="space-y-6">
             <UFormField label="Theme">
               <USelect
@@ -250,7 +234,6 @@ const tabs: TabsItem[] = [
             </UFormField>
           </div>
 
-          <!-- Providers -->
           <div v-if="activeTab === 'providers'" class="space-y-8">
             <div
               v-for="descriptor in providersStore.descriptors"
@@ -298,30 +281,13 @@ const tabs: TabsItem[] = [
             </p>
           </div>
 
-          <!-- Shortcuts -->
-          <div v-if="activeTab === 'shortcuts'" class="space-y-6">
-            <UFormField
-              label="Quick translate shortcut"
-              help="Click the field, then press the key combo you want. The chord pattern (same key pressed twice) is fixed."
-            >
-              <ShortcutRecorder
-                :model-value="settingsStore.app.shortcuts.quickTranslate"
-                :platform="platform"
-                aria-label="Quick translate shortcut"
-                @update:model-value="onQuickTranslateShortcutChange"
-                @error="onShortcutRecorderError"
-              />
-            </UFormField>
+          <SettingsShortcutsTab
+            v-if="activeTab === 'shortcuts'"
+            :shortcuts="settingsStore.app.shortcuts"
+            :platform
+            @update:shortcuts="onShortcutsChange"
+          />
 
-            <UFormField label="Enable quick translate">
-              <USwitch
-                :model-value="settingsStore.app.shortcuts.quickTranslateEnabled"
-                @update:model-value="(val: boolean) => onAppSettingChange('shortcuts', { ...settingsStore.app.shortcuts, quickTranslateEnabled: val })"
-              />
-            </UFormField>
-          </div>
-
-          <!-- Advanced -->
           <div v-if="activeTab === 'advanced'" class="space-y-6">
             <UFormField label="Request timeout (ms)">
               <UInput
@@ -354,7 +320,6 @@ const tabs: TabsItem[] = [
             </div>
           </div>
 
-          <!-- About -->
           <div v-if="activeTab === 'about'" class="space-y-4">
             <h2 class="text-base font-semibold">
               OpenTranslate Desktop

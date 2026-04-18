@@ -54,7 +54,7 @@ describe('appSettingsSchema', () => {
     expect(parsed.shortcuts.quickTranslate).toBeTruthy()
   })
 
-  it('defaults quickTranslate to the platform-aware accelerator token (B-016)', () => {
+  it('defaults quickTranslate to the platform-aware accelerator token', () => {
     expect(defaultAppSettings.shortcuts.quickTranslate).toBe(
       DEFAULT_QUICK_TRANSLATE_ACCELERATOR,
     )

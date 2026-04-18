@@ -132,10 +132,8 @@ describe('quick-translate controller', () => {
     const controller = createQuickTranslateController(deps)
     controller.start('Ctrl+C+C')
 
-    // Re-apply with the exact same accelerator.
     controller.applyFromSettings('Ctrl+C+C')
 
-    // showWarning never fired because nothing changed.
     expect(deps.showWarningSpy).not.toHaveBeenCalled()
   })
 
@@ -148,7 +146,6 @@ describe('quick-translate controller', () => {
 
     controller.applyFromSettings('Ctrl+T+T')
 
-    // Nothing registered, nothing surfaced.
     expect(deps.showWarningSpy).not.toHaveBeenCalled()
   })
 
@@ -177,7 +174,6 @@ describe('quick-translate controller', () => {
     }
     expect(warning.title).toBe('Quick Translate shortcut not applied')
     expect(warning.detail).toContain('previous shortcut')
-    // Previous shortcut still the active one.
     expect(controller.registrar()?.current()?.key).toBe('C')
   })
 
@@ -189,16 +185,8 @@ describe('quick-translate controller', () => {
     const controller = createQuickTranslateController(deps)
     controller.start('Ctrl+C+C')
 
-    // Extract the `onChord` handler that was registered on the fake detector
-    // — the controller wires its own handleChord through the registrar
-    // which calls `deps.sendTextToMainWindow` after a setTimeout.
-    // Easier path: trigger the controller's internal flow by calling the
-    // registrar's current() — but here we assert on the setTimeout that
-    // the controller schedules when the chord completes. That happens
-    // inside registrar.apply via createDetector, but our mocked chord
-    // detector's onChord doesn't actually fire. We verify the wiring by
-    // invoking sendTextToMainWindow via the read path explicitly:
-    // the clipboard path is covered by a separate main-window test.
+    // The mocked chord detector never fires onChord, so no send should occur
+    // during setup. Full clipboard path is covered by the main-window test.
     expect(deps.sendSpy).not.toHaveBeenCalled()
   })
 

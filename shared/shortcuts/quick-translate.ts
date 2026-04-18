@@ -131,7 +131,6 @@ function normalizeKeyName(raw: string): string {
     return trimmed.toUpperCase()
   }
 
-  // Function keys like F1..F24 — keep as F<number>.
   const fKeyMatch = /^[Ff](\d{1,2})$/.exec(trimmed)
 
   if (fKeyMatch) {
@@ -199,7 +198,6 @@ export function parseQuickTranslateShortcut(
 
   const keyNames = nonModifierTokens.map(normalizeKeyName)
 
-  // Chord mode: the same key appears twice → `Cmd+C+C`.
   let chord: ShortcutChord = 'single'
 
   if (keyNames.length === 2) {

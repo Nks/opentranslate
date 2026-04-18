@@ -202,8 +202,7 @@ function registerIpcHandlers(): SettingsStore {
     (_event: unknown, input: unknown) => historyHandlers?.['history:toggle'](input as { enabled: boolean }),
   ))
 
-  // Document channels — capability check + file pick + translate.
-  // Actual document translation is stubbed until Google v3 Advanced lands.
+  // Document translation is stubbed until Google v3 Advanced lands.
   ipcMain.handle(channels['document:status'], safeHandler(() => {
     const adapter = orchestrator.getAdapter()
 

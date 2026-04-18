@@ -98,7 +98,6 @@ describe('parseQuickTranslateShortcut', () => {
   })
 
   it('rejects plain alpha keys without a modifier', () => {
-    // Two-letter chord without modifier should also fail because no modifier.
     expect(() => parseQuickTranslateShortcut('A+A', 'linux')).toThrow(
       /modifier/i,
     )
