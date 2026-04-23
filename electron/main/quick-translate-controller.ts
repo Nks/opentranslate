@@ -58,22 +58,31 @@ export interface QuickTranslateControllerDeps {
 
 export interface QuickTranslateController {
   /** Initial registration during app bootstrap. */
-  start: (accelerator: string) => void
+  start: (accelerator: string, enabled: boolean) => void
   /**
    * Re-apply in response to a user-initiated settings change. Silent
-   * when the shortcut has not changed; surfaces a warning when the new
-   * observer fails to start and leaves the previous observer active.
+   * when nothing changed; surfaces a warning when the new observer
+   * fails to start and leaves the previous observer active. When
+   * `enabled` is `false` the active observer is torn down.
    */
-  applyFromSettings: (accelerator: string) => void
+  applyFromSettings: (accelerator: string, enabled: boolean) => void
   /** Current registrar state, primarily for diagnostics. */
   registrar: () => QuickTranslateRegistrar | null
 }
+
+/**
+ * Delay before reading the clipboard after a chord fires. Gives the
+ * foreground app time to finish writing to the clipboard between the
+ * two physical key presses.
+ */
+const CLIPBOARD_READ_DELAY_MS = 100
 
 export function createQuickTranslateController(
   deps: QuickTranslateControllerDeps,
 ): QuickTranslateController {
   let registrar: QuickTranslateRegistrar | null = null
   let lastApplied: string | null = null
+  let lastEnabled = false
 
   function buildRegistrar(): QuickTranslateRegistrar {
     const registrarDeps = deps.logger
@@ -99,8 +108,6 @@ export function createQuickTranslateController(
   }
 
   function handleChord(): void {
-    // Small delay so the focused app finishes writing the clipboard after
-    // the second physical key press.
     setTimeout(() => {
       const text = deps.readClipboardText().trim()
 
@@ -108,7 +115,7 @@ export function createQuickTranslateController(
         return
       }
       deps.sendTextToMainWindow(text)
-    }, 100)
+    }, CLIPBOARD_READ_DELAY_MS)
   }
 
   function formatPrevious(): string {
@@ -123,9 +130,9 @@ export function createQuickTranslateController(
     }
   }
 
-  function start(accelerator: string): void {
+  function registerObserver(accelerator: string): boolean {
     if (!deps.ensureAccessibilityPermission()) {
-      return
+      return false
     }
 
     registrar ??= buildRegistrar()
@@ -148,19 +155,48 @@ export function createQuickTranslateController(
         detail: `${message}\n\nDetails: ${result.reason}`,
       })
 
-      return
+      return false
     }
 
-    lastApplied = accelerator
+    return true
   }
 
-  function applyFromSettings(accelerator: string): void {
-    if (accelerator === lastApplied) {
+  function start(accelerator: string, enabled: boolean): void {
+    lastEnabled = enabled
+
+    if (!enabled) {
+      lastApplied = accelerator
+
       return
     }
 
-    if (!registrar) {
-      // Startup was skipped (e.g. Accessibility missing). Leave alone.
+    if (registerObserver(accelerator)) {
+      lastApplied = accelerator
+    }
+  }
+
+  function applyFromSettings(accelerator: string, enabled: boolean): void {
+    if (accelerator === lastApplied && enabled === lastEnabled) {
+      return
+    }
+
+    // Disable: tear down any active observer and remember the new state so
+    // a future re-enable picks up the latest accelerator.
+    if (!enabled) {
+      registrar?.stop()
+      lastApplied = accelerator
+      lastEnabled = false
+
+      return
+    }
+
+    // Re-enable or first-time enable after startup skipped registration.
+    if (!registrar || !lastEnabled) {
+      if (registerObserver(accelerator)) {
+        lastApplied = accelerator
+        lastEnabled = true
+      }
+
       return
     }
 
@@ -180,6 +216,7 @@ export function createQuickTranslateController(
     }
 
     lastApplied = accelerator
+    lastEnabled = true
   }
 
   return {

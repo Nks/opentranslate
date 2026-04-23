@@ -109,7 +109,10 @@ function registerIpcHandlers(): SettingsStore {
         providers?: Record<string, unknown>
       })
 
-      quickTranslateController?.applyFromSettings(result.app.shortcuts.quickTranslate)
+      quickTranslateController?.applyFromSettings(
+        result.app.shortcuts.quickTranslate,
+        result.app.shortcuts.quickTranslateEnabled,
+      )
 
       return result
     },
@@ -437,17 +440,19 @@ function bootstrap(): void {
     void createMainWindow()
 
     let accelerator = defaultAppSettings.shortcuts.quickTranslate
+    let enabled = defaultAppSettings.shortcuts.quickTranslateEnabled
 
     try {
       const loaded = await store.load()
       accelerator = loaded.app.shortcuts.quickTranslate
+      enabled = loaded.app.shortcuts.quickTranslateEnabled
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[shortcuts] failed to load settings; using default accelerator', err)
     }
 
     quickTranslateController = buildQuickTranslateController()
-    quickTranslateController.start(accelerator)
+    quickTranslateController.start(accelerator, enabled)
   })
 }
 

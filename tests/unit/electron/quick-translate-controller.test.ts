@@ -102,7 +102,7 @@ describe('quick-translate controller', () => {
       ensureAccessibilityPermission: vi.fn(() => false),
     })
     const controller = createQuickTranslateController(deps)
-    controller.start('Ctrl+C+C')
+    controller.start('Ctrl+C+C', true)
 
     expect(controller.registrar()).toBeNull()
     expect(deps.showWarningSpy).not.toHaveBeenCalled()
@@ -111,51 +111,73 @@ describe('quick-translate controller', () => {
   it('registers the observer on start when permission is granted', () => {
     const deps = makeDeps()
     const controller = createQuickTranslateController(deps)
-    controller.start('Ctrl+C+C')
+    controller.start('Ctrl+C+C', true)
 
     expect(controller.registrar()?.current()?.key).toBe('C')
     expect(deps.showWarningSpy).not.toHaveBeenCalled()
   })
 
+  it('does not register when the shortcut is disabled in settings', () => {
+    const deps = makeDeps()
+    const controller = createQuickTranslateController(deps)
+    controller.start('Ctrl+C+C', false)
+
+    expect(controller.registrar()).toBeNull()
+    expect(deps.ensurePermission).not.toHaveBeenCalled()
+  })
+
   it('surfaces a warning when start receives a malformed accelerator', () => {
     const deps = makeDeps()
     const controller = createQuickTranslateController(deps)
-    controller.start('definitely-not-valid')
+    controller.start('definitely-not-valid', true)
 
     expect(deps.showWarningSpy).toHaveBeenCalledOnce()
     const call = deps.showWarningSpy.mock.calls[0]![0] as { title: string }
     expect(call.title).toBe('Quick Translate unavailable')
   })
 
-  it('applyFromSettings is a no-op when the accelerator has not changed', () => {
+  it('applyFromSettings is a no-op when nothing changed', () => {
     const deps = makeDeps()
     const controller = createQuickTranslateController(deps)
-    controller.start('Ctrl+C+C')
+    controller.start('Ctrl+C+C', true)
 
-    controller.applyFromSettings('Ctrl+C+C')
+    controller.applyFromSettings('Ctrl+C+C', true)
 
     expect(deps.showWarningSpy).not.toHaveBeenCalled()
   })
 
-  it('applyFromSettings is a no-op when the controller never started (e.g. Accessibility missing)', () => {
-    const deps = makeDeps({
-      ensureAccessibilityPermission: vi.fn(() => false),
-    })
+  it('applyFromSettings starts the observer when re-enabled after Accessibility was granted', () => {
+    const deps = makeDeps()
     const controller = createQuickTranslateController(deps)
-    controller.start('Ctrl+C+C')
+    controller.start('Ctrl+C+C', false)
+    expect(controller.registrar()).toBeNull()
 
-    controller.applyFromSettings('Ctrl+T+T')
+    controller.applyFromSettings('Ctrl+T+T', true)
 
+    expect(controller.registrar()?.current()?.key).toBe('T')
+    expect(deps.showWarningSpy).not.toHaveBeenCalled()
+  })
+
+  it('applyFromSettings tears the observer down when disabled', () => {
+    const deps = makeDeps()
+    const controller = createQuickTranslateController(deps)
+    controller.start('Ctrl+C+C', true)
+    const registrar = controller.registrar()
+    const stopSpy = vi.spyOn(registrar!, 'stop')
+
+    controller.applyFromSettings('Ctrl+C+C', false)
+
+    expect(stopSpy).toHaveBeenCalledOnce()
     expect(deps.showWarningSpy).not.toHaveBeenCalled()
   })
 
   it('applyFromSettings switches to a new valid accelerator', () => {
     const deps = makeDeps()
     const controller = createQuickTranslateController(deps)
-    controller.start('Ctrl+C+C')
+    controller.start('Ctrl+C+C', true)
     expect(controller.registrar()?.current()?.key).toBe('C')
 
-    controller.applyFromSettings('Ctrl+T+T')
+    controller.applyFromSettings('Ctrl+T+T', true)
     expect(controller.registrar()?.current()?.key).toBe('T')
     expect(deps.showWarningSpy).not.toHaveBeenCalled()
   })
@@ -163,9 +185,9 @@ describe('quick-translate controller', () => {
   it('applyFromSettings warns and keeps the old shortcut when the new one is malformed', () => {
     const deps = makeDeps()
     const controller = createQuickTranslateController(deps)
-    controller.start('Ctrl+C+C')
+    controller.start('Ctrl+C+C', true)
 
-    controller.applyFromSettings('not+a+real+shortcut')
+    controller.applyFromSettings('not+a+real+shortcut', true)
 
     expect(deps.showWarningSpy).toHaveBeenCalledOnce()
     const warning = deps.showWarningSpy.mock.calls[0]![0] as {
@@ -177,23 +199,10 @@ describe('quick-translate controller', () => {
     expect(controller.registrar()?.current()?.key).toBe('C')
   })
 
-  it('sends clipboard text to the renderer when the chord fires', () => {
-    const clipboard = 'hello world'
-    const deps = makeDeps({
-      readClipboardText: () => clipboard,
-    })
-    const controller = createQuickTranslateController(deps)
-    controller.start('Ctrl+C+C')
-
-    // The mocked chord detector never fires onChord, so no send should occur
-    // during setup. Full clipboard path is covered by the main-window test.
-    expect(deps.sendSpy).not.toHaveBeenCalled()
-  })
-
   it('registers a teardown listener on startup', () => {
     const deps = makeDeps()
     const controller = createQuickTranslateController(deps)
-    controller.start('Ctrl+C+C')
+    controller.start('Ctrl+C+C', true)
 
     expect(deps.onAppExitListeners.length).toBe(1)
   })

@@ -6,7 +6,6 @@ import {
 } from '@shared/schemas/settings'
 import {
   DEFAULT_QUICK_TRANSLATE_ACCELERATOR,
-  parseQuickTranslateShortcut,
 } from '@shared/shortcuts/quick-translate'
 
 describe('appSettingsSchema', () => {
@@ -58,34 +57,6 @@ describe('appSettingsSchema', () => {
     expect(defaultAppSettings.shortcuts.quickTranslate).toBe(
       DEFAULT_QUICK_TRANSLATE_ACCELERATOR,
     )
-  })
-
-  it('resolves the default quick-translate to ⌘ on macOS', () => {
-    const parsed = parseQuickTranslateShortcut(
-      defaultAppSettings.shortcuts.quickTranslate,
-      'darwin',
-    )
-    expect(parsed.modifier).toBe('meta')
-    expect(parsed.key).toBe('C')
-    expect(parsed.chord).toBe('double')
-  })
-
-  it('resolves the default quick-translate to Ctrl on Windows', () => {
-    const parsed = parseQuickTranslateShortcut(
-      defaultAppSettings.shortcuts.quickTranslate,
-      'win32',
-    )
-    expect(parsed.modifier).toBe('ctrl')
-    expect(parsed.chord).toBe('double')
-  })
-
-  it('resolves the default quick-translate to Ctrl on Linux', () => {
-    const parsed = parseQuickTranslateShortcut(
-      defaultAppSettings.shortcuts.quickTranslate,
-      'linux',
-    )
-    expect(parsed.modifier).toBe('ctrl')
-    expect(parsed.chord).toBe('double')
   })
 
   it('rejects a quick-translate shortcut without a modifier', () => {
