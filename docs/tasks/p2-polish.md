@@ -55,16 +55,6 @@ Horizontal tab bar (one tab per provider) instead of scrollable list.
 
 ---
 
-### B-028: Remove all DeepL references
-**Category:** Branding
-**Effort:** Small
-**Files:** `docs/opentranslate-desktop-spec.md`, `docs/opentranslate-desktop-prd.md`, `docs/architecture.md`, `AGENTS.md`, `README.md`, code comments
-
-Replace "DeepL-style" with "two-pane translator layout" or "desktop
-translation workflow". Audit all files.
-
----
-
 ### ~~B-029: Audit IPC serialization overhead~~ **CLOSED**
 **Status:** Resolved in Phase 10 session. `serialize()` removed from
 `safeHandler`, `stripReactive()` removed from preload. Only error

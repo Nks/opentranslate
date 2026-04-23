@@ -326,7 +326,7 @@ const tabs: TabsItem[] = [
               OpenTranslate Desktop
             </h2>
             <p class="text-sm text-muted">
-              MIT-licensed desktop translator with a DeepL-style workflow.
+              MIT-licensed desktop translator with a two-pane workflow.
             </p>
             <p class="text-sm text-muted">
               Built with Electron, Nuxt 4, and Nuxt UI.

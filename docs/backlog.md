@@ -230,26 +230,6 @@ the i18n pipeline. The selected UI language should be persisted in
 
 ---
 
-## Branding
-
-### B-028: Remove all DeepL references from the application
-Audit and remove every mention of "DeepL" from user-facing text,
-code comments, documentation, and architecture docs. The product is
-OpenTranslate Desktop — referencing a competitor's brand in the
-codebase, specs, or UI is unnecessary. Replace "DeepL-style" with
-descriptive terms like "two-pane translator layout" or "desktop
-translation workflow".
-
-Files to audit:
-- `docs/opentranslate-desktop-spec.md`
-- `docs/opentranslate-desktop-prd.md`
-- `docs/architecture.md`
-- `AGENTS.md`
-- `README.md`
-- All code comments mentioning "DeepL"
-
----
-
 ## Translation UI
 
 ### B-025: Rich text support in textareas
@@ -270,9 +250,9 @@ Use VueUse's `useClipboard` `copied` ref for the timeout state.
 
 ## UI / Layout
 
-### B-024: Custom header with DeepL-style tab navigation
+### B-024: Custom header with two-pane translator tab navigation
 Remove the native window title bar (`frame: false` in BrowserWindow).
-Implement a custom draggable header that matches DeepL's design:
+Implement a custom draggable header with this layout:
 
 - **Left side:** App logo/name
 - **Center:** Tab navigation — Translate | Documents | Theme Picker
@@ -309,8 +289,7 @@ Add setting for close button behavior:
 
 ### B-020: Settings in a separate window
 Settings should open in a dedicated `BrowserWindow`, not as a page in
-the main window. Matches DeepL's UX where preferences are a separate
-modal window.
+the main window. Preferences live in a separate modal window.
 
 ### B-021: Native menu bar integration
 Add "Preferences…" (⌘+,) to the macOS application menu, "Settings" to
@@ -358,9 +337,6 @@ Translation and LibreTranslate. Conclusion: **not feasible**.
   adoption (~150 weekly npm downloads).
 
 **If a third provider is wanted later, evaluate instead:**
-- **DeepL API** — official, documented, 500k free chars/month,
-  MIT-compatible clients available. Natural peer to Google Cloud
-  Translation.
 - **Microsoft Translator (Azure)** — official, F0 free tier,
   documented auth and endpoints. See B-036.
 
