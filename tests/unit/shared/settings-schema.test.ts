@@ -14,7 +14,7 @@ describe('appSettingsSchema', () => {
   it('rejects unknown activeProvider', () => {
     const bad = {
       ...defaultAppSettings,
-      activeProvider: 'deepl',
+      activeProvider: 'unknown-provider',
     }
     const result = appSettingsSchema.safeParse(bad)
     expect(result.success).toBe(false)

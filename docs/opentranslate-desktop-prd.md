@@ -27,7 +27,7 @@ Cross-platform desktop translator
 
 ## 2. Product Summary
 
-OpenTranslate Desktop is a cross-platform desktop application that reproduces the core DeepL-style desktop translation experience while allowing the user to select one of two translation backends:
+OpenTranslate Desktop is a cross-platform desktop application that delivers a polished two-pane desktop translation experience while allowing the user to select one of two translation backends:
 
 - Google Cloud Translation
 - LibreTranslate
@@ -36,18 +36,18 @@ The product is a desktop client only. It does not bundle a translation server. I
 
 ## 3. Problem Statement
 
-Users want a desktop translation application with the usability of DeepL Translate, but with the ability to choose their backend:
+Users want a polished desktop translation application with fast, friction-free text translation, but with the ability to choose their backend:
 
 - a proprietary cloud backend for quality and scale
 - an open/self-hosted backend for control and local deployment
 
-There is no fully open-source MIT-licensed desktop client in the defined stack that delivers this exact provider-switching DeepL-style workflow on macOS, Windows, and Linux.
+There is no fully open-source MIT-licensed desktop client in the defined stack that delivers this exact provider-switching two-pane translator workflow on macOS, Windows, and Linux.
 
 ## 4. Product Objective
 
 Build a production-ready desktop translator that:
 
-1. feels like DeepL Translate on desktop
+1. delivers fast, friction-free text translation on desktop
 2. is fully open-source on the client side under MIT
 3. runs on macOS, Windows, and Linux
 4. lets the user switch between Google Cloud Translation and LibreTranslate
@@ -100,7 +100,7 @@ The product is successful when:
 
 ### 7.1 Primary Users
 
-1. Users who want a DeepL-like desktop translator but do not want to depend only on DeepL.
+1. Users who want a polished desktop translator with provider choice rather than lock-in.
 2. Users who want to choose between cloud translation and self-hosted translation.
 3. Users who want a local desktop workflow on macOS, Windows, or Linux.
 4. Developers and technical users who want to run LibreTranslate locally or on a private endpoint.
@@ -494,7 +494,7 @@ A release is acceptable only if:
 2. The application is client-only.
 3. The repository is MIT.
 4. LibreTranslate server remains external.
-5. The common UX is provider-neutral and DeepL-style.
+5. The common UX is provider-neutral and follows a two-pane translator layout.
 6. Provider-specific advanced enterprise features are excluded.
 7. All provider communication is handled in Electron main process.
 8. Local history is part of the initial release.
@@ -503,4 +503,4 @@ A release is acceptable only if:
 
 ## 20. Final PRD Statement
 
-OpenTranslate Desktop is a MIT-licensed Electron desktop translator built with Nuxt 4 and Nuxt UI. It is designed to reproduce the DeepL-style desktop translation workflow while allowing the user to choose between Google Cloud Translation and LibreTranslate. The product supports text translation, quick translation from any application, local translation history, and document translation when the active provider supports it. It runs on macOS, Windows, and Linux and is explicitly defined as a desktop client, not a bundled translation server.
+OpenTranslate Desktop is a MIT-licensed Electron desktop translator built with Nuxt 4 and Nuxt UI. It is designed to deliver a polished two-pane desktop translation workflow while allowing the user to choose between Google Cloud Translation and LibreTranslate. The product supports text translation, quick translation from any application, local translation history, and document translation when the active provider supports it. It runs on macOS, Windows, and Linux and is explicitly defined as a desktop client, not a bundled translation server.

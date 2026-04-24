@@ -30,7 +30,7 @@ describe('historyEntrySchema', () => {
   it('rejects unknown provider', () => {
     expect(historyEntrySchema.safeParse({
       ...validEntry,
-      provider: 'deepl',
+      provider: 'unknown-provider',
     }).success).toBe(false)
   })
 
