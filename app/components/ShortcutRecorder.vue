@@ -76,8 +76,6 @@ function modifierToToken(modifier: ShortcutModifier): string {
   }
 }
 
-// Output is always a chord accelerator ("Mod+K+K"): we append the key twice
-// to match the storage format used by the main-process registrar.
 function buildChordAccelerator(modifiers: ShortcutModifier[], key: string): string {
   const parts: string[] = modifiers.map(modifierToToken)
   parts.push(key, key)

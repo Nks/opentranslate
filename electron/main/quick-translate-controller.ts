@@ -36,8 +36,6 @@ export interface QuickTranslateController {
   registrar: () => QuickTranslateRegistrar | null
 }
 
-// Delay clipboard read so the foreground app has time to finish its copy
-// between the two physical key presses of a chord.
 const CLIPBOARD_READ_DELAY_MS: number = 100
 const CHORD_WINDOW_MS: number = 500
 

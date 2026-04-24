@@ -48,9 +48,6 @@ const DISPLAY_LABELS: Record<ShortcutModifier, {
   },
 }
 
-// `CommandOrControl` resolves to `meta` on darwin and `ctrl` elsewhere when
-// parsed with a platform hint, so the default is platform-aware without
-// storing a different value per OS.
 export const DEFAULT_QUICK_TRANSLATE_ACCELERATOR: string = 'CommandOrControl+C+C'
 
 function toPlatformKind(platform: Platform): PlatformKind {

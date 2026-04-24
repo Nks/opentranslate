@@ -77,8 +77,6 @@ export function createQuickTranslateRegistrar(
       }
     }
 
-    // uiohook's modifier filter only honors meta/ctrl; alt/shift are not
-    // exposed. Surface the limitation rather than silently ignoring it.
     if (shortcut.modifier !== 'meta' && shortcut.modifier !== 'ctrl') {
       return {
         ok: false,

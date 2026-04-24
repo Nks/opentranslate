@@ -4,9 +4,6 @@ export function applyContentSecurityPolicy(options: {
   isDev: boolean
   devRendererUrl: string | undefined
 }): void {
-  // CSP is a defense-in-depth layer; the real boundary is contextIsolation +
-  // sandbox + nodeIntegration: false. Dev needs 'unsafe-inline' + 'unsafe-eval'
-  // for hydration and HMR.
   const csp: string = options.isDev
     ? [
         "default-src 'self'",
