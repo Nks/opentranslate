@@ -16,19 +16,12 @@ const themeSchema = z.enum(['system', 'light', 'dark'])
 const retentionSchema = z.enum(['forever', 'last-30-days', 'last-100-entries'])
 const providerIdSchema = z.enum(PROVIDER_IDS)
 
-/**
- * Accept any accelerator string that our quick-translate parser understands.
- * Validation is platform-independent on purpose: `CommandOrControl+C+C`
- * parses successfully regardless of the running OS.
- */
 const quickTranslateAcceleratorSchema = z
   .string()
   .min(1)
   .refine(
-    (value) => validateQuickTranslateShortcut(value, 'linux').length === 0,
-    {
-      message: 'Invalid quick-translate shortcut accelerator',
-    },
+    (value: string): boolean => validateQuickTranslateShortcut(value, 'linux').length === 0,
+    { message: 'Invalid quick-translate shortcut accelerator' },
   )
 
 const shortcutsSchema = z.object({

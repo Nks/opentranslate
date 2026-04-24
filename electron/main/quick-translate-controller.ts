@@ -1,13 +1,3 @@
-/**
- * Thin controller that owns the quick-translate lifecycle in the main
- * process: macOS Accessibility permission dance, clipboard read on chord,
- * observer registration, and re-registration when the renderer updates
- * the shortcut.
- *
- * All side effects (dialog, permission check, clipboard read, window
- * focus) are injected through `ControllerDeps` so the module stays
- * testable in isolation and main/index.ts stays under the 500-line budget.
- */
 import {
   createQuickTranslateRegistrar,
   type QuickTranslateRegistrar,
@@ -22,85 +12,61 @@ import {
   formatShortcutForDisplay,
   parseQuickTranslateShortcut,
 } from '@shared/shortcuts/quick-translate'
+import {
+  WARNING_COPY,
+} from '@electron/main/quick-translate-messages'
 
 export interface QuickTranslateControllerDeps {
-  /**
-   * Returns `true` when the global key observer may start. On macOS this
-   * checks for Accessibility permission and, if missing, surfaces the
-   * user-facing dialog and returns `false` so the caller can skip
-   * registration.
-   */
   ensureAccessibilityPermission: () => boolean
-  /** Read the current clipboard text. */
   readClipboardText: () => string
-  /**
-   * Push the captured text into the focused translation window. The
-   * controller only calls this when clipboard text is present.
-   */
   sendTextToMainWindow: (text: string) => void
-  /** Surface a warning to the user (typically an Electron MessageBox). */
   showWarning: (input: {
     title: string
     message: string
     detail: string
   }) => void
-  /** Logger for failures; receives a short tag and the offending error. */
   logger?: (message: string, err?: unknown) => void
-  /**
-   * Register a teardown hook. Called when the registrar is first built
-   * so the host app (usually Electron's `will-quit`) can stop the
-   * observer cleanly on exit.
-   */
   onAppExit: (listener: () => void) => void
-  /** `process.platform` — allowed to be injected for tests. */
   platform: NodeJS.Platform
 }
 
 export interface QuickTranslateController {
-  /** Initial registration during app bootstrap. */
   start: (accelerator: string, enabled: boolean) => void
-  /**
-   * Re-apply in response to a user-initiated settings change. Silent
-   * when nothing changed; surfaces a warning when the new observer
-   * fails to start and leaves the previous observer active. When
-   * `enabled` is `false` the active observer is torn down.
-   */
   applyFromSettings: (accelerator: string, enabled: boolean) => void
-  /** Current registrar state, primarily for diagnostics. */
   registrar: () => QuickTranslateRegistrar | null
 }
 
-/**
- * Delay before reading the clipboard after a chord fires. Gives the
- * foreground app time to finish writing to the clipboard between the
- * two physical key presses.
- */
-const CLIPBOARD_READ_DELAY_MS = 100
+// Delay clipboard read so the foreground app has time to finish its copy
+// between the two physical key presses of a chord.
+const CLIPBOARD_READ_DELAY_MS: number = 100
+const CHORD_WINDOW_MS: number = 500
 
 export function createQuickTranslateController(
   deps: QuickTranslateControllerDeps,
 ): QuickTranslateController {
   let registrar: QuickTranslateRegistrar | null = null
   let lastApplied: string | null = null
-  let lastEnabled = false
+  let lastEnabled: boolean = false
 
   function buildRegistrar(): QuickTranslateRegistrar {
-    const registrarDeps = deps.logger
+    const registrarDeps: Parameters<typeof createQuickTranslateRegistrar>[0] = deps.logger
       ? {
           createObserver: createKeyObserver,
-          createDetector: () => createChordDetector({ windowMs: 500 }),
+          createDetector: (): ReturnType<typeof createChordDetector> =>
+            createChordDetector({ windowMs: CHORD_WINDOW_MS }),
           keyMap: loadUiohookKeyMap(),
           onChord: handleChord,
           logger: deps.logger,
         }
       : {
           createObserver: createKeyObserver,
-          createDetector: () => createChordDetector({ windowMs: 500 }),
+          createDetector: (): ReturnType<typeof createChordDetector> =>
+            createChordDetector({ windowMs: CHORD_WINDOW_MS }),
           keyMap: loadUiohookKeyMap(),
           onChord: handleChord,
         }
-    const built = createQuickTranslateRegistrar(registrarDeps)
-    deps.onAppExit(() => {
+    const built: QuickTranslateRegistrar = createQuickTranslateRegistrar(registrarDeps)
+    deps.onAppExit((): void => {
       built.stop()
     })
 
@@ -108,8 +74,8 @@ export function createQuickTranslateController(
   }
 
   function handleChord(): void {
-    setTimeout(() => {
-      const text = deps.readClipboardText().trim()
+    setTimeout((): void => {
+      const text: string = deps.readClipboardText().trim()
 
       if (text.length === 0) {
         return
@@ -137,22 +103,16 @@ export function createQuickTranslateController(
 
     registrar ??= buildRegistrar()
 
-    const result = registrar.apply(accelerator)
+    const result: ReturnType<QuickTranslateRegistrar['apply']> = registrar.apply(accelerator)
 
     if (!result.ok) {
       deps.logger?.('[shortcuts] quick-translate registration failed', result.reason)
-
-      const message = deps.platform === 'darwin'
-        ? 'Could not start the global key observer. Check that ' +
-        'OpenTranslate Desktop has Accessibility permission in ' +
-        'System Settings → Privacy & Security → Accessibility.'
-        : 'Could not start the global key observer. The quick-translate ' +
-          'shortcut will be unavailable until the app is restarted.'
-
       deps.showWarning({
-        title: 'Quick Translate unavailable',
-        message: 'Quick translate shortcut could not be registered',
-        detail: `${message}\n\nDetails: ${result.reason}`,
+        title: WARNING_COPY.unavailable.title,
+        message: WARNING_COPY.unavailable.message,
+        detail: `${deps.platform === 'darwin'
+          ? WARNING_COPY.unavailable.detailDarwin
+          : WARNING_COPY.unavailable.detailOther}\n\nDetails: ${result.reason}`,
       })
 
       return false
@@ -180,8 +140,6 @@ export function createQuickTranslateController(
       return
     }
 
-    // Disable: tear down any active observer and remember the new state so
-    // a future re-enable picks up the latest accelerator.
     if (!enabled) {
       registrar?.stop()
       lastApplied = accelerator
@@ -190,7 +148,6 @@ export function createQuickTranslateController(
       return
     }
 
-    // Re-enable or first-time enable after startup skipped registration.
     if (!registrar || !lastEnabled) {
       if (registerObserver(accelerator)) {
         lastApplied = accelerator
@@ -200,16 +157,14 @@ export function createQuickTranslateController(
       return
     }
 
-    const result = registrar.apply(accelerator)
+    const result: ReturnType<QuickTranslateRegistrar['apply']> = registrar.apply(accelerator)
 
     if (!result.ok) {
       deps.logger?.('[shortcuts] quick-translate re-registration failed', result.reason)
       deps.showWarning({
-        title: 'Quick Translate shortcut not applied',
-        message: 'The new quick-translate shortcut could not be registered',
-        detail:
-          `The previous shortcut "${formatPrevious()}" remains active.\n\n` +
-          `Details: ${result.reason}`,
+        title: WARNING_COPY.notApplied.title,
+        message: WARNING_COPY.notApplied.message,
+        detail: `The previous shortcut "${formatPrevious()}" remains active.\n\nDetails: ${result.reason}`,
       })
 
       return
@@ -222,18 +177,13 @@ export function createQuickTranslateController(
   return {
     start,
     applyFromSettings,
-    registrar: () => registrar,
+    registrar: (): QuickTranslateRegistrar | null => registrar,
   }
 }
 
-/**
- * Lazy-load the `UiohookKey` map. Keeps the controller factory free of a
- * direct `uiohook-napi` import, which makes unit tests runnable in
- * environments where the native module isn't available.
- */
 function loadUiohookKeyMap(): Readonly<Record<string, unknown>> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require('uiohook-napi') as { UiohookKey: Readonly<Record<string, unknown>> }
+  const mod: { UiohookKey: Readonly<Record<string, unknown>> } = require('uiohook-napi')
 
   return mod.UiohookKey
 }

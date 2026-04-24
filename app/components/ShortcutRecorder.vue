@@ -1,33 +1,29 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import {
   formatShortcutForDisplay,
   parseQuickTranslateShortcut,
+  type Platform,
   type ShortcutModifier,
 } from '@shared/shortcuts/quick-translate'
 
 interface Props {
-  /**
-   * Host platform. `process.platform` isn't available in the renderer, so
-   * the parent is responsible for passing the OS hint captured via
-   * `api.getPlatform()`.
-   */
-  platform: NodeJS.Platform | 'darwin' | 'win32' | 'linux' | string
+  platform: Platform
   ariaLabel?: string
 }
 
 interface Emits {
-  (e: 'error', message: string): void
+  (event: 'error', message: string): void
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 const model = defineModel<string>({ required: true })
 
-const recording = ref<boolean>(false)
+const recording: Ref<boolean> = ref<boolean>(false)
 
-const displayValue = computed<string>(() => {
+const displayValue: ComputedRef<string> = computed<string>((): string => {
   try {
     const parsed = parseQuickTranslateShortcut(model.value, props.platform)
 
@@ -50,39 +46,41 @@ function normalizeEventKey(key: string): string | null {
 }
 
 function collectModifiers(event: KeyboardEvent): ShortcutModifier[] {
-  const out: ShortcutModifier[] = []
+  const modifiers: ShortcutModifier[] = []
 
-  if (event.metaKey) out.push('meta')
+  if (event.metaKey) {
+    modifiers.push('meta')
+  }
 
-  if (event.ctrlKey) out.push('ctrl')
+  if (event.ctrlKey) {
+    modifiers.push('ctrl')
+  }
 
-  if (event.altKey) out.push('alt')
+  if (event.altKey) {
+    modifiers.push('alt')
+  }
 
-  if (event.shiftKey) out.push('shift')
+  if (event.shiftKey) {
+    modifiers.push('shift')
+  }
 
-  return out
+  return modifiers
 }
 
 function modifierToToken(modifier: ShortcutModifier): string {
   switch (modifier) {
-    case 'meta':
-      return 'Meta'
-    case 'ctrl':
-      return 'Ctrl'
-    case 'alt':
-      return 'Alt'
-    case 'shift':
-      return 'Shift'
+    case 'meta': return 'Meta'
+    case 'ctrl': return 'Ctrl'
+    case 'alt': return 'Alt'
+    case 'shift': return 'Shift'
   }
 }
 
-function buildAccelerator(
-  modifiers: ShortcutModifier[],
-  key: string,
-): string {
-  const parts = modifiers.map(modifierToToken)
-  parts.push(key)
-  parts.push(key)
+// Output is always a chord accelerator ("Mod+K+K"): we append the key twice
+// to match the storage format used by the main-process registrar.
+function buildChordAccelerator(modifiers: ShortcutModifier[], key: string): string {
+  const parts: string[] = modifiers.map(modifierToToken)
+  parts.push(key, key)
 
   return parts.join('+')
 }
@@ -100,55 +98,57 @@ function clearShortcut(): void {
   model.value = ''
 }
 
+function handleKeydown(event: KeyboardEvent): void {
+  if (!recording.value) {
+    return
+  }
+  event.preventDefault()
+  event.stopPropagation()
+
+  if (event.key === 'Escape') {
+    cancelRecording()
+
+    return
+  }
+
+  const keyName: string | null = normalizeEventKey(event.key)
+
+  if (keyName === null) {
+    return
+  }
+
+  const modifiers: ShortcutModifier[] = collectModifiers(event)
+
+  if (modifiers.length === 0) {
+    emit('error', 'Shortcut must include at least one modifier (Ctrl/⌘/Alt/Shift)')
+
+    return
+  }
+
+  const accelerator: string = buildChordAccelerator(modifiers, keyName)
+
+  try {
+    parseQuickTranslateShortcut(accelerator, props.platform)
+  } catch (err: unknown) {
+    emit('error', err instanceof Error ? err.message : String(err))
+
+    return
+  }
+
+  recording.value = false
+  model.value = accelerator
+}
+
 useEventListener(
   typeof window === 'undefined' ? null : window,
   'keydown',
-  (event: KeyboardEvent) => {
-    if (!recording.value) {
-      return
-    }
-    event.preventDefault()
-    event.stopPropagation()
-
-    if (event.key === 'Escape') {
-      cancelRecording()
-
-      return
-    }
-
-    const keyName = normalizeEventKey(event.key)
-
-    if (keyName === null) {
-      return
-    }
-
-    const modifiers = collectModifiers(event)
-
-    if (modifiers.length === 0) {
-      emit('error', 'Shortcut must include at least one modifier (Ctrl/⌘/Alt/Shift)')
-
-      return
-    }
-
-    const accelerator = buildAccelerator(modifiers, keyName)
-
-    try {
-      parseQuickTranslateShortcut(accelerator, props.platform)
-    } catch (err) {
-      emit('error', err instanceof Error ? err.message : String(err))
-
-      return
-    }
-
-    recording.value = false
-    model.value = accelerator
-  },
+  handleKeydown,
   { capture: true },
 )
 
 watch(
-  () => model.value,
-  () => {
+  (): string => model.value,
+  (): void => {
     recording.value = false
   },
 )

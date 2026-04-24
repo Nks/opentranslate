@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { useHandleError } from '@app/composables/useHandleError'
 import type { ShortcutsSettings } from '@shared/types/settings'
+import type { Platform } from '@shared/shortcuts/quick-translate'
 
 interface Props {
   shortcuts: ShortcutsSettings
-  platform: NodeJS.Platform | 'unknown' | string
+  platform: Platform | 'unknown'
 }
 
 interface Emits {
@@ -16,7 +17,7 @@ const emit = defineEmits<Emits>()
 
 const handleError = useHandleError()
 
-function onQuickTranslateShortcutChange(value: string) {
+function onQuickTranslateShortcutChange(value: string): void {
   if (value.length === 0) {
     handleError(new Error('Shortcut cannot be empty. Record a new combo or keep the current one.'))
 
@@ -28,14 +29,14 @@ function onQuickTranslateShortcutChange(value: string) {
   })
 }
 
-function onQuickTranslateEnabledChange(value: boolean) {
+function onQuickTranslateEnabledChange(value: boolean): void {
   emit('update:shortcuts', {
     ...props.shortcuts,
     quickTranslateEnabled: value,
   })
 }
 
-function onShortcutRecorderError(message: string) {
+function onShortcutRecorderError(message: string): void {
   handleError(new Error(message))
 }
 </script>
