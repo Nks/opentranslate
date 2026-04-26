@@ -2,7 +2,7 @@
   "name": "opentranslate-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "MIT-licensed desktop translator with a DeepL-style workflow. Electron + Nuxt 4 + Nuxt UI + TypeScript.",
+  "description": "MIT-licensed desktop translator with a two-pane workflow. Electron + Nuxt 4 + Nuxt UI + TypeScript.",
   "license": "MIT",
   "author": "OpenTranslate Desktop contributors",
   "homepage": "https://github.com/Nks/opentranslate",

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, type Ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import type { TabsItem } from '@nuxt/ui'
 import { useSettingsStore } from '@app/stores/settings'
 import { useProvidersStore } from '@app/stores/providers'
@@ -24,7 +24,7 @@ const {
   testProviderConnection,
 } = useSettingsPage()
 
-const activeTab: Ref<string> = ref<string>('general')
+const activeTab = ref<string>('general')
 
 const tabs: TabsItem[] = [
   { label: 'General', value: 'general', icon: 'i-fluent-settings-24-regular' },

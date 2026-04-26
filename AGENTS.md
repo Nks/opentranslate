@@ -17,7 +17,7 @@ Do not use Ruflo as an executor for file writes or shell commands.
 
 This document defines the mandatory rules for all coding agents, contributors, and automation working in the **OpenTranslate Desktop** repository.
 
-The goal of this repository is to build a **MIT-licensed desktop translator** with a **DeepL-style UX** using:
+The goal of this repository is to build a **MIT-licensed desktop translator** with a **two-pane translator UX** using:
 
 - **Electron**
 - **Nuxt 4**
@@ -260,7 +260,7 @@ A provider feature is considered available only when:
 
 ## UI / UX Rules
 
-The product must remain DeepL-style in workflow, not visually cloned pixel-by-pixel.
+The product must remain a two-pane translator in workflow, not visually cloned pixel-by-pixel from any specific vendor.
 
 Agents must preserve:
 

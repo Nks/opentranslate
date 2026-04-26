@@ -178,7 +178,7 @@ describe('settings store', () => {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       app: {
         ...defaultAppSettings,
-        activeProvider: 'deepl',
+        activeProvider: 'unknown-provider',
       },
       providers: {
         google: defaultGoogleProviderSettings,

@@ -6,7 +6,7 @@
 
 ## 2. Product Definition
 
-OpenTranslate Desktop is a cross-platform desktop translator that reproduces the DeepL Translate desktop workflow for the parts that can be implemented consistently on top of two selectable providers:
+OpenTranslate Desktop is a cross-platform desktop translator that delivers a two-pane desktop translation workflow for the parts that can be implemented consistently on top of two selectable providers:
 
 - Google Cloud Translation
 - LibreTranslate
@@ -22,7 +22,7 @@ The application is defined as:
 
 ## 3. Product Goal
 
-Deliver a fully open-source desktop translator with a DeepL-style user experience for:
+Deliver a fully open-source desktop translator with a polished two-pane user experience for:
 
 - text translation
 - quick translation from any app via shortcut
@@ -447,7 +447,7 @@ The repository must include `docs/self-hosting/libretranslate.md`.
 
 ## 13.1 Visual Design
 
-The application uses a DeepL-style desktop layout.
+The application uses a two-pane translator desktop layout.
 
 ### Required Characteristics
 
@@ -669,7 +669,7 @@ These decisions are fixed and remove ambiguity from the specification.
 
 1. The product is a desktop client only.
 2. The shared feature set is provider-neutral first.
-3. The design target is DeepL-style desktop interaction.
+3. The design target is a two-pane desktop translator interaction.
 4. Provider-specific enterprise features are excluded from the common UI.
 5. Google document translation requires Advanced provider configuration.
 6. LibreTranslate document translation requires runtime capability confirmation.
@@ -680,7 +680,7 @@ These decisions are fixed and remove ambiguity from the specification.
 
 ## 24. Final Scope Statement
 
-OpenTranslate Desktop is a MIT-licensed Electron desktop translator with a Nuxt 4 + Nuxt UI frontend. It reproduces the DeepL desktop translation workflow for:
+OpenTranslate Desktop is a MIT-licensed Electron desktop translator with a Nuxt 4 + Nuxt UI frontend. It delivers a two-pane desktop translation workflow for:
 
 - text translation
 - global shortcut quick translation
