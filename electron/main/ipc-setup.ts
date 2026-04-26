@@ -144,6 +144,16 @@ function registerSettingsChannels(
       return result
     },
   ))
+  ipcMain.handle(channels['settings:reset'], safeHandler(async () => {
+    const result = await handlers['settings:reset']()
+
+    getController()?.applyFromSettings(
+      result.app.shortcuts.quickTranslate,
+      result.app.shortcuts.quickTranslateEnabled,
+    )
+
+    return result
+  }))
   ipcMain.handle(channels['secrets:set'], safeHandler(
     (_event: unknown, input: unknown) =>
       handlers['secrets:set'](input as {

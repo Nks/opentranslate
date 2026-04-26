@@ -114,10 +114,6 @@ button. Show a toast notification (via Nuxt UI `useToast`) confirming
 the save succeeded or failed. Remove the current auto-save-on-change
 behavior.
 
-### B-015: Reset local data confirmation
-The "Reset Local Data" button must show a confirmation dialog before
-executing. Use Nuxt UI `Modal` or `AlertDialog` for the confirmation.
-
 ### B-016: Default shortcut based on OS
 - macOS: `⌘+C+C` (show ⌘ icon, not "Command")
 - Windows: `Ctrl+C+C`

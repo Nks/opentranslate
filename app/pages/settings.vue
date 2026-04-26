@@ -113,6 +113,7 @@ onMounted((): void => {
             v-if="activeTab === 'advanced'"
             :advanced="settingsStore.app.advanced"
             @update:advanced="onAdvancedChange"
+            @reset-complete="loadSettings"
           />
 
           <SettingsAboutTab v-if="activeTab === 'about'" />

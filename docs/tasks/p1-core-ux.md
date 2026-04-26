@@ -54,16 +54,6 @@ translating" with a button linking to Settings > Providers.
 
 ---
 
-### B-015: Reset local data confirmation
-**Category:** Settings
-**Effort:** Small
-**Files:** `app/pages/settings.vue`
-
-The "Reset Local Data" button must show a confirmation dialog before
-executing. Use Nuxt UI `Modal` or `AlertDialog`.
-
----
-
 ### B-016: Default shortcut based on OS
 **Category:** Settings
 **Effort:** Small

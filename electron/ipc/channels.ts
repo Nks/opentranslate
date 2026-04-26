@@ -44,6 +44,7 @@ export const channels = {
   'provider:switch': 'provider:switch',
   'settings:get': 'settings:get',
   'settings:update': 'settings:update',
+  'settings:reset': 'settings:reset',
   'secrets:set': 'secrets:set',
   'secrets:test': 'secrets:test',
   'translation:translate': 'translation:translate',
@@ -132,6 +133,10 @@ export interface ChannelContract {
   }
   'settings:update': {
     request: SettingsUpdate
+    response: SettingsGetResponseShape
+  }
+  'settings:reset': {
+    request: void
     response: SettingsGetResponseShape
   }
   'secrets:set': {
