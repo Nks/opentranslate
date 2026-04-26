@@ -72,7 +72,11 @@ describe('settings store', () => {
       app: {
         ...defaultAppSettings,
         debounceMs: 600,
-        activeProvider: 'google',
+        activeProvider: {
+          providerId: 'google',
+          sourceSelection: { mode: 'auto' },
+          targetLanguage: 'de',
+        },
       },
     })
     const listAfterWrite = await readdir(dir)
@@ -85,7 +89,11 @@ describe('settings store', () => {
 
     expect(parsed.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
     expect(parsed.app.debounceMs).toBe(600)
-    expect(parsed.app.activeProvider).toBe('google')
+    expect(parsed.app.activeProvider).toEqual({
+      providerId: 'google',
+      sourceSelection: { mode: 'auto' },
+      targetLanguage: 'de',
+    })
 
     const storeTwo = createSettingsStore({
       userDataDir: dir,
@@ -94,6 +102,8 @@ describe('settings store', () => {
     const reloaded = await storeTwo.load()
 
     expect(reloaded.app.debounceMs).toBe(600)
+    expect(reloaded.app.activeProvider.providerId).toBe('google')
+    expect(reloaded.app.activeProvider.targetLanguage).toBe('de')
   })
 
   it('rejects an invalid partial update before writing to disk', async () => {
@@ -178,7 +188,7 @@ describe('settings store', () => {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       app: {
         ...defaultAppSettings,
-        activeProvider: 'unknown-provider',
+        debounceMs: 'not-a-number',
       },
       providers: {
         google: defaultGoogleProviderSettings,
@@ -192,7 +202,7 @@ describe('settings store', () => {
     })
     const loaded = await store.load()
 
-    expect(loaded.app.activeProvider).toBe(defaultAppSettings.activeProvider)
+    expect(loaded.app.debounceMs).toBe(defaultAppSettings.debounceMs)
   })
 
   it('reset() writes defaults and returns them', async () => {
@@ -226,5 +236,81 @@ describe('settings store', () => {
     const loaded = await store.load()
 
     expect(loaded.app).toEqual(defaultAppSettings)
+  })
+
+  it('default activeProvider is an empty selection', async () => {
+    const store = createSettingsStore({
+      userDataDir: dir,
+      providers,
+    })
+    const loaded = await store.load()
+
+    expect(loaded.app.activeProvider).toEqual({
+      providerId: null,
+      sourceSelection: { mode: 'auto' },
+      targetLanguage: null,
+    })
+  })
+
+  it('persists an activeProvider-only patch without touching unrelated app fields', async () => {
+    const store = createSettingsStore({
+      userDataDir: dir,
+      providers,
+    })
+    await store.load()
+    await store.save({
+      app: {
+        debounceMs: 800,
+      },
+    })
+
+    const saved = await store.save({
+      app: {
+        activeProvider: {
+          providerId: 'libretranslate',
+          sourceSelection: {
+            mode: 'explicit',
+            code: 'en',
+          },
+          targetLanguage: 'fr',
+        },
+      },
+    })
+
+    expect(saved.app.debounceMs).toBe(800)
+    expect(saved.app.activeProvider).toEqual({
+      providerId: 'libretranslate',
+      sourceSelection: {
+        mode: 'explicit',
+        code: 'en',
+      },
+      targetLanguage: 'fr',
+    })
+  })
+
+  it('migrates a legacy scalar activeProvider string to the structured selection form', async () => {
+    const legacyPayload = {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      app: {
+        ...defaultAppSettings,
+        activeProvider: 'google',
+      },
+      providers: {
+        google: defaultGoogleProviderSettings,
+        libretranslate: defaultLibreTranslateProviderSettings,
+      },
+    }
+    await writeFile(join(dir, SETTINGS_FILE), JSON.stringify(legacyPayload), 'utf8')
+    const store = createSettingsStore({
+      userDataDir: dir,
+      providers,
+    })
+    const loaded = await store.load()
+
+    expect(loaded.app.activeProvider).toEqual({
+      providerId: 'google',
+      sourceSelection: { mode: 'auto' },
+      targetLanguage: null,
+    })
   })
 })

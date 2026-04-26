@@ -1,9 +1,6 @@
 import {
   z,
 } from 'zod'
-import {
-  PROVIDER_IDS,
-} from '@shared/types/provider-id'
 import type {
   AppSettings,
 } from '@shared/types/settings'
@@ -14,7 +11,6 @@ import {
 
 const themeSchema = z.enum(['system', 'light', 'dark'])
 const retentionSchema = z.enum(['forever', 'last-30-days', 'last-100-entries'])
-const providerIdSchema = z.enum(PROVIDER_IDS)
 
 const quickTranslateAcceleratorSchema = z
   .string()
@@ -34,6 +30,22 @@ const advancedSchema = z.object({
   requestTimeoutMs: z.number().int().positive(),
 })
 
+const sourceSelectionSchema = z.discriminatedUnion('mode', [
+  z.object({
+    mode: z.literal('auto'),
+  }),
+  z.object({
+    mode: z.literal('explicit'),
+    code: z.string().min(1),
+  }),
+])
+
+export const activeProviderSelectionSchema = z.object({
+  providerId: z.string().min(1).nullable(),
+  sourceSelection: sourceSelectionSchema,
+  targetLanguage: z.string().min(1).nullable(),
+})
+
 export const appSettingsSchema = z.object({
   launchAtStartup: z.boolean(),
   theme: themeSchema,
@@ -43,7 +55,7 @@ export const appSettingsSchema = z.object({
   historyRetentionMode: retentionSchema,
   shortcuts: shortcutsSchema,
   advanced: advancedSchema,
-  activeProvider: providerIdSchema,
+  activeProvider: activeProviderSelectionSchema,
 })
 
 export const defaultAppSettings: AppSettings = {
@@ -61,5 +73,11 @@ export const defaultAppSettings: AppSettings = {
   advanced: {
     requestTimeoutMs: 15_000,
   },
-  activeProvider: 'libretranslate',
+  activeProvider: {
+    providerId: null,
+    sourceSelection: {
+      mode: 'auto',
+    },
+    targetLanguage: null,
+  },
 }

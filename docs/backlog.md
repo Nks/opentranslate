@@ -24,12 +24,6 @@ If none of the providers are active, display a centered message:
 "Configure a provider in Settings to start translating" with a button
 linking to the Settings → Providers tab.
 
-### B-004: Persist last-selected provider and languages
-The app must remember the user's last-selected provider, source language,
-and target language across sessions. Restore on next launch.
-
----
-
 ## Language Selection
 
 ### B-005: Fix swap languages toggle button

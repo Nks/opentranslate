@@ -83,7 +83,11 @@ describe('settings:reset handler', () => {
       app: {
         ...defaultAppSettings,
         debounceMs: 999,
-        activeProvider: 'google',
+        activeProvider: {
+          providerId: 'google',
+          sourceSelection: { mode: 'auto' },
+          targetLanguage: null,
+        },
       },
     })
 

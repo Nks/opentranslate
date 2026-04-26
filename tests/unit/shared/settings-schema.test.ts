@@ -14,13 +14,42 @@ describe('appSettingsSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rejects unknown activeProvider', () => {
+  it('accepts a structured activeProvider selection', () => {
+    const ok = {
+      ...defaultAppSettings,
+      activeProvider: {
+        providerId: 'google',
+        sourceSelection: {
+          mode: 'explicit',
+          code: 'en',
+        },
+        targetLanguage: 'fr',
+      },
+    }
+    expect(appSettingsSchema.safeParse(ok).success).toBe(true)
+  })
+
+  it('rejects activeProvider when it is a bare string (legacy shape)', () => {
     const bad = {
       ...defaultAppSettings,
-      activeProvider: 'unknown-provider',
+      activeProvider: 'google',
     }
-    const result = appSettingsSchema.safeParse(bad)
-    expect(result.success).toBe(false)
+    expect(appSettingsSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects an explicit source selection with an empty code', () => {
+    const bad = {
+      ...defaultAppSettings,
+      activeProvider: {
+        providerId: 'google',
+        sourceSelection: {
+          mode: 'explicit',
+          code: '',
+        },
+        targetLanguage: null,
+      },
+    }
+    expect(appSettingsSchema.safeParse(bad).success).toBe(false)
   })
 
   it('rejects invalid debounceMs', () => {
