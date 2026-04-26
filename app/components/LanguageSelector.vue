@@ -1,23 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useVModel } from '@vueuse/core'
 import type { Language } from '@shared/types/language'
 
 interface Props {
   languages: Language[]
-  modelValue: string | null
   label: string
   autoDetectOption?: boolean
 }
 
-interface Emits {
-  'update:modelValue': [value: string | null]
-}
-
 const props = defineProps<Props>()
-const emit = defineEmits<Emits>()
-
-const model = useVModel(props, 'modelValue', emit)
+const model = defineModel<string | null>({ required: true })
 
 const codeToName = computed<Map<string, string>>(() => {
   const map = new Map<string, string>()
@@ -47,7 +39,7 @@ const selectedName = computed<string>(() => {
   return codeToName.value.get(model.value) ?? model.value
 })
 
-function onChange(name: string) {
+function onChange(name: string): void {
   if (name === 'Auto Detect') {
     model.value = null
 
@@ -62,7 +54,7 @@ function onChange(name: string) {
   <UFormField>
     <USelect
       :model-value="selectedName"
-      :items="items"
+      :items
       :placeholder="autoDetectOption ? 'Auto Detect' : 'Select language'"
       :aria-label="label"
       class="w-40"

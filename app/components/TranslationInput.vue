@@ -1,28 +1,34 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useVModel } from '@vueuse/core'
 
 interface Props {
-  modelValue: string
+  disabled?: boolean
 }
 
 interface Emits {
-  'update:modelValue': [value: string]
   clear: []
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), { disabled: false })
+const model = defineModel<string>({ required: true })
 const emit = defineEmits<Emits>()
 
-const model = useVModel(props, 'modelValue', emit)
 const charCount = computed<number>(() => model.value.length)
+const placeholder = computed<string>(() =>
+  props.disabled ? 'Configure a provider to translate' : 'Type or paste text here...',
+)
 </script>
 
 <template>
-  <div class="flex flex-col h-full">
+  <div
+    class="flex flex-col h-full"
+    :class="{ 'opacity-60': disabled }"
+  >
     <UTextarea
       v-model="model"
-      placeholder="Type or paste text here..."
+      :placeholder
+      :disabled
+      :readonly="disabled"
       aria-label="Source text"
       autofocus
       variant="none"
@@ -32,7 +38,7 @@ const charCount = computed<number>(() => model.value.length)
     <div class="flex items-center justify-between mt-2 px-1 text-sm text-muted">
       <span>{{ charCount }} characters</span>
       <UButton
-        v-if="model.length > 0"
+        v-if="model.length > 0 && !disabled"
         size="xs"
         variant="ghost"
         aria-label="Clear input"
