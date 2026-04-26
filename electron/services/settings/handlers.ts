@@ -35,6 +35,7 @@ export interface SecretsTestResponse {
 export interface SettingsAndSecretsHandlers {
   'settings:get': () => Promise<SettingsGetResponse>
   'settings:update': (patch: SettingsUpdate) => Promise<SettingsGetResponse>
+  'settings:reset': () => Promise<SettingsGetResponse>
   'secrets:set': (input: SecretsSetRequest) => Promise<SecretsSetResponse>
   'secrets:test': (input: SecretsTestRequest) => Promise<SecretsTestResponse>
 }
@@ -62,6 +63,14 @@ export function createSettingsAndSecretsHandlers(
       return {
         app: updated.app,
         providers: updated.providers,
+      }
+    },
+    'settings:reset': async () => {
+      const reset = await deps.store.reset()
+
+      return {
+        app: reset.app,
+        providers: reset.providers,
       }
     },
     'secrets:set': async ({

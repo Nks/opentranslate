@@ -78,6 +78,7 @@ const api = {
     get: (): Promise<SettingsGetResponseShape> => invoke('settings:get'),
     update: (patch: SettingsUpdate): Promise<SettingsGetResponseShape> =>
       invoke('settings:update', patch),
+    reset: (): Promise<SettingsGetResponseShape> => invoke('settings:reset'),
   },
   secrets: {
     set: (input: SecretsSetRequestShape): Promise<SecretsSetResponseShape> =>
