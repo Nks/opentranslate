@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import {
   formatShortcutForDisplay,
@@ -21,9 +21,9 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 const model = defineModel<string>({ required: true })
 
-const recording: Ref<boolean> = ref<boolean>(false)
+const recording = ref<boolean>(false)
 
-const displayValue: ComputedRef<string> = computed<string>((): string => {
+const displayValue = computed<string>((): string => {
   try {
     const parsed = parseQuickTranslateShortcut(model.value, props.platform)
 

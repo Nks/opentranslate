@@ -1,6 +1,4 @@
-import {
-  ref, type Ref,
-} from 'vue'
+import { ref } from 'vue'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
 import { useSettingsStore } from '@app/stores/settings'
@@ -8,38 +6,21 @@ import { useProvidersStore } from '@app/stores/providers'
 
 const SAVE_MESSAGE_TTL_MS: number = 2_000
 
-export interface SettingsPageState {
-  saving: Ref<boolean>
-  saveMessage: Ref<string | null>
-  platform: Ref<NodeJS.Platform | 'unknown'>
-  providerSettings: Ref<Record<string, Record<string, unknown>>>
-  testingProvider: Ref<string | null>
-  providerTestResult: Ref<Record<string, string>>
-  loadSettings: () => Promise<void>
-  loadProviders: () => Promise<void>
-  loadPlatform: () => Promise<void>
-  saveSettings: (patch: Record<string, unknown>) => Promise<void>
-  onAppFieldChange: (key: string, value: unknown) => void
-  onProviderFieldChange: (providerId: string, key: string, value: unknown) => Promise<void>
-  onSecretChange: (providerId: string, key: string, value: string) => Promise<void>
-  testProviderConnection: (providerId: string) => Promise<void>
-}
-
-export function useSettingsPage(): SettingsPageState {
+export function useSettingsPage() {
+  const api = useApi()
   const settingsStore = useSettingsStore()
   const providersStore = useProvidersStore()
   const handleError = useHandleError()
 
-  const saving: Ref<boolean> = ref(false)
-  const saveMessage: Ref<string | null> = ref(null)
-  const platform: Ref<NodeJS.Platform | 'unknown'> = ref('unknown')
-  const providerSettings: Ref<Record<string, Record<string, unknown>>> = ref({})
-  const testingProvider: Ref<string | null> = ref(null)
-  const providerTestResult: Ref<Record<string, string>> = ref({})
+  const saving = ref<boolean>(false)
+  const saveMessage = ref<string | null>(null)
+  const platform = ref<NodeJS.Platform | 'unknown'>('unknown')
+  const providerSettings = ref<Record<string, Record<string, unknown>>>({})
+  const testingProvider = ref<string | null>(null)
+  const providerTestResult = ref<Record<string, string>>({})
 
   async function loadSettings(): Promise<void> {
     try {
-      const api = useApi()
       const result = await api.settings.get()
       settingsStore.app = result.app
 
@@ -53,7 +34,6 @@ export function useSettingsPage(): SettingsPageState {
 
   async function loadProviders(): Promise<void> {
     try {
-      const api = useApi()
       const descriptors = await api.providers.list()
       providersStore.descriptors = descriptors as typeof providersStore.descriptors
     } catch (err: unknown) {
@@ -63,7 +43,6 @@ export function useSettingsPage(): SettingsPageState {
 
   async function loadPlatform(): Promise<void> {
     try {
-      const api = useApi()
       platform.value = await api.getPlatform()
     } catch (err: unknown) {
       handleError(err)
@@ -75,7 +54,6 @@ export function useSettingsPage(): SettingsPageState {
     saveMessage.value = null
 
     try {
-      const api = useApi()
       await api.settings.update(patch)
       saveMessage.value = 'Saved'
       setTimeout((): void => {
@@ -112,7 +90,6 @@ export function useSettingsPage(): SettingsPageState {
 
     if (providersStore.activeProviderId === providerId) {
       try {
-        const api = useApi()
         await api.providers.switch({ providerId })
       } catch (err: unknown) {
         handleError(err)
@@ -126,7 +103,6 @@ export function useSettingsPage(): SettingsPageState {
     value: string,
   ): Promise<void> {
     try {
-      const api = useApi()
       await api.secrets.set({
         providerId,
         secret: value,
@@ -141,7 +117,6 @@ export function useSettingsPage(): SettingsPageState {
     providerTestResult.value[providerId] = ''
 
     try {
-      const api = useApi()
       const result = await api.providers.switch({ providerId })
       providerTestResult.value[providerId] = result.error ??
         `OK — ${result.languages.length} languages loaded`

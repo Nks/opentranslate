@@ -11,6 +11,7 @@ const SEARCH_DEBOUNCE_MS = 300
  * All IPC calls go through `useApi()`.
  */
 export function useHistory() {
+  const api = useApi()
   const store = useHistoryStore()
 
   async function loadEntries() {
@@ -18,8 +19,6 @@ export function useHistory() {
     store.error = null
 
     try {
-      const api = useApi()
-
       if (store.searchQuery.trim().length > 0) {
         store.entries = await api.history.search({ query: store.searchQuery })
       } else {
@@ -36,7 +35,6 @@ export function useHistory() {
 
   async function deleteEntry(id: string) {
     try {
-      const api = useApi()
       await api.history.delete({ id })
       store.entries = store.entries.filter((entry) => entry.id !== id)
     } catch (err) {
@@ -46,7 +44,6 @@ export function useHistory() {
 
   async function clearAll() {
     try {
-      const api = useApi()
       await api.history.clear()
       store.entries = []
     } catch (err) {
