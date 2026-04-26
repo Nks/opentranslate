@@ -137,22 +137,50 @@ function mergeSettings(
   }
 }
 
+function migrateActiveProvider(app: Record<string, unknown>): Record<string, unknown> {
+  const raw = app.activeProvider
+
+  if (typeof raw === 'string') {
+    return {
+      ...app,
+      activeProvider: {
+        providerId: raw,
+        sourceSelection: {
+          mode: 'auto',
+        },
+        targetLanguage: null,
+      },
+    }
+  }
+
+  return app
+}
+
 function migrate(raw: unknown): unknown {
   if (raw === null || typeof raw !== 'object') {
     return raw
   }
   const candidate = raw as {
     schemaVersion?: unknown
+    app?: unknown
+  }
+
+  let next: Record<string, unknown> = {
+    ...(candidate as Record<string, unknown>),
   }
 
   if (candidate.schemaVersion === undefined) {
-    return {
-      ...candidate,
-      schemaVersion: CURRENT_SCHEMA_VERSION,
+    next.schemaVersion = CURRENT_SCHEMA_VERSION
+  }
+
+  if (next.app !== undefined && typeof next.app === 'object' && next.app !== null) {
+    next = {
+      ...next,
+      app: migrateActiveProvider(next.app as Record<string, unknown>),
     }
   }
 
-  return raw
+  return next
 }
 
 async function atomicWrite(targetPath: string, data: string): Promise<void> {

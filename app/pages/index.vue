@@ -7,6 +7,10 @@ import { useTranslation } from '@app/composables/useTranslation'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
 
+interface QuickTranslateBridge {
+  api?: { quickTranslate: { onText: (callback: (text: string) => void) => void } }
+}
+
 const api = useApi()
 const translationStore = useTranslationStore()
 const providersStore = useProvidersStore()
@@ -14,73 +18,76 @@ const {
   scheduleTranslate,
   clearInput,
   switchProvider,
+  persistSelection,
+  restoreSelection,
 } = useTranslation()
 const handleError = useHandleError()
 
-async function loadProviders() {
+async function loadProviders(): Promise<void> {
   try {
     const descriptors = await api.providers.list()
     providersStore.descriptors = descriptors as typeof providersStore.descriptors
-  } catch (err) {
+  } catch (err: unknown) {
     handleError(err)
   }
 }
 
-onMounted(() => {
-  void loadProviders()
+function registerQuickTranslateListener(): void {
+  const bridge = window as unknown as QuickTranslateBridge
 
-  // Register quick-translate listener directly on window.api (not through
-  // useApi/wrapApi) because onText takes a callback — wrapApi would
-  // JSON-serialize it, destroying the function reference.
-  const win = window as unknown as {
-    api?: { quickTranslate: { onText: (cb: (text: string) => void) => void } }
+  if (!bridge.api?.quickTranslate?.onText) {
+    return
   }
+  bridge.api.quickTranslate.onText((text: string): void => {
+    translationStore.sourceText = text
+    scheduleTranslate()
+  })
+}
 
-  if (win.api?.quickTranslate?.onText) {
-    win.api.quickTranslate.onText((text: string) => {
-      translationStore.sourceText = text
-      scheduleTranslate()
-    })
-  }
+onMounted(async (): Promise<void> => {
+  await loadProviders()
+  await restoreSelection()
+  registerQuickTranslateListener()
 })
 
-function onSourceInput(value: string) {
+function onSourceInput(value: string): void {
   translationStore.sourceText = value
   scheduleTranslate()
 }
 
-function onSourceLanguageChange(code: string | null) {
-  if (code === null) {
-    providersStore.sourceSelection = { mode: 'auto' }
-  } else {
-    providersStore.sourceSelection = { mode: 'explicit', code }
-  }
+function onSourceLanguageChange(code: string | null): void {
+  providersStore.sourceSelection = code === null
+    ? { mode: 'auto' }
+    : { mode: 'explicit', code }
 
+  persistSelection()
   scheduleTranslate()
 }
 
-function onTargetLanguageChange(code: string | null) {
+function onTargetLanguageChange(code: string | null): void {
   providersStore.targetLanguage = code
+  persistSelection()
   scheduleTranslate()
 }
 
-const sourceCode = computed<string | null>(() =>
+const sourceCode = computed<string | null>((): string | null =>
   providersStore.sourceSelection.mode === 'explicit'
     ? providersStore.sourceSelection.code
     : null,
 )
 
-function swapLanguages() {
+function swapLanguages(): void {
   if (providersStore.sourceSelection.mode !== 'explicit') {
     return
   }
 
-  const currentSource = providersStore.sourceSelection.code
-  const currentTarget = providersStore.targetLanguage
+  const currentSource: string = providersStore.sourceSelection.code
+  const currentTarget: string | null = providersStore.targetLanguage
 
   if (currentTarget) {
     providersStore.sourceSelection = { mode: 'explicit', code: currentTarget }
   }
+
   if (currentSource) {
     providersStore.targetLanguage = currentSource
   }
@@ -90,69 +97,35 @@ function swapLanguages() {
     translationStore.translatedText = ''
   }
 
+  persistSelection()
   scheduleTranslate()
 }
 
 const navItems: NavigationMenuItem[] = [
-  {
-    label: 'History',
-    icon: 'i-fluent-history-24-regular',
-    to: '/history',
-  },
-  {
-    label: 'Documents',
-    icon: 'i-fluent-document-24-regular',
-    to: '/documents',
-  },
-  {
-    label: 'Settings',
-    icon: 'i-fluent-settings-24-regular',
-    to: '/settings',
-  },
+  { label: 'History', icon: 'i-fluent-history-24-regular', to: '/history' },
+  { label: 'Documents', icon: 'i-fluent-document-24-regular', to: '/documents' },
+  { label: 'Settings', icon: 'i-fluent-settings-24-regular', to: '/settings' },
 ]
 </script>
 
 <template>
   <UApp>
     <div class="min-h-screen flex flex-col bg-default">
-      <!-- Top Bar -->
-      <div class="flex items-center gap-4 px-4 py-3 border-b border-default">
-        <ProviderSelector
-          :providers="providersStore.descriptors"
-          :active-id="providersStore.activeProviderId"
-          @switch="switchProvider"
-        />
-        <LanguageSelector
-          :languages="providersStore.sourceLanguages"
-          :model-value="sourceCode"
-          label="Source language"
-          :auto-detect-option="true"
-          @update:model-value="onSourceLanguageChange"
-        />
-        <UButton
-          size="xs"
-          variant="ghost"
-          icon="i-fluent-arrow-swap-24-regular"
-          aria-label="Swap languages"
-          :disabled="providersStore.sourceSelection.mode === 'auto'"
-          @click="swapLanguages"
-        />
-        <LanguageSelector
-          :languages="providersStore.targetLanguages"
-          :model-value="providersStore.targetLanguage"
-          label="Target language"
-          @update:model-value="onTargetLanguageChange"
-        />
-        <div class="ml-auto flex items-center gap-1">
-          <UNavigationMenu
-            :items="navItems"
-            variant="pill"
-          />
-          <UColorModeButton />
-        </div>
-      </div>
+      <TopBar
+        :providers="providersStore.descriptors"
+        :active-provider-id="providersStore.activeProviderId"
+        :source-languages="providersStore.sourceLanguages"
+        :source-code
+        :target-languages="providersStore.targetLanguages"
+        :target-language="providersStore.targetLanguage"
+        :swap-disabled="providersStore.sourceSelection.mode === 'auto'"
+        :nav-items
+        @switch="switchProvider"
+        @source-change="onSourceLanguageChange"
+        @target-change="onTargetLanguageChange"
+        @swap="swapLanguages"
+      />
 
-      <!-- Two-pane translation area -->
       <div class="flex-1 grid grid-cols-2 gap-0 divide-x divide-default">
         <div class="p-4">
           <TranslationInput
@@ -171,29 +144,12 @@ const navItems: NavigationMenuItem[] = [
         </div>
       </div>
 
-      <!-- Provider error banner -->
-      <div
+      <ProviderErrorBanner
         v-if="providersStore.error"
-        class="px-4 py-3 text-sm bg-elevated border-b border-default"
-      >
-        <div class="flex items-start gap-2">
-          <UIcon
-            name="i-fluent-warning-24-regular"
-            class="shrink-0 text-error mt-0.5"
-          />
-          <pre class="flex-1 text-error whitespace-pre-wrap wrap-break-word font-mono text-xs">{{ providersStore.error }}</pre>
-          <UButton
-            size="xs"
-            variant="ghost"
-            aria-label="Dismiss error"
-            @click="providersStore.error = null"
-          >
-            Dismiss
-          </UButton>
-        </div>
-      </div>
+        :message="providersStore.error"
+        @dismiss="providersStore.error = null"
+      />
 
-      <!-- Status Bar -->
       <StatusBar
         :loading="translationStore.loading || providersStore.loading"
         :error="translationStore.error"

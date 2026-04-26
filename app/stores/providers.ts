@@ -13,6 +13,9 @@ import type {
 import type {
   SourceLanguageSelection,
 } from '@shared/types/translation'
+import type {
+  ActiveProviderSelection,
+} from '@shared/types/settings'
 
 export const useProvidersStore = defineStore('providers', {
   state: () => ({
@@ -32,5 +35,23 @@ export const useProvidersStore = defineStore('providers', {
     targetLanguages: (state) => state.languages.filter((lang) => lang.supportsTarget),
     activeDescriptor: (state) =>
       state.descriptors.find((desc) => desc.id === state.activeProviderId) ?? null,
+    currentSelection(): ActiveProviderSelection {
+      return {
+        providerId: this.activeProviderId,
+        sourceSelection: this.sourceSelection,
+        targetLanguage: this.targetLanguage,
+      }
+    },
+  },
+  actions: {
+    hydrateFromSelection(selection: ActiveProviderSelection): void {
+      const candidate = selection.providerId
+      const isKnown = candidate !== null &&
+        this.descriptors.some((desc) => desc.id === candidate)
+
+      this.activeProviderId = isKnown ? candidate : null
+      this.sourceSelection = selection.sourceSelection
+      this.targetLanguage = selection.targetLanguage
+    },
   },
 })

@@ -4,28 +4,32 @@ import {
 import { useTranslationStore } from '@app/stores/translation'
 import { useProvidersStore } from '@app/stores/providers'
 import { useSettingsStore } from '@app/stores/settings'
-import { useApi } from './useApi'
-import { useHandleError } from './useHandleError'
+import { useApi } from '@app/composables/useApi'
+import { useHandleError } from '@app/composables/useHandleError'
+import { useSelectionPersistence } from '@app/composables/useSelectionPersistence'
+import {
+  reconcileSource,
+  reconcileTarget,
+} from '@app/composables/useSelectionReconcile'
 
-/**
- * Composable encapsulating the core translation workflow.
- *
- * Provides debounced translate, cancel, clear, and provider switching.
- * All provider communication goes through `useApi()`.
- */
+type DebouncedTranslate = PromisifyFn<() => Promise<void>> & { cancel: () => void }
+
 export function useTranslation() {
   const api = useApi()
   const translationStore = useTranslationStore()
   const providersStore = useProvidersStore()
   const settingsStore = useSettingsStore()
   const handleError = useHandleError()
+  const {
+    persist: persistSelection, restore: restoreSelection,
+  } = useSelectionPersistence()
 
-  async function executeTranslate() {
+  async function executeTranslate(): Promise<void> {
     if (!providersStore.activeProviderId) {
       return
     }
 
-    const text = translationStore.sourceText.trim()
+    const text: string = translationStore.sourceText.trim()
 
     if (text.length === 0) {
       translationStore.translatedText = ''
@@ -48,47 +52,50 @@ export function useTranslation() {
         translationStore.translatedText = result.translatedText
         translationStore.detectedSourceLanguage = result.detectedSourceLanguage ?? null
 
-        // Add to history (fire-and-forget)
-        void api.history.add({
-          sourceText: translationStore.sourceText,
-          translatedText: result.translatedText,
-          sourceLanguageCode: result.detectedSourceLanguage ??
-            (providersStore.sourceSelection.mode === 'explicit'
-              ? providersStore.sourceSelection.code
-              : 'auto'),
-          targetLanguageCode: providersStore.targetLanguage ?? 'en',
-          provider: providersStore.activeProviderId ?? 'unknown',
-        }).catch(() => {
-          // History recording failure must not break translation
-        })
+        recordHistoryEntry(result.translatedText, result.detectedSourceLanguage ?? null)
       }
-    } catch (err) {
+    } catch (err: unknown) {
       translationStore.error = err instanceof Error ? err.message : String(err)
     } finally {
       translationStore.loading = false
     }
   }
 
-  type DebouncedTranslate = PromisifyFn<typeof executeTranslate> & { cancel: () => void }
+  function recordHistoryEntry(translatedText: string, detectedSource: string | null): void {
+    const sourceLanguageCode: string = detectedSource ??
+      (providersStore.sourceSelection.mode === 'explicit'
+        ? providersStore.sourceSelection.code
+        : 'auto')
 
-  const scheduleTranslate = useDebounceFn(
+    void api.history
+      .add({
+        sourceText: translationStore.sourceText,
+        translatedText,
+        sourceLanguageCode,
+        targetLanguageCode: providersStore.targetLanguage ?? 'en',
+        provider: providersStore.activeProviderId ?? 'unknown',
+      })
+      .catch((err: unknown): void => handleError(err))
+  }
+
+  const scheduleTranslate: DebouncedTranslate = useDebounceFn(
     executeTranslate,
     settingsStore.app.debounceMs,
   ) as DebouncedTranslate
 
-  function cancelTranslation() {
+  function cancelTranslation(): void {
     if (typeof scheduleTranslate.cancel === 'function') {
       scheduleTranslate.cancel()
     }
 
     try {
       void api.translation.cancel()
-    } catch (err) {
+    } catch (err: unknown) {
       handleError(err)
     }
   }
 
-  function clearInput() {
+  function clearInput(): void {
     translationStore.sourceText = ''
     translationStore.translatedText = ''
     translationStore.detectedSourceLanguage = null
@@ -96,9 +103,12 @@ export function useTranslation() {
     cancelTranslation()
   }
 
-  async function switchProvider(providerId: string) {
+  async function switchProvider(providerId: string): Promise<void> {
     providersStore.loading = true
     providersStore.error = null
+
+    const previousTarget: string | null = providersStore.targetLanguage
+    const previousSource = providersStore.sourceSelection
 
     try {
       const result = await api.providers.switch({ providerId })
@@ -106,17 +116,27 @@ export function useTranslation() {
       providersStore.activeProviderId = providerId
       providersStore.languages = result.languages
       providersStore.capabilities = result.capabilities
-      providersStore.sourceSelection = result.selection.source
-      providersStore.targetLanguage = result.selection.target
+      providersStore.sourceSelection = reconcileSource(
+        previousSource,
+        result.selection.source,
+        result.languages,
+      )
+      providersStore.targetLanguage = reconcileTarget(
+        previousTarget,
+        result.selection.target,
+        result.languages,
+      )
 
       if (result.error) {
         providersStore.error = result.error
       }
 
+      persistSelection()
+
       if (translationStore.sourceText.trim().length > 0) {
         void scheduleTranslate()
       }
-    } catch (err) {
+    } catch (err: unknown) {
       providersStore.error = err instanceof Error ? err.message : String(err)
     } finally {
       providersStore.loading = false
@@ -128,5 +148,7 @@ export function useTranslation() {
     cancelTranslation,
     clearInput,
     switchProvider,
+    persistSelection,
+    restoreSelection,
   }
 }

@@ -14,16 +14,6 @@ configured/active provider.
 
 ---
 
-### B-004: Persist last-selected provider and languages
-**Category:** Provider Selection
-**Effort:** Small
-**Files:** `app/stores/providers.ts`, `electron/services/settings/store.ts`
-
-Remember last-selected provider, source language, and target language
-across sessions. Restore on next launch via `AppSettings.activeProvider`.
-
----
-
 ### B-006: Output language must never be Auto Detect
 **Category:** Language Selection
 **Effort:** Small
