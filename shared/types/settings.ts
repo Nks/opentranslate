@@ -13,7 +13,6 @@ export interface ShortcutsSettings {
 
 export interface AdvancedSettings {
   requestTimeoutMs: number
-  libreAllowSelfSignedTls: boolean
 }
 
 export interface AppSettings {

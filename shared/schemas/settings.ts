@@ -32,7 +32,6 @@ const shortcutsSchema = z.object({
 
 const advancedSchema = z.object({
   requestTimeoutMs: z.number().int().positive(),
-  libreAllowSelfSignedTls: z.boolean(),
 })
 
 export const appSettingsSchema = z.object({
@@ -61,7 +60,6 @@ export const defaultAppSettings: AppSettings = {
   },
   advanced: {
     requestTimeoutMs: 15_000,
-    libreAllowSelfSignedTls: false,
   },
   activeProvider: 'libretranslate',
 }

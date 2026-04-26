@@ -18,13 +18,6 @@ function onTimeoutChange(raw: string): void {
     requestTimeoutMs: Number(raw),
   })
 }
-
-function onTlsChange(value: boolean): void {
-  emit('update:advanced', {
-    ...props.advanced,
-    libreAllowSelfSignedTls: value,
-  })
-}
 </script>
 
 <template>
@@ -35,13 +28,6 @@ function onTlsChange(value: boolean): void {
         :model-value="String(advanced.requestTimeoutMs)"
         aria-label="Request timeout"
         @update:model-value="onTimeoutChange"
-      />
-    </UFormField>
-
-    <UFormField label="Allow self-signed TLS (LibreTranslate)">
-      <USwitch
-        :model-value="advanced.libreAllowSelfSignedTls"
-        @update:model-value="onTlsChange"
       />
     </UFormField>
 
