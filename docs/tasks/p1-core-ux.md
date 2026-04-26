@@ -54,17 +54,6 @@ translating" with a button linking to Settings > Providers.
 
 ---
 
-### B-027: Remove duplicate "Allow self-signed TLS" from Advanced
-**Category:** Settings
-**Effort:** Small
-**Files:** `shared/types/settings.ts`, `app/pages/settings.vue`
-
-Remove `libreAllowSelfSignedTls` from `AdvancedSettings` type and
-Advanced tab UI. The LibreTranslate descriptor already declares
-`allowSelfSignedTls` in its own `settingsFields`.
-
----
-
 ### B-015: Reset local data confirmation
 **Category:** Settings
 **Effort:** Small

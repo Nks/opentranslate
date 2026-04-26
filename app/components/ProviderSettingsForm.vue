@@ -18,6 +18,7 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+const api = useApi()
 const secretValues = ref<Record<string, string>>({})
 const secretPresence = ref<Record<string, boolean>>({})
 
@@ -56,7 +57,6 @@ const advancedFields = computed<readonly ProviderSettingsField[]>(() =>
 
 async function checkSecretPresence() {
   try {
-    const api = useApi()
     const result = await api.secrets.test({ providerId: props.providerId })
     secretPresence.value[props.providerId] = result.present
   } catch {

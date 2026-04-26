@@ -12,6 +12,7 @@ const provider = ref<string>('')
 const loading = ref<boolean>(true)
 const error = ref<string | null>(null)
 
+const api = useApi()
 const { copy: copyText } = useClipboard()
 const handleError = useHandleError()
 
@@ -21,7 +22,6 @@ async function copyTranslation() {
 
 function openInFull() {
   try {
-    const api = useApi()
     void api.quickTranslate.openFull()
   } catch (err) {
     handleError(err)
@@ -30,7 +30,6 @@ function openInFull() {
 
 function closeOverlay() {
   try {
-    const api = useApi()
     void api.quickTranslate.close()
   } catch (err) {
     handleError(err)

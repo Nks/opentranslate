@@ -7,20 +7,31 @@ import {
 import type {
   AppSettings,
 } from '@shared/types/settings'
+import {
+  DEFAULT_QUICK_TRANSLATE_ACCELERATOR,
+  validateQuickTranslateShortcut,
+} from '@shared/shortcuts/quick-translate'
 
 const themeSchema = z.enum(['system', 'light', 'dark'])
 const retentionSchema = z.enum(['forever', 'last-30-days', 'last-100-entries'])
 const providerIdSchema = z.enum(PROVIDER_IDS)
 
+const quickTranslateAcceleratorSchema = z
+  .string()
+  .min(1)
+  .refine(
+    (value: string): boolean => validateQuickTranslateShortcut(value, 'linux').length === 0,
+    { message: 'Invalid quick-translate shortcut accelerator' },
+  )
+
 const shortcutsSchema = z.object({
-  quickTranslate: z.string().min(1),
+  quickTranslate: quickTranslateAcceleratorSchema,
   openMain: z.string().min(1),
   quickTranslateEnabled: z.boolean(),
 })
 
 const advancedSchema = z.object({
   requestTimeoutMs: z.number().int().positive(),
-  libreAllowSelfSignedTls: z.boolean(),
 })
 
 export const appSettingsSchema = z.object({
@@ -43,13 +54,12 @@ export const defaultAppSettings: AppSettings = {
   historyEnabled: true,
   historyRetentionMode: 'forever',
   shortcuts: {
-    quickTranslate: 'CommandOrControl+C+C',
+    quickTranslate: DEFAULT_QUICK_TRANSLATE_ACCELERATOR,
     openMain: 'CommandOrControl+Shift+T',
     quickTranslateEnabled: true,
   },
   advanced: {
     requestTimeoutMs: 15_000,
-    libreAllowSelfSignedTls: false,
   },
   activeProvider: 'libretranslate',
 }

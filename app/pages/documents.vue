@@ -15,6 +15,7 @@ const error = ref<string | null>(null)
 const supported = ref<boolean>(false)
 const statusMessage = ref<string>('Checking provider capability...')
 
+const api = useApi()
 const { copy: copyPath } = useClipboard()
 const handleError = useHandleError()
 
@@ -25,7 +26,6 @@ function extractFileName(path: string): string {
 
 async function checkDocumentSupport() {
   try {
-    const api = useApi()
     const status = await api.documents.status()
     supported.value = status.supported
     statusMessage.value = status.message ?? (status.supported
@@ -40,7 +40,6 @@ async function checkDocumentSupport() {
 
 async function pickFile() {
   try {
-    const api = useApi()
     const result = await api.documents.pick()
 
     if (result) {
@@ -64,7 +63,6 @@ async function translateDocument() {
   outputPath.value = null
 
   try {
-    const api = useApi()
     const result = await api.documents.translate({
       filePath: filePath.value,
       sourceLanguage: { mode: 'auto' },

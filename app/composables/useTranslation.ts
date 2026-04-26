@@ -14,6 +14,7 @@ import { useHandleError } from './useHandleError'
  * All provider communication goes through `useApi()`.
  */
 export function useTranslation() {
+  const api = useApi()
   const translationStore = useTranslationStore()
   const providersStore = useProvidersStore()
   const settingsStore = useSettingsStore()
@@ -37,7 +38,6 @@ export function useTranslation() {
     translationStore.error = null
 
     try {
-      const api = useApi()
       const result = await api.translation.translate({
         text: translationStore.sourceText,
         source: providersStore.sourceSelection,
@@ -82,7 +82,6 @@ export function useTranslation() {
     }
 
     try {
-      const api = useApi()
       void api.translation.cancel()
     } catch (err) {
       handleError(err)
@@ -102,7 +101,6 @@ export function useTranslation() {
     providersStore.error = null
 
     try {
-      const api = useApi()
       const result = await api.providers.switch({ providerId })
 
       providersStore.activeProviderId = providerId

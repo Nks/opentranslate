@@ -7,6 +7,7 @@ import { useTranslation } from '@app/composables/useTranslation'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
 
+const api = useApi()
 const translationStore = useTranslationStore()
 const providersStore = useProvidersStore()
 const {
@@ -18,7 +19,6 @@ const handleError = useHandleError()
 
 async function loadProviders() {
   try {
-    const api = useApi()
     const descriptors = await api.providers.list()
     providersStore.descriptors = descriptors as typeof providersStore.descriptors
   } catch (err) {

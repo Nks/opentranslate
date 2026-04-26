@@ -92,15 +92,6 @@ tokens at runtime and persist across sessions via settings store.
 Users should be able to pick primary color, neutral color, and
 border radius preference.
 
-### B-027: Remove duplicate "Allow self-signed TLS" from Advanced
-The "Allow self-signed TLS (LibreTranslate)" toggle appears both in
-Settings → Advanced and in Settings → Providers → LibreTranslate.
-Provider-specific settings must live exclusively in the provider's
-own settings section, not in the global Advanced tab. Remove
-`libreAllowSelfSignedTls` from `AdvancedSettings` in the `AppSettings`
-type and the Advanced tab UI. The LibreTranslate descriptor already
-declares `allowSelfSignedTls` in its `settingsFields`.
-
 ### B-011: Separate providers by tabs in Settings
 Refactor the Providers section in Settings to use a horizontal tab bar
 (one tab per provider) instead of a single scrollable list.
