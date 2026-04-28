@@ -1,17 +1,17 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { NavigationMenuItem } from '@nuxt/ui'
 import type { ProviderDescriptorDto } from '@shared/providers/descriptor'
 import type { Language } from '@shared/types/language'
+import type { SourceLanguageSelection } from '@shared/types/translation'
 
 interface Props {
   providers: ProviderDescriptorDto[]
   activeProviderId: string | null
   sourceLanguages: Language[]
-  sourceCode: string | null
   targetLanguages: Language[]
+  sourceSelection: SourceLanguageSelection
   targetLanguage: string | null
-  swapDisabled: boolean
-  navItems: NavigationMenuItem[]
 }
 
 interface Emits {
@@ -21,8 +21,22 @@ interface Emits {
   swap: []
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 defineEmits<Emits>()
+
+const sourceCode = computed<string | null>((): string | null =>
+  props.sourceSelection.mode === 'explicit' ? props.sourceSelection.code : null,
+)
+
+const swapDisabled = computed<boolean>(
+  (): boolean => props.sourceSelection.mode === 'auto',
+)
+
+const navItems: NavigationMenuItem[] = [
+  { label: 'History', icon: 'i-fluent-history-24-regular', to: '/history' },
+  { label: 'Documents', icon: 'i-fluent-document-24-regular', to: '/documents' },
+  { label: 'Settings', icon: 'i-fluent-settings-24-regular', to: '/settings' },
+]
 </script>
 
 <template>

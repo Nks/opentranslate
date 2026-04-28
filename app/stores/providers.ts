@@ -17,9 +17,15 @@ import type {
   ActiveProviderSelection,
 } from '@shared/types/settings'
 
+export interface RendererProviderSettings {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
 export const useProvidersStore = defineStore('providers', {
   state: () => ({
     descriptors: [] as ProviderDescriptorDto[],
+    providerSettings: {} as Record<string, RendererProviderSettings>,
     activeProviderId: null as string | null,
     languages: [] as Language[],
     capabilities: null as ProviderCapabilities | null,
@@ -35,6 +41,10 @@ export const useProvidersStore = defineStore('providers', {
     targetLanguages: (state) => state.languages.filter((lang) => lang.supportsTarget),
     activeDescriptor: (state) =>
       state.descriptors.find((desc) => desc.id === state.activeProviderId) ?? null,
+    activeDescriptors: (state): ProviderDescriptorDto[] =>
+      state.descriptors.filter((desc) => state.providerSettings[desc.id]?.enabled === true),
+    canTranslate: (state): boolean =>
+      state.activeProviderId !== null && state.capabilities?.textTranslation === true,
     currentSelection(): ActiveProviderSelection {
       return {
         providerId: this.activeProviderId,

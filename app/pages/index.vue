@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import type { NavigationMenuItem } from '@nuxt/ui'
 import { useTranslationStore } from '@app/stores/translation'
-import { useProvidersStore } from '@app/stores/providers'
+import {
+  useProvidersStore, type RendererProviderSettings,
+} from '@app/stores/providers'
 import { useTranslation } from '@app/composables/useTranslation'
+import { useProviderBootstrap } from '@app/composables/useProviderBootstrap'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
 
@@ -21,12 +23,24 @@ const {
   persistSelection,
   restoreSelection,
 } = useTranslation()
+const { maybeAutoSelectProvider } = useProviderBootstrap()
 const handleError = useHandleError()
 
-async function loadProviders(): Promise<void> {
+async function loadProvidersAndSettings(): Promise<void> {
   try {
-    const descriptors = await api.providers.list()
+    const [descriptors, settings] = await Promise.all([
+      api.providers.list(),
+      api.settings.get(),
+    ])
     providersStore.descriptors = descriptors as typeof providersStore.descriptors
+
+    const nextProviderSettings: Record<string, RendererProviderSettings> = {}
+
+    for (const [id, slice] of Object.entries(settings.providers)) {
+      nextProviderSettings[id] = (slice ?? {}) as RendererProviderSettings
+    }
+
+    providersStore.providerSettings = nextProviderSettings
   } catch (err: unknown) {
     handleError(err)
   }
@@ -45,10 +59,21 @@ function registerQuickTranslateListener(): void {
 }
 
 onMounted(async (): Promise<void> => {
-  await loadProviders()
+  await loadProvidersAndSettings()
   await restoreSelection()
+  maybeAutoSelectProvider((id: string): void => {
+    void switchProvider(id)
+  })
   registerQuickTranslateListener()
 })
+
+const hasConfiguredProvider = computed<boolean>(
+  (): boolean => providersStore.activeDescriptors.length > 0,
+)
+
+const inputDisabled = computed<boolean>(
+  (): boolean => !providersStore.canTranslate,
+)
 
 function onSourceInput(value: string): void {
   translationStore.sourceText = value
@@ -69,12 +94,6 @@ function onTargetLanguageChange(code: string | null): void {
   persistSelection()
   scheduleTranslate()
 }
-
-const sourceCode = computed<string | null>((): string | null =>
-  providersStore.sourceSelection.mode === 'explicit'
-    ? providersStore.sourceSelection.code
-    : null,
-)
 
 function swapLanguages(): void {
   if (providersStore.sourceSelection.mode !== 'explicit') {
@@ -101,11 +120,12 @@ function swapLanguages(): void {
   scheduleTranslate()
 }
 
-const navItems: NavigationMenuItem[] = [
-  { label: 'History', icon: 'i-fluent-history-24-regular', to: '/history' },
-  { label: 'Documents', icon: 'i-fluent-document-24-regular', to: '/documents' },
-  { label: 'Settings', icon: 'i-fluent-settings-24-regular', to: '/settings' },
-]
+function dismissProviderError(): void {
+  providersStore.error = null
+}
+
+function noopCopy(): void {
+}
 </script>
 
 <template>
@@ -115,21 +135,23 @@ const navItems: NavigationMenuItem[] = [
         :providers="providersStore.descriptors"
         :active-provider-id="providersStore.activeProviderId"
         :source-languages="providersStore.sourceLanguages"
-        :source-code
         :target-languages="providersStore.targetLanguages"
+        :source-selection="providersStore.sourceSelection"
         :target-language="providersStore.targetLanguage"
-        :swap-disabled="providersStore.sourceSelection.mode === 'auto'"
-        :nav-items
         @switch="switchProvider"
         @source-change="onSourceLanguageChange"
         @target-change="onTargetLanguageChange"
         @swap="swapLanguages"
       />
 
-      <div class="flex-1 grid grid-cols-2 gap-0 divide-x divide-default">
+      <div
+        v-if="hasConfiguredProvider"
+        class="flex-1 grid grid-cols-2 gap-0 divide-x divide-default"
+      >
         <div class="p-4">
           <TranslationInput
             :model-value="translationStore.sourceText"
+            :disabled="inputDisabled"
             @update:model-value="onSourceInput"
             @clear="clearInput"
           />
@@ -139,15 +161,16 @@ const navItems: NavigationMenuItem[] = [
             :text="translationStore.translatedText"
             :provider="providersStore.activeProviderId"
             :loading="translationStore.loading"
-            @copy="() => {}"
+            :disabled="inputDisabled"
+            @copy="noopCopy"
           />
         </div>
       </div>
+      <EmptyProviderState v-else />
 
       <ProviderErrorBanner
-        v-if="providersStore.error"
-        :message="providersStore.error"
-        @dismiss="providersStore.error = null"
+        :error="providersStore.error"
+        @dismiss="dismissProviderError"
       />
 
       <StatusBar

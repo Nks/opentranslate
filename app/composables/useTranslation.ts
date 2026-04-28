@@ -4,6 +4,7 @@ import {
 import { useTranslationStore } from '@app/stores/translation'
 import { useProvidersStore } from '@app/stores/providers'
 import { useSettingsStore } from '@app/stores/settings'
+import type { Language } from '@shared/types/language'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
 import { useSelectionPersistence } from '@app/composables/useSelectionPersistence'
@@ -103,7 +104,24 @@ export function useTranslation() {
     cancelTranslation()
   }
 
+  function pickFallbackTarget(
+    reconciledTarget: string | null,
+    languages: Language[],
+  ): string | null {
+    if (reconciledTarget !== null) {
+      return reconciledTarget
+    }
+
+    const firstCapable = languages.find((lang: Language): boolean => lang.supportsTarget)
+
+    return firstCapable?.code ?? null
+  }
+
   async function switchProvider(providerId: string): Promise<void> {
+    if (typeof scheduleTranslate.cancel === 'function') {
+      scheduleTranslate.cancel()
+    }
+
     providersStore.loading = true
     providersStore.error = null
 
@@ -121,11 +139,13 @@ export function useTranslation() {
         result.selection.source,
         result.languages,
       )
-      providersStore.targetLanguage = reconcileTarget(
+
+      const reconciledTarget = reconcileTarget(
         previousTarget,
         result.selection.target,
         result.languages,
       )
+      providersStore.targetLanguage = pickFallbackTarget(reconciledTarget, result.languages)
 
       if (result.error) {
         providersStore.error = result.error
@@ -133,10 +153,15 @@ export function useTranslation() {
 
       persistSelection()
 
-      if (translationStore.sourceText.trim().length > 0) {
+      const canSchedule = providersStore.canTranslate
+      const hasText = translationStore.sourceText.trim().length > 0
+
+      if (canSchedule && hasText) {
         void scheduleTranslate()
       }
     } catch (err: unknown) {
+      providersStore.capabilities = null
+      providersStore.languages = []
       providersStore.error = err instanceof Error ? err.message : String(err)
     } finally {
       providersStore.loading = false

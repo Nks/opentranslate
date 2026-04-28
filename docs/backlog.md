@@ -7,22 +7,12 @@ merged._
 
 ## Provider Selection & State
 
-### B-001: Auto-select first available provider on startup
-The "Select provider" dropdown should pick the first configured/active
-provider automatically when the app launches, instead of showing an empty
-state.
-
 ### B-002: Provider status indicators in dropdown
 The provider selector must show each provider's status:
 - **Active providers** (configured + reachable) listed first, normal style
 - **Inactive providers** (unconfigured or unreachable) listed at the bottom,
   greyed out with a clear "not configured" designation
 - User cannot select a disabled/inactive provider
-
-### B-003: Empty-state screen when no providers configured
-If none of the providers are active, display a centered message:
-"Configure a provider in Settings to start translating" with a button
-linking to the Settings → Providers tab.
 
 ## Language Selection
 
@@ -33,18 +23,9 @@ The swap (⇄) button on the index page does not work. Implement:
 - Re-trigger translation
 - Disable when source is Auto Detect (already done visually)
 
-### B-006: Output language must never be Auto Detect
-The target language selector should always default to the first available
-language from the provider, never show "Auto Detect" option.
-
 ### B-007: Disable language selectors when provider has no languages
 If the active provider returns an empty language list, both source and
 target language selectors should be disabled with a tooltip explaining why.
-
-### B-008: Disable textareas when no provider is active
-If no provider is selected/active, both input and output textareas should
-be disabled (read-only + dimmed) with placeholder text explaining the
-user needs to select a provider first.
 
 ### B-009: Show detected language in Auto Detect label
 When source is "Auto Detect" and a detection result comes back, display
