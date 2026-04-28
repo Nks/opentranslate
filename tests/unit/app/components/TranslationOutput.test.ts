@@ -60,3 +60,35 @@ describe('TranslationOutput disabled state', () => {
     expect(textarea.attributes('readonly')).toBeDefined()
   })
 })
+
+describe('TranslationOutput copy feedback', () => {
+  const stubs = {
+    UTextarea: {
+      props: ['modelValue'],
+      template: '<textarea :value="modelValue" />',
+    },
+    UIcon: true,
+    UButton: {
+      props: ['icon', 'ariaLabel'],
+      emits: ['click'],
+      template:
+        '<button :data-icon="icon" :aria-label="ariaLabel" @click="$emit(\'click\')"><slot /></button>',
+    },
+  }
+
+  it('shows "Copy" with copy icon by default', () => {
+    const wrapper = mount(TranslationOutput, {
+      props: {
+        text: 'Hola',
+        provider: 'libretranslate',
+        loading: false,
+      },
+      global: { stubs },
+    })
+    const button = wrapper.find('button')
+
+    expect(button.text()).toBe('Copy')
+    expect(button.attributes('data-icon')).toContain('copy')
+    expect(button.attributes('aria-label')).toMatch(/Copy translation/i)
+  })
+})

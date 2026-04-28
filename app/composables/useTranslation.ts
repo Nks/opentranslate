@@ -5,6 +5,7 @@ import { useTranslationStore } from '@app/stores/translation'
 import { useProvidersStore } from '@app/stores/providers'
 import { useSettingsStore } from '@app/stores/settings'
 import type { Language } from '@shared/types/language'
+import { formatErrorMessage } from '@shared/errors/format'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
 import { useSelectionPersistence } from '@app/composables/useSelectionPersistence'
@@ -35,12 +36,14 @@ export function useTranslation() {
     if (text.length === 0) {
       translationStore.translatedText = ''
       translationStore.error = null
+      translationStore.errorDetail = null
 
       return
     }
 
     translationStore.loading = true
     translationStore.error = null
+    translationStore.errorDetail = null
 
     try {
       const result = await api.translation.translate({
@@ -56,7 +59,9 @@ export function useTranslation() {
         recordHistoryEntry(result.translatedText, result.detectedSourceLanguage ?? null)
       }
     } catch (err: unknown) {
-      translationStore.error = err instanceof Error ? err.message : String(err)
+      const formatted = formatErrorMessage(err)
+      translationStore.error = formatted.short
+      translationStore.errorDetail = formatted.detail
     } finally {
       translationStore.loading = false
     }
@@ -101,6 +106,7 @@ export function useTranslation() {
     translationStore.translatedText = ''
     translationStore.detectedSourceLanguage = null
     translationStore.error = null
+    translationStore.errorDetail = null
     cancelTranslation()
   }
 
@@ -160,9 +166,10 @@ export function useTranslation() {
         void scheduleTranslate()
       }
     } catch (err: unknown) {
+      const formatted = formatErrorMessage(err)
       providersStore.capabilities = null
       providersStore.languages = []
-      providersStore.error = err instanceof Error ? err.message : String(err)
+      providersStore.error = formatted.short
     } finally {
       providersStore.loading = false
     }
