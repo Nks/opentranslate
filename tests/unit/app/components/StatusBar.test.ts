@@ -63,4 +63,53 @@ describe('StatusBar', () => {
 
     expect(wrapper.emitted('retry')).toBeTruthy()
   })
+
+  it('hides Show details button when errorDetail is null', () => {
+    const wrapper = mount(StatusBar, {
+      props: {
+        loading: false,
+        error: 'short error',
+        errorDetail: null,
+      },
+      global: {
+        stubs: {
+          UIcon: true,
+          UButton: {
+            template: '<button><slot /></button>',
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).not.toContain('Show details')
+  })
+
+  it('reveals the full error detail when Show details is clicked', async () => {
+    const wrapper = mount(StatusBar, {
+      props: {
+        loading: false,
+        error: 'short error',
+        errorDetail: '[invalid_provider_response] AppError: full stack',
+      },
+      global: {
+        stubs: {
+          UIcon: true,
+          UButton: {
+            template: '<button @click="$emit(\'click\')"><slot /></button>',
+            emits: ['click'],
+          },
+        },
+      },
+    })
+
+    expect(wrapper.find('pre').exists()).toBe(false)
+
+    const showDetailsButton = wrapper
+      .findAll('button')
+      .find((btn) => btn.text() === 'Show details')!
+    await showDetailsButton.trigger('click')
+
+    expect(wrapper.find('pre').text()).toContain('AppError: full stack')
+    expect(wrapper.text()).toContain('Hide details')
+  })
 })

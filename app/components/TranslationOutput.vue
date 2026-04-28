@@ -16,10 +16,15 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), { disabled: false })
 const emit = defineEmits<Emits>()
 
-const { copy: copyText } = useClipboard()
+const { copy: copyText, copied } = useClipboard({ copiedDuring: 2000 })
 
 const placeholder = computed<string>(() =>
   props.disabled ? 'Configure a provider to translate' : '',
+)
+
+const copyButtonLabel = computed<string>(() => copied.value ? 'Copied' : 'Copy')
+const copyButtonIcon = computed<string>(() =>
+  copied.value ? 'i-fluent-checkmark-24-regular' : 'i-fluent-copy-24-regular',
 )
 
 async function copyToClipboard(): Promise<void> {
@@ -62,10 +67,11 @@ async function copyToClipboard(): Promise<void> {
         v-if="text.length > 0 && !disabled"
         size="xs"
         variant="ghost"
-        aria-label="Copy translation"
+        :icon="copyButtonIcon"
+        :aria-label="copied ? 'Translation copied' : 'Copy translation'"
         @click="copyToClipboard"
       >
-        Copy
+        {{ copyButtonLabel }}
       </UButton>
     </div>
   </div>

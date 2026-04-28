@@ -176,6 +176,7 @@ function noopCopy(): void {
       <StatusBar
         :loading="translationStore.loading || providersStore.loading"
         :error="translationStore.error"
+        :error-detail="translationStore.errorDetail"
         @retry="scheduleTranslate"
       />
     </div>
