@@ -1,8 +1,12 @@
-import { ref } from 'vue'
+import {
+  ref, computed,
+} from 'vue'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
 import { useSettingsStore } from '@app/stores/settings'
-import { useProvidersStore } from '@app/stores/providers'
+import {
+  useProvidersStore, type RendererProviderSettings,
+} from '@app/stores/providers'
 
 const SAVE_MESSAGE_TTL_MS: number = 2_000
 
@@ -15,18 +19,26 @@ export function useSettingsPage() {
   const saving = ref<boolean>(false)
   const saveMessage = ref<string | null>(null)
   const platform = ref<NodeJS.Platform | 'unknown'>('unknown')
-  const providerSettings = ref<Record<string, Record<string, unknown>>>({})
   const testingProvider = ref<string | null>(null)
   const providerTestResult = ref<Record<string, string>>({})
+
+  const providerSettings = computed<Record<string, Record<string, unknown>>>(
+    (): Record<string, Record<string, unknown>> =>
+      providersStore.providerSettings as Record<string, Record<string, unknown>>,
+  )
 
   async function loadSettings(): Promise<void> {
     try {
       const result = await api.settings.get()
       settingsStore.app = result.app
 
+      const next: Record<string, RendererProviderSettings> = {}
+
       for (const [id, value] of Object.entries(result.providers)) {
-        providerSettings.value[id] = value as Record<string, unknown>
+        next[id] = (value ?? {}) as RendererProviderSettings
       }
+
+      providersStore.providerSettings = next
     } catch (err: unknown) {
       handleError(err)
     }
@@ -80,12 +92,16 @@ export function useSettingsPage() {
     key: string,
     value: unknown,
   ): Promise<void> {
-    const current: Record<string, unknown> = providerSettings.value[providerId] ?? {}
-    const updated: Record<string, unknown> = {
+    const current: RendererProviderSettings =
+      providersStore.providerSettings[providerId] ?? {}
+    const updated: RendererProviderSettings = {
       ...current,
       [key]: value,
     }
-    providerSettings.value[providerId] = updated
+    providersStore.providerSettings = {
+      ...providersStore.providerSettings,
+      [providerId]: updated,
+    }
     await saveSettings({ providers: { [providerId]: updated } })
 
     if (providersStore.activeProviderId === providerId) {

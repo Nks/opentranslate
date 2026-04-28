@@ -21,6 +21,8 @@ const codeToName = computed<Map<string, string>>(() => {
   return map
 })
 
+const isEmpty = computed<boolean>((): boolean => props.languages.length === 0)
+
 const items = computed<string[]>(() => {
   const names = props.languages.map((lang) => lang.name)
 
@@ -39,6 +41,20 @@ const selectedName = computed<string>(() => {
   return codeToName.value.get(model.value) ?? model.value
 })
 
+const placeholder = computed<string>(() => {
+  if (isEmpty.value) {
+    return 'Provider has no languages'
+  }
+
+  return props.autoDetectOption ? 'Auto Detect' : 'Select language'
+})
+
+const disabledTitle = computed<string>(() =>
+  isEmpty.value
+    ? 'Active provider returned no languages — pick another provider in Settings'
+    : '',
+)
+
 function onChange(name: string): void {
   if (name === 'Auto Detect') {
     model.value = null
@@ -52,13 +68,20 @@ function onChange(name: string): void {
 
 <template>
   <UFormField>
-    <USelect
-      :model-value="selectedName"
-      :items
-      :placeholder="autoDetectOption ? 'Auto Detect' : 'Select language'"
-      :aria-label="label"
-      class="w-40"
-      @update:model-value="onChange"
-    />
+    <UTooltip
+      :text="disabledTitle"
+      :prevent="!isEmpty"
+    >
+      <USelect
+        :model-value="selectedName"
+        :items
+        :placeholder
+        :disabled="isEmpty"
+        :aria-label="label"
+        :title="disabledTitle"
+        class="w-40"
+        @update:model-value="onChange"
+      />
+    </UTooltip>
   </UFormField>
 </template>

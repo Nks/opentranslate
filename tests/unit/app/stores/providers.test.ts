@@ -180,4 +180,57 @@ describe('providers store', () => {
     expect(store.sourceSelection).toEqual({ mode: 'auto' })
     expect(store.targetLanguage).toBe('de')
   })
+
+  it('activeDescriptors filters descriptors by providerSettings.enabled === true', () => {
+    const store = useProvidersStore()
+    store.descriptors = [
+      {
+        id: 'google',
+        displayName: 'Google',
+        description: '',
+        settingsFields: [],
+        secretFields: [],
+      },
+      {
+        id: 'libretranslate',
+        displayName: 'Libre',
+        description: '',
+        settingsFields: [],
+        secretFields: [],
+      },
+    ]
+    store.providerSettings = {
+      google: { enabled: false },
+      libretranslate: { enabled: true },
+    }
+
+    expect(store.activeDescriptors).toHaveLength(1)
+    expect(store.activeDescriptors[0]?.id).toBe('libretranslate')
+  })
+
+  it('activeDescriptors reacts to providerSettings updates without a reload', () => {
+    const store = useProvidersStore()
+    store.descriptors = [
+      {
+        id: 'libretranslate',
+        displayName: 'Libre',
+        description: '',
+        settingsFields: [],
+        secretFields: [],
+      },
+    ]
+    store.providerSettings = { libretranslate: { enabled: false } }
+
+    expect(store.activeDescriptors).toHaveLength(0)
+
+    store.providerSettings = {
+      ...store.providerSettings,
+      libretranslate: {
+        ...store.providerSettings.libretranslate,
+        enabled: true,
+      },
+    }
+
+    expect(store.activeDescriptors).toHaveLength(1)
+  })
 })

@@ -132,7 +132,7 @@ function noopCopy(): void {
   <UApp>
     <div class="min-h-screen flex flex-col bg-default">
       <TopBar
-        :providers="providersStore.descriptors"
+        :providers="providersStore.activeDescriptors"
         :active-provider-id="providersStore.activeProviderId"
         :source-languages="providersStore.sourceLanguages"
         :target-languages="providersStore.targetLanguages"
