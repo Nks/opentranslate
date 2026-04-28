@@ -38,8 +38,8 @@
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
     "@eslint/js": "^9.17.0",
-    "@nuxt/test-utils": "^4.0.2",
-    "@nuxt/ui": "^4.6.1",
+    "@nuxt/test-utils": "^4.0.3",
+    "@nuxt/ui": "^4.7.0",
     "@playwright/test": "^1.49.0",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@types/better-sqlite3": "^7.6.13",
