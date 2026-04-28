@@ -41,6 +41,7 @@ import type {
   DocumentTranslateRequestShape,
   DocumentTranslateResponseShape,
   DocumentStatusResponseShape,
+  GoogleCredentialsPickResponseShape,
 } from '@electron/ipc/channels'
 
 const allowedChannels = new Set<string>(Object.values(channels))
@@ -73,6 +74,8 @@ const api = {
     list: (): Promise<readonly ProviderDescriptorDto[]> => invoke('providers:list'),
     switch: (input: ProviderSwitchRequestShape): Promise<ProviderSwitchResponseShape> =>
       invoke('provider:switch', input),
+    pickGoogleCredentials: (): Promise<GoogleCredentialsPickResponseShape | null> =>
+      invoke('provider:pick-google-credentials'),
   },
   settings: {
     get: (): Promise<SettingsGetResponseShape> => invoke('settings:get'),

@@ -60,6 +60,7 @@ export const channels = {
   'document:pick': 'document:pick',
   'document:translate': 'document:translate',
   'document:status': 'document:status',
+  'provider:pick-google-credentials': 'provider:pick-google-credentials',
 } as const
 
 export type ChannelName = keyof typeof channels
@@ -199,6 +200,18 @@ export interface ChannelContract {
     request: void
     response: DocumentStatusResponseShape
   }
+  'provider:pick-google-credentials': {
+    request: void
+    response: GoogleCredentialsPickResponseShape | null
+  }
+}
+
+export interface GoogleCredentialsPickResponseShape {
+  path: string
+  valid: boolean
+  projectId?: string
+  clientEmail?: string
+  error?: string
 }
 
 export interface DocumentPickResponseShape {

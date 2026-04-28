@@ -1,8 +1,14 @@
 import {
-  app, dialog, ipcMain, safeStorage,
+  app, dialog, ipcMain, safeStorage, BrowserWindow,
 } from 'electron'
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { channels } from '@electron/ipc/channels'
+import {
+  channels, type GoogleCredentialsPickResponseShape,
+} from '@electron/ipc/channels'
+import {
+  validateGoogleCredentialsJson,
+} from '@shared/providers/google-credentials'
 import {
   createSettingsStore,
   type SettingsStore,
@@ -116,8 +122,74 @@ export function registerIpcHandlers(deps: IpcSetupDeps): IpcSetupResult {
 
   registerHistoryChannels(userDataDir, store)
   registerDocumentChannels(orchestrator)
+  registerProviderConfigChannels()
 
   return { store }
+}
+
+function registerProviderConfigChannels(): void {
+  const safeHandler = <TArgs extends unknown[], TResult>(
+    fn: (...args: TArgs) => TResult | Promise<TResult>,
+  ): (...args: TArgs) => Promise<TResult> => rawSafeHandler(fn, false)
+
+  ipcMain.handle(channels['provider:pick-google-credentials'], safeHandler(
+    async (): Promise<GoogleCredentialsPickResponseShape | null> => {
+      const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null
+      const result = window
+        ? await dialog.showOpenDialog(window, {
+            title: 'Select Google service-account JSON',
+            properties: ['openFile'],
+            filters: [{
+              name: 'Service-account JSON',
+              extensions: ['json'],
+            }],
+          })
+        : await dialog.showOpenDialog({
+            title: 'Select Google service-account JSON',
+            properties: ['openFile'],
+            filters: [{
+              name: 'Service-account JSON',
+              extensions: ['json'],
+            }],
+          })
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return null
+      }
+      const path = result.filePaths[0]!
+
+      let text: string
+
+      try {
+        text = await readFile(path, 'utf8')
+      } catch (err: unknown) {
+        const reason = err instanceof Error ? err.message : String(err)
+
+        return {
+          path,
+          valid: false,
+          error: `Could not read selected file: ${reason}`,
+        }
+      }
+
+      const validation = validateGoogleCredentialsJson(text)
+
+      if (!validation.valid) {
+        return {
+          path,
+          valid: false,
+          error: validation.error,
+        }
+      }
+
+      return {
+        path,
+        valid: true,
+        projectId: validation.projectId,
+        clientEmail: validation.clientEmail,
+      }
+    },
+  ))
 }
 
 function registerSettingsChannels(

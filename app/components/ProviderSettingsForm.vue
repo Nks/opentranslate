@@ -21,6 +21,44 @@ const emit = defineEmits<Emits>()
 const api = useApi()
 const secretValues = ref<Record<string, string>>({})
 const secretPresence = ref<Record<string, boolean>>({})
+const filePickerError = ref<Record<string, string | null>>({})
+const filePickerBusy = ref<Record<string, boolean>>({})
+
+function fileBasename(value: unknown): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    return ''
+  }
+  const parts = value.split(/[\\/]/)
+
+  return parts[parts.length - 1] ?? value
+}
+
+async function pickGoogleCredentials(fieldKey: string): Promise<void> {
+  filePickerBusy.value[fieldKey] = true
+  filePickerError.value[fieldKey] = null
+
+  try {
+    const result = await api.providers.pickGoogleCredentials()
+
+    if (result === null) {
+      return
+    }
+
+    if (!result.valid) {
+      filePickerError.value[fieldKey] = result.error ?? 'Selected file is not valid.'
+
+      return
+    }
+
+    onFieldChange(fieldKey, result.path)
+
+    if (result.projectId) {
+      onFieldChange('projectId', result.projectId)
+    }
+  } finally {
+    filePickerBusy.value[fieldKey] = false
+  }
+}
 
 function isFieldVisible(field: ProviderSettingsField): boolean {
   if (!field.dependsOn) {
@@ -111,6 +149,35 @@ onMounted(() => {
             :aria-label="field.label"
             @update:model-value="(val: string) => onFieldChange(field.key, Number(val))"
           />
+          <div
+            v-else-if="field.type === 'file-path' && field.key === 'credentialsJsonPath'"
+            class="flex flex-col gap-1"
+          >
+            <div class="flex items-center gap-2">
+              <UButton
+                size="sm"
+                variant="soft"
+                icon="i-fluent-folder-open-24-regular"
+                :loading="filePickerBusy[field.key] === true"
+                :aria-label="`Select ${field.label}`"
+                @click="pickGoogleCredentials(field.key)"
+              >
+                {{ getFieldValue(field.key) ? 'Change file…' : 'Choose file…' }}
+              </UButton>
+              <span
+                v-if="getFieldValue(field.key)"
+                class="text-xs font-mono text-muted truncate"
+              >
+                {{ fileBasename(getFieldValue(field.key)) }}
+              </span>
+            </div>
+            <p
+              v-if="filePickerError[field.key]"
+              class="text-xs text-error"
+            >
+              {{ filePickerError[field.key] }}
+            </p>
+          </div>
           <UInput
             v-else
             :model-value="String(getFieldValue(field.key) ?? '')"
