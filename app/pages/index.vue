@@ -8,6 +8,9 @@ import { useTranslation } from '@app/composables/useTranslation'
 import { useProviderBootstrap } from '@app/composables/useProviderBootstrap'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
+import {
+  applySourceChange, applyTargetChange,
+} from '@shared/translation/language-pair'
 
 interface QuickTranslateBridge {
   api?: { quickTranslate: { onText: (callback: (text: string) => void) => void } }
@@ -81,16 +84,31 @@ function onSourceInput(value: string): void {
 }
 
 function onSourceLanguageChange(code: string | null): void {
-  providersStore.sourceSelection = code === null
-    ? { mode: 'auto' }
-    : { mode: 'explicit', code }
+  const next = applySourceChange(
+    {
+      source: providersStore.sourceSelection,
+      target: providersStore.targetLanguage,
+    },
+    code,
+  )
+  providersStore.sourceSelection = next.source
+  providersStore.targetLanguage = next.target
 
   persistSelection()
   scheduleTranslate()
 }
 
 function onTargetLanguageChange(code: string | null): void {
-  providersStore.targetLanguage = code
+  const next = applyTargetChange(
+    {
+      source: providersStore.sourceSelection,
+      target: providersStore.targetLanguage,
+    },
+    code,
+  )
+  providersStore.sourceSelection = next.source
+  providersStore.targetLanguage = next.target
+
   persistSelection()
   scheduleTranslate()
 }
