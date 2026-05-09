@@ -20,6 +20,7 @@
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {
+    "postinstall": "electron-rebuild -f -w better-sqlite3",
     "dev": "node scripts/dev.mjs",
     "build:electron": "node scripts/build-electron.mjs",
     "build:renderer": "nuxt build",
@@ -35,11 +36,13 @@
     "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "@eslint/js": "^9.17.0",
     "@nuxt/test-utils": "^4.0.2",
     "@nuxt/ui": "^4.6.1",
     "@playwright/test": "^1.49.0",
     "@stylistic/eslint-plugin": "^5.10.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.0.0",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
@@ -73,6 +76,7 @@
     "@pinia/nuxt": "^0.11.3",
     "@vueuse/core": "^14.2.1",
     "@vueuse/nuxt": "^14.2.1",
+    "better-sqlite3": "^12.9.0",
     "google-auth-library": "^10.6.2",
     "pinia": "^3.0.4",
     "tailwindcss": "^4.2.2",
@@ -85,6 +89,7 @@
       "electron",
       "esbuild",
       "@parcel/watcher",
+      "better-sqlite3",
       "uiohook-napi"
     ]
   }
