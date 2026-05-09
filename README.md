@@ -38,7 +38,18 @@ pnpm install
 pnpm dev
 ```
 
-Starts Nuxt dev server + Electron with hot reload.
+Starts Nuxt dev server + Electron with hot reload. The `predev` step
+auto-rebuilds `better-sqlite3` and `uiohook-napi` against the current
+Electron ABI so the app boots without a `NODE_MODULE_VERSION` mismatch.
+
+If you switch back to running unit tests after `pnpm dev`, restore the
+Node-ABI native binaries:
+
+```bash
+pnpm rebuild:node
+```
+
+`pnpm rebuild` (alias) re-runs the Electron rebuild on demand.
 
 ### Build
 
