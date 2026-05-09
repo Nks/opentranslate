@@ -156,12 +156,6 @@ describe('package.json packaging fields', () => {
     expect(pkg.scripts['package:dir']).toContain('--dir')
   })
 
-  it('better-sqlite3 is in dependencies (not devDependencies)', () => {
-    const pkg = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'))
-
-    expect(pkg.dependencies['better-sqlite3']).toBeDefined()
-  })
-
   it('uiohook-napi is in dependencies (for global key observer)', () => {
     const pkg = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'))
 

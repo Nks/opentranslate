@@ -38,7 +38,7 @@ describe('history handlers — history:add round-trip', () => {
 
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), 'ot-history-handlers-'))
-    historyDb = createHistoryStore(join(dir, 'history.db'))
+    historyDb = createHistoryStore(join(dir, 'history.json'))
   })
 
   afterEach(async () => {

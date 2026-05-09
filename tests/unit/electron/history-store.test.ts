@@ -28,7 +28,7 @@ describe('history store', () => {
 
   beforeEach(async () => {
     dir = await makeTempDir()
-    store = createHistoryStore(join(dir, 'history.db'))
+    store = createHistoryStore(join(dir, 'history.json'))
   })
 
   afterEach(async () => {

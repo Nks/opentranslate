@@ -82,12 +82,16 @@ electron-builder generates `.icns` (macOS) and `.ico` (Windows) from `icon.png`.
 
 ## Native Modules
 
-`better-sqlite3` requires compilation against Electron's Node ABI.
-electron-builder handles this via `npmRebuild: true`.
+The only native module is `uiohook-napi` (global key observer for
+quick-translate). It ships prebuilt binaries for every supported
+platform via `node-gyp-build`, so no manual rebuild is required for
+either development or packaging. `electron-builder` keeps
+`npmRebuild: true` as a belt-and-braces fallback in case a platform
+ever needs a source build.
 
-After packaging locally, run `pnpm rebuild better-sqlite3` to restore
-the Node-compatible binary for development. The `package` and `package:dir`
-scripts do this automatically.
+Translation history is persisted as a plain JSON file under
+Electron's `userData` (`history.json`), so the app does not depend on
+a compiled database engine.
 
 ---
 
@@ -138,14 +142,6 @@ with all platform artifacts.
 ---
 
 ## Troubleshooting
-
-### better-sqlite3 ABI mismatch after packaging
-
-```
-NODE_MODULE_VERSION 145 vs 137
-```
-
-Run `pnpm rebuild better-sqlite3` to restore the Node-compatible binary.
 
 ### macOS Gatekeeper blocks unsigned app
 

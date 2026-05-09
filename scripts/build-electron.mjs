@@ -29,7 +29,7 @@ const sharedOptions = {
   outExtension: {
     '.js': '.cjs',
   },
-  external: ['electron', 'better-sqlite3', 'uiohook-napi', 'node-gyp-build'],
+  external: ['electron', 'uiohook-napi', 'node-gyp-build'],
   tsconfig: resolve(rootDir, 'tsconfig.json'),
   alias: {
     '@shared': resolve(rootDir, 'shared'),

@@ -1,5 +1,12 @@
-import Database from 'better-sqlite3'
-import { randomUUID } from 'node:crypto'
+import {
+  readFileSync, writeFileSync, renameSync, mkdirSync,
+} from 'node:fs'
+import {
+  dirname,
+} from 'node:path'
+import {
+  randomUUID,
+} from 'node:crypto'
 
 import type { HistoryEntry } from '@shared/types/history'
 import type { ProviderId } from '@shared/types/provider-id'
@@ -36,54 +43,84 @@ export interface HistoryStore {
   close: () => void
 }
 
-const SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS history (
-  id              TEXT PRIMARY KEY,
-  source_text     TEXT NOT NULL,
-  translated_text TEXT NOT NULL,
-  source_lang     TEXT NOT NULL,
-  target_lang     TEXT NOT NULL,
-  provider        TEXT NOT NULL,
-  created_at      TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_history_created ON history (created_at DESC);
-`
+interface HistoryFile {
+  schemaVersion: 1
+  entries: HistoryEntry[]
+}
 
-function mapRow(row: Record<string, unknown>): HistoryEntry {
-  return {
-    id: row.id as string,
-    sourceText: row.source_text as string,
-    translatedText: row.translated_text as string,
-    sourceLanguageCode: row.source_lang as string,
-    targetLanguageCode: row.target_lang as string,
-    provider: row.provider as ProviderId,
-    createdAt: row.created_at as string,
+const SCHEMA_VERSION = 1
+const RETENTION_LAST_30_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+const RETENTION_LAST_100_ENTRIES = 100
+
+function isEnoent(err: unknown): boolean {
+  return (
+    err !== null &&
+    typeof err === 'object' &&
+    'code' in err &&
+    (err as { code: unknown }).code === 'ENOENT'
+  )
+}
+
+function loadFromDisk(filePath: string): HistoryEntry[] {
+  let raw: string
+
+  try {
+    raw = readFileSync(filePath, 'utf8')
+  } catch (err: unknown) {
+    if (isEnoent(err)) {
+      return []
+    }
+
+    throw err
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<HistoryFile>
+
+    if (!parsed.entries || !Array.isArray(parsed.entries)) {
+      return []
+    }
+
+    return parsed.entries
+  } catch {
+    return []
   }
 }
 
-export function createHistoryStore(dbPath: string): HistoryStore {
-  const db = new Database(dbPath)
-  db.pragma('journal_mode = WAL')
-  db.exec(SCHEMA_SQL)
+function atomicWrite(filePath: string, payload: HistoryFile): void {
+  const tmpPath = `${filePath}.tmp`
+  writeFileSync(tmpPath, JSON.stringify(payload, null, 2), 'utf8')
+  renameSync(tmpPath, filePath)
+}
 
-  const insertStmt = db.prepare(`
-    INSERT INTO history (id, source_text, translated_text, source_lang, target_lang, provider, created_at)
-    VALUES (@id, @sourceText, @translatedText, @sourceLang, @targetLang, @provider, @createdAt)
-  `)
-  const listStmt = db.prepare(
-    'SELECT * FROM history ORDER BY created_at DESC LIMIT @limit OFFSET @offset',
-  )
-  const searchStmt = db.prepare(
-    'SELECT * FROM history WHERE source_text LIKE @pattern OR translated_text LIKE @pattern ORDER BY created_at DESC LIMIT @limit',
-  )
-  const deleteStmt = db.prepare('DELETE FROM history WHERE id = @id')
-  const clearStmt = db.prepare('DELETE FROM history')
-  const pruneOldStmt = db.prepare(
-    'DELETE FROM history WHERE created_at < @cutoff',
-  )
-  const pruneExcessStmt = db.prepare(
-    'DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY created_at DESC LIMIT @keep)',
-  )
+export function createHistoryStore(filePath: string): HistoryStore {
+  mkdirSync(dirname(filePath), { recursive: true })
+
+  let entries: HistoryEntry[] = loadFromDisk(filePath)
+
+  function persist(): void {
+    atomicWrite(filePath, {
+      schemaVersion: SCHEMA_VERSION,
+      entries,
+    })
+  }
+
+  function applyRetention(mode: HistoryRetentionMode): void {
+    if (mode === 'last-30-days') {
+      const cutoff = Date.now() - RETENTION_LAST_30_DAYS_MS
+      entries = entries.filter((entry: HistoryEntry): boolean => {
+        const createdAtMs = Date.parse(entry.createdAt)
+
+        return Number.isFinite(createdAtMs) && createdAtMs >= cutoff
+      })
+
+      return
+    }
+
+    if (mode === 'last-100-entries' && entries.length > RETENTION_LAST_100_ENTRIES) {
+      entries = entries.slice(0, RETENTION_LAST_100_ENTRIES)
+    }
+  }
 
   function add(
     input: HistoryAddInput,
@@ -104,59 +141,68 @@ export function createHistoryStore(dbPath: string): HistoryStore {
       createdAt: new Date().toISOString(),
     }
 
-    insertStmt.run({
-      id: entry.id,
-      sourceText: entry.sourceText,
-      translatedText: entry.translatedText,
-      sourceLang: entry.sourceLanguageCode,
-      targetLang: entry.targetLanguageCode,
-      provider: entry.provider,
-      createdAt: entry.createdAt,
-    })
-
+    entries = [entry, ...entries]
     applyRetention(retentionMode)
+    persist()
 
     return entry
   }
 
-  function applyRetention(mode: HistoryRetentionMode): void {
-    if (mode === 'last-30-days') {
-      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      pruneOldStmt.run({ cutoff })
-    } else if (mode === 'last-100-entries') {
-      pruneExcessStmt.run({ keep: 100 })
-    }
-  }
-
   function list(input: HistoryListInput): HistoryEntry[] {
-    const rows = listStmt.all({
-      limit: input.limit ?? 50,
-      offset: input.offset ?? 0,
-    }) as Record<string, unknown>[]
+    const offset = input.offset ?? 0
+    const limit = input.limit ?? 50
 
-    return rows.map(mapRow)
+    return entries.slice(offset, offset + limit)
   }
 
   function search(input: HistorySearchInput): HistoryEntry[] {
-    const pattern = `%${input.query}%`
-    const rows = searchStmt.all({
-      pattern,
-      limit: input.limit ?? 50,
-    }) as Record<string, unknown>[]
+    const limit = input.limit ?? 50
+    const needle = input.query.toLowerCase()
 
-    return rows.map(mapRow)
+    if (needle.length === 0) {
+      return entries.slice(0, limit)
+    }
+
+    const matches: HistoryEntry[] = []
+
+    for (const entry of entries) {
+      const inSource = entry.sourceText.toLowerCase().includes(needle)
+      const inTranslated = entry.translatedText.toLowerCase().includes(needle)
+
+      if (inSource || inTranslated) {
+        matches.push(entry)
+      }
+
+      if (matches.length >= limit) {
+        break
+      }
+    }
+
+    return matches
   }
 
   function deleteEntry(id: string): void {
-    deleteStmt.run({ id })
+    const next = entries.filter((entry: HistoryEntry): boolean => entry.id !== id)
+
+    if (next.length === entries.length) {
+      return
+    }
+
+    entries = next
+    persist()
   }
 
   function clear(): void {
-    clearStmt.run()
+    if (entries.length === 0) {
+      return
+    }
+
+    entries = []
+    persist()
   }
 
   function close(): void {
-    db.close()
+    // JSON-backed store has no open handle; provided for API compatibility.
   }
 
   return {

@@ -176,7 +176,7 @@ function registerHistoryChannels(userDataDir: string, store: SettingsStore): voi
   let historyInitError: unknown = null
 
   try {
-    const historyDb = createHistoryStore(join(userDataDir, 'history.db'))
+    const historyDb = createHistoryStore(join(userDataDir, 'history.json'))
     historyHandlers = createHistoryHandlers({
       history: historyDb,
       settings: store,
@@ -184,7 +184,7 @@ function registerHistoryChannels(userDataDir: string, store: SettingsStore): voi
   } catch (err: unknown) {
     historyInitError = err
     // eslint-disable-next-line no-console
-    console.error('[history] better-sqlite3 initialization failed', err)
+    console.error('[history] store initialization failed', err)
   }
 
   function requireHistoryHandlers(): HistoryHandlers {
@@ -194,8 +194,8 @@ function registerHistoryChannels(userDataDir: string, store: SettingsStore): voi
         : String(historyInitError)
 
       throw new Error(
-        `History store is unavailable. better-sqlite3 failed to initialise: ${cause}. ` +
-        'Run `pnpm rebuild better-sqlite3` (or rebuild against the current Electron version) and restart the app.',
+        `History store is unavailable: ${cause}. ` +
+        'Check write access to the userData directory and restart the app.',
       )
     }
 

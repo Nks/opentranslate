@@ -812,8 +812,7 @@ The full packaging pipeline runs three stages sequentially:
    `.output/public/` (SSR is off).
 3. **`electron-builder`** — reads `electron-builder.yml`, packs `dist-electron/`
    + `.output/public/` + production `node_modules` into an asar archive,
-   rebuilds native modules (better-sqlite3) for the target Electron ABI, and
-   produces platform-specific installers.
+   and produces platform-specific installers.
 
 ### 11.2 Platform targets
 
@@ -827,10 +826,18 @@ The full packaging pipeline runs three stages sequentially:
 
 ### 11.3 Native modules
 
-`better-sqlite3` ships a C++ addon that must be compiled against Electron's
-Node ABI (not the system Node). electron-builder handles this via `npmRebuild: true`
-in `electron-builder.yml`. The `.node` binary is excluded from asar via
-`asarUnpack: ['**/*.{node,dll}']`.
+The only runtime native module is `uiohook-napi` (global key observer
+behind quick-translate). It ships prebuilt binaries for every supported
+platform/arch via `node-gyp-build`, so no source rebuild is required —
+electron-builder keeps `npmRebuild: true` as a fallback only. The
+`.node` binaries are excluded from asar via
+`asarUnpack: ['**/*.{node,dll}']` so dynamic loaders can find them.
+
+Translation history is persisted as a plain JSON document at
+`<userData>/history.json`, written atomically via tmp-file rename.
+This intentionally avoids a compiled database engine (better-sqlite3
+was removed in 2026-04 — Electron-vs-Node ABI churn was not worth a
+single small append-only data file).
 
 ### 11.4 Code signing
 
