@@ -33,4 +33,34 @@ describe('createWindowOptions', () => {
   it('has show = false so the window does not flash before content loads', () => {
     expect(options.show).toBe(false)
   })
+
+  it('disables devTools when allowDevTools is false (production gate)', () => {
+    const packaged = createWindowOptions({
+      preloadPath: '/tmp/preload.cjs',
+      allowDevTools: false,
+    })
+
+    expect(packaged.webPreferences?.devTools).toBe(false)
+  })
+
+  it('enables devTools when allowDevTools is true (dev override)', () => {
+    const dev = createWindowOptions({
+      preloadPath: '/tmp/preload.cjs',
+      allowDevTools: true,
+    })
+
+    expect(dev.webPreferences?.devTools).toBe(true)
+  })
+
+  it('falls back to NODE_ENV when allowDevTools is omitted', () => {
+    const previous = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
+
+    try {
+      const packaged = createWindowOptions({ preloadPath: '/tmp/preload.cjs' })
+      expect(packaged.webPreferences?.devTools).toBe(false)
+    } finally {
+      process.env.NODE_ENV = previous
+    }
+  })
 })

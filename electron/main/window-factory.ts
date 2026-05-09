@@ -4,16 +4,12 @@ import type {
 
 export interface WindowOptionsInput {
   preloadPath: string
+  allowDevTools?: boolean
 }
 
-/**
- * Pure factory for `BrowserWindow` options.
- *
- * All windows in OpenTranslate Desktop must be constructed from these
- * options so the security invariants (see docs/architecture.md §4) are
- * applied uniformly and testable in isolation.
- */
 export function createWindowOptions(input: WindowOptionsInput): BrowserWindowConstructorOptions {
+  const allowDevTools = input.allowDevTools ?? process.env.NODE_ENV !== 'production'
+
   return {
     width: 1100,
     height: 720,
@@ -29,7 +25,7 @@ export function createWindowOptions(input: WindowOptionsInput): BrowserWindowCon
       sandbox: true,
       webSecurity: true,
       spellcheck: false,
-      devTools: process.env.NODE_ENV !== 'production',
+      devTools: allowDevTools,
     },
   }
 }

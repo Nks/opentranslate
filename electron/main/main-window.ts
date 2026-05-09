@@ -3,6 +3,7 @@ import {
 } from 'electron'
 import { join } from 'node:path'
 import { createWindowOptions } from '@electron/main/window-factory'
+import { isDevToolsShortcut } from '@electron/main/devtools-blocker'
 
 export interface MainWindowHost {
   getWindow: () => BrowserWindow | null
@@ -21,8 +22,23 @@ export function createMainWindowHost(options: MainWindowOptions): MainWindowHost
   let mainWindow: BrowserWindow | null = null
 
   async function createWindow(): Promise<void> {
-    const windowOptions = createWindowOptions({ preloadPath: options.preloadPath })
+    const allowDevTools = !app.isPackaged
+    const windowOptions = createWindowOptions({
+      preloadPath: options.preloadPath,
+      allowDevTools,
+    })
     mainWindow = new BrowserWindow(windowOptions)
+
+    if (!allowDevTools) {
+      mainWindow.webContents.on('before-input-event', (event, input) => {
+        if (isDevToolsShortcut(input)) {
+          event.preventDefault()
+        }
+      })
+      mainWindow.webContents.on('devtools-opened', (): void => {
+        mainWindow?.webContents.closeDevTools()
+      })
+    }
 
     mainWindow.once('ready-to-show', (): void => {
       mainWindow?.show()
