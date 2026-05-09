@@ -38,11 +38,12 @@ pnpm install
 pnpm dev
 ```
 
-Starts Nuxt dev server + Electron with hot reload. Translation history
-is persisted as a plain JSON file under Electron's `userData` so the
-app does not depend on any compiled native database; the only native
-module is `uiohook-napi` (global key observer), which ships
-prebuilt binaries for every supported platform via `node-gyp-build`.
+Starts Nuxt dev server + Electron with hot reload. The `postinstall`
+script rebuilds `better-sqlite3` against Electron's Node ABI, so a
+fresh `pnpm install` followed by `pnpm dev` boots the app cleanly —
+no manual rebuild needed. Unit tests use an in-memory mock at the
+`HistoryStore` interface boundary, so vitest never loads the native
+SQLite binary.
 
 ### Build
 

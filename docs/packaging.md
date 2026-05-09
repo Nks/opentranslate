@@ -82,16 +82,18 @@ electron-builder generates `.icns` (macOS) and `.ico` (Windows) from `icon.png`.
 
 ## Native Modules
 
-The only native module is `uiohook-napi` (global key observer for
-quick-translate). It ships prebuilt binaries for every supported
-platform via `node-gyp-build`, so no manual rebuild is required for
-either development or packaging. `electron-builder` keeps
-`npmRebuild: true` as a belt-and-braces fallback in case a platform
-ever needs a source build.
+`better-sqlite3` and `uiohook-napi` are the runtime native modules.
+`uiohook-napi` ships prebuilt binaries for every supported platform
+via `node-gyp-build`. `better-sqlite3` is rebuilt against Electron's
+Node ABI by the `postinstall` hook (`electron-rebuild -f -w
+better-sqlite3`), so contributors who run `pnpm install` get a
+ready-to-launch binary. `electron-builder` re-runs the rebuild during
+packaging via `npmRebuild: true`.
 
-Translation history is persisted as a plain JSON file under
-Electron's `userData` (`history.json`), so the app does not depend on
-a compiled database engine.
+Vitest never loads the SQLite native module —
+`tests/unit/electron/history-handlers.test.ts` injects a fake
+`HistoryStore` at the TypeScript interface boundary, so no ABI
+rebuild is needed before running the unit suite.
 
 ---
 
