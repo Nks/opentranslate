@@ -36,7 +36,7 @@
     "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.3",
+    "@electron/rebuild": "^4.0.4",
     "@eslint/js": "^9.17.0",
     "@nuxt/test-utils": "^4.0.2",
     "@nuxt/ui": "^4.6.1",
@@ -49,8 +49,8 @@
     "@vitejs/plugin-vue": "^6.0.6",
     "@vitest/coverage-v8": "^2.1.8",
     "@vue/test-utils": "^2.4.6",
-    "electron": "^41.2.0",
-    "electron-builder": "^25.1.8",
+    "electron": "^42.0.1",
+    "electron-builder": "^26.8.1",
     "esbuild": "^0.28.0",
     "eslint": "^9.17.0",
     "eslint-plugin-anti-trojan-source": "^1.1.2",
