@@ -156,6 +156,22 @@ function migrateActiveProvider(app: Record<string, unknown>): Record<string, unk
   return app
 }
 
+function migrateTrayAndCloseBehavior(app: Record<string, unknown>): Record<string, unknown> {
+  const next: Record<string, unknown> = {
+    ...app,
+  }
+
+  if (next.showTray === undefined) {
+    next.showTray = defaultSettingsFile.app.showTray
+  }
+
+  if (next.closeBehavior === undefined) {
+    next.closeBehavior = defaultSettingsFile.app.closeBehavior
+  }
+
+  return next
+}
+
 function migrate(raw: unknown): unknown {
   if (raw === null || typeof raw !== 'object') {
     return raw
@@ -174,9 +190,12 @@ function migrate(raw: unknown): unknown {
   }
 
   if (next.app !== undefined && typeof next.app === 'object' && next.app !== null) {
+    const appCandidate = next.app as Record<string, unknown>
+    const withActiveProvider = migrateActiveProvider(appCandidate)
+    const withTray = migrateTrayAndCloseBehavior(withActiveProvider)
     next = {
       ...next,
-      app: migrateActiveProvider(next.app as Record<string, unknown>),
+      app: withTray,
     }
   }
 

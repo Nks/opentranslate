@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import {
+  computed, onMounted, ref,
+} from 'vue'
 import { useTranslationStore } from '@app/stores/translation'
 import {
   useProvidersStore, type RendererProviderSettings,
@@ -11,6 +13,8 @@ import { useHandleError } from '@app/composables/useHandleError'
 import {
   applySourceChange, applyTargetChange,
 } from '@shared/translation/language-pair'
+import type { WindowCloseResponsePayload } from '@electron/ipc/channels'
+import ConfirmCloseDialog from '@app/components/ConfirmCloseDialog.vue'
 
 interface QuickTranslateBridge {
   api?: { quickTranslate: { onText: (callback: (text: string) => void) => void } }
@@ -28,6 +32,8 @@ const {
 } = useTranslation()
 const { ensureActiveProviderHydrated } = useProviderBootstrap()
 const handleError = useHandleError()
+
+const confirmCloseOpen = ref<boolean>(false)
 
 async function loadProvidersAndSettings(): Promise<void> {
   try {
@@ -61,6 +67,35 @@ function registerQuickTranslateListener(): void {
   })
 }
 
+function registerCloseRequestListener(): void {
+  api.window.onCloseRequest((): void => {
+    confirmCloseOpen.value = true
+  })
+}
+
+async function persistCloseBehavior(choice: 'hide' | 'quit'): Promise<void> {
+  try {
+    await api.settings.update({
+      app: {
+        closeBehavior: choice,
+      },
+    })
+  } catch (err: unknown) {
+    handleError(err)
+  }
+}
+
+async function onCloseChoice(payload: WindowCloseResponsePayload): Promise<void> {
+  confirmCloseOpen.value = false
+
+  const shouldPersist: boolean = payload.remember && payload.choice !== 'cancel'
+
+  if (shouldPersist) {
+    await persistCloseBehavior(payload.choice as 'hide' | 'quit')
+  }
+  api.window.respondClose(payload)
+}
+
 onMounted(async (): Promise<void> => {
   await loadProvidersAndSettings()
   await restoreSelection()
@@ -68,6 +103,7 @@ onMounted(async (): Promise<void> => {
     void switchProvider(id)
   })
   registerQuickTranslateListener()
+  registerCloseRequestListener()
 })
 
 const hasConfiguredProvider = computed<boolean>(
@@ -196,6 +232,11 @@ function noopCopy(): void {
         :error="translationStore.error"
         :error-detail="translationStore.errorDetail"
         @retry="scheduleTranslate"
+      />
+
+      <ConfirmCloseDialog
+        v-model="confirmCloseOpen"
+        @choose="onCloseChoice"
       />
     </div>
   </UApp>

@@ -44,10 +44,12 @@ import {
 } from '@electron/services/history/handlers'
 import { safeHandler as rawSafeHandler } from '@electron/services/ipc/safe-handler'
 import type { QuickTranslateController } from '@electron/main/quick-translate-controller'
+import type { AppSettingsApplier } from '@electron/main/app-settings-applier'
 
 export interface IpcSetupDeps {
   isDev: boolean
   quickTranslateController: () => QuickTranslateController | null
+  appSettingsApplier: AppSettingsApplier
 }
 
 export interface IpcSetupResult {
@@ -80,7 +82,11 @@ export function registerIpcHandlers(deps: IpcSetupDeps): IpcSetupResult {
     vault,
   })
 
-  registerSettingsChannels(settingsHandlers, deps.quickTranslateController)
+  registerSettingsChannels(
+    settingsHandlers,
+    deps.quickTranslateController,
+    deps.appSettingsApplier,
+  )
 
   const orchestrator = createTranslationOrchestrator()
   const catalog = createLanguageCatalog()
@@ -133,10 +139,24 @@ export function registerIpcHandlers(deps: IpcSetupDeps): IpcSetupResult {
 function registerSettingsChannels(
   handlers: SettingsAndSecretsHandlers,
   getController: () => QuickTranslateController | null,
+  applier: AppSettingsApplier,
 ): void {
   const safeHandler = <TArgs extends unknown[], TResult>(
     fn: (...args: TArgs) => TResult | Promise<TResult>,
   ): (...args: TArgs) => Promise<TResult> => rawSafeHandler(fn, false)
+
+  function reapplyAppSettings(
+    result: Awaited<ReturnType<SettingsAndSecretsHandlers['settings:update']>>,
+  ): void {
+    getController()?.applyFromSettings(
+      result.app.shortcuts.quickTranslate,
+      result.app.shortcuts.quickTranslateEnabled,
+    )
+    applier.apply({
+      showTray: result.app.showTray,
+      closeBehavior: result.app.closeBehavior,
+    })
+  }
 
   ipcMain.handle(channels['settings:get'], safeHandler(() => handlers['settings:get']()))
   ipcMain.handle(channels['settings:update'], safeHandler(
@@ -145,22 +165,14 @@ function registerSettingsChannels(
         app?: Record<string, unknown>
         providers?: Record<string, unknown>
       })
-
-      getController()?.applyFromSettings(
-        result.app.shortcuts.quickTranslate,
-        result.app.shortcuts.quickTranslateEnabled,
-      )
+      reapplyAppSettings(result)
 
       return result
     },
   ))
   ipcMain.handle(channels['settings:reset'], safeHandler(async () => {
     const result = await handlers['settings:reset']()
-
-    getController()?.applyFromSettings(
-      result.app.shortcuts.quickTranslate,
-      result.app.shortcuts.quickTranslateEnabled,
-    )
+    reapplyAppSettings(result)
 
     return result
   }))

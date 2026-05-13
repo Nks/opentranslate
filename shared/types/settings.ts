@@ -4,6 +4,7 @@ import type {
 
 export type ThemePreference = 'system' | 'light' | 'dark'
 export type HistoryRetentionMode = 'forever' | 'last-30-days' | 'last-100-entries'
+export type CloseBehavior = 'ask' | 'hide' | 'quit'
 
 export interface ShortcutsSettings {
   quickTranslate: string
@@ -28,6 +29,8 @@ export interface AppSettings {
   debounceMs: number
   historyEnabled: boolean
   historyRetentionMode: HistoryRetentionMode
+  showTray: boolean
+  closeBehavior: CloseBehavior
   shortcuts: ShortcutsSettings
   advanced: AdvancedSettings
   activeProvider: ActiveProviderSelection

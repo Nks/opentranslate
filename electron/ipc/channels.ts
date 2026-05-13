@@ -65,6 +65,27 @@ export const channels = {
 
 export type ChannelName = keyof typeof channels
 
+/**
+ * Event-style channels for fire-and-forget main ↔ renderer messages.
+ *
+ * Distinct from invoke/handle `channels` above: these use `webContents.send`
+ * (main → renderer) and `ipcRenderer.send` (renderer → main). The preload
+ * bridge exposes a typed subscriber/sender for each entry below.
+ */
+export const eventChannels = {
+  'window:close-request': 'window:close-request',
+  'window:close-response': 'window:close-response',
+} as const
+
+export type EventChannelName = keyof typeof eventChannels
+
+export type WindowCloseChoice = 'hide' | 'quit' | 'cancel'
+
+export interface WindowCloseResponsePayload {
+  choice: WindowCloseChoice
+  remember: boolean
+}
+
 export interface SettingsGetResponseShape {
   app: AppSettings
   providers: Record<string, unknown>

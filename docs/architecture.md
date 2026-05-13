@@ -645,6 +645,68 @@ Per spec §18:
 - Screen-reader labels on language selectors, provider selector, copy/clear buttons
 - User-scalable font size (rem-based, no fixed px on body text)
 
+### 8.4.6 Tray + close behavior (B-017)
+
+The main window cooperates with a platform-specific system-tray icon and
+a settings-driven close policy.
+
+**Tray service** (`electron/main/tray.ts`):
+
+- Three menu items: *Open OpenTranslate*, *Quick Translate*, *Quit*. Click
+  callbacks are injected (`onOpen`, `onQuickTranslate`, `onQuit`) so the
+  service knows nothing about app wiring.
+- Platform-conditional icon resolution under `build/icons/tray/`:
+  - macOS — `trayTemplate@2x.png`, marked as a template image so the OS
+    re-tints it for light/dark menu-bar appearance.
+  - Windows — `tray.ico` (multi-resolution).
+  - Linux — `tray.png` (full color, 22×22).
+- `setVisible(true)` creates the `Tray`; `setVisible(false)` destroys it.
+  Toggling the `showTray` setting flips the icon at runtime without
+  restarting the app. `destroy()` is called on `before-quit`.
+- **Linux indicator caveat:** tray support depends on a working
+  StatusNotifier host (KDE Plasma, recent GNOME with extension, XFCE,
+  Cinnamon, …). Vanilla GNOME ships without legacy AppIndicator support;
+  the icon simply will not appear there. The app continues to function
+  via the main window — close behavior gracefully falls back when the
+  tray is not present (see below).
+
+**Close behavior** (`electron/main/main-window-close.ts`):
+
+Two new settings drive the close intercept:
+
+- `AppSettings.showTray: boolean` (default `true`) — whether to register
+  the tray icon at startup.
+- `AppSettings.closeBehavior: 'ask' | 'hide' | 'quit'` (default `'ask'`).
+
+When the user closes the main window, `handleMainWindowClose()` decides:
+
+1. `isQuitting === true` (user picked *Quit* from the tray or modal)
+   → allow the default close.
+2. No tray active (`showTray === false` or tray creation failed)
+   → allow the default close. There is no point preventing close when
+   there is no surface to hide to.
+3. `closeBehavior === 'quit'` → allow the default close.
+4. `closeBehavior === 'hide'` → `event.preventDefault()` + `win.hide()`.
+5. `closeBehavior === 'ask'` → `event.preventDefault()` + send IPC
+   `window:close-request` to the renderer. The renderer shows the
+   `ConfirmCloseDialog` modal (hide / quit + *Remember this choice*
+   checkbox). On the renderer's `window:close-response`, main either
+   hides the window or sets `isQuitting = true` and calls `app.quit()`.
+   When *Remember* is checked, the renderer also persists the choice
+   via `settings:update` before responding.
+
+The two IPC entries live alongside the existing invoke/handle channels in
+`electron/ipc/channels.ts`, under the separate `eventChannels` registry
+(fire-and-forget `send`/`on` semantics):
+
+- `window:close-request` — main → renderer (no payload).
+- `window:close-response` — renderer → main,
+  payload `{ choice: 'hide' | 'quit', remember: boolean }`.
+
+This keeps the renderer pure UI: it does not know about `app.quit()` or
+window visibility — it only translates the user's choice into a single
+IPC response.
+
 ---
 
 ## 8.6 Quick Translate Overlay (Phase 8)

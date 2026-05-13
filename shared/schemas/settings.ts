@@ -11,6 +11,7 @@ import {
 
 const themeSchema = z.enum(['system', 'light', 'dark'])
 const retentionSchema = z.enum(['forever', 'last-30-days', 'last-100-entries'])
+const closeBehaviorSchema = z.enum(['ask', 'hide', 'quit'])
 
 const quickTranslateAcceleratorSchema = z
   .string()
@@ -53,6 +54,8 @@ export const appSettingsSchema = z.object({
   debounceMs: z.number().int().min(0).max(5_000),
   historyEnabled: z.boolean(),
   historyRetentionMode: retentionSchema,
+  showTray: z.boolean(),
+  closeBehavior: closeBehaviorSchema,
   shortcuts: shortcutsSchema,
   advanced: advancedSchema,
   activeProvider: activeProviderSelectionSchema,
@@ -65,6 +68,8 @@ export const defaultAppSettings: AppSettings = {
   debounceMs: 350,
   historyEnabled: true,
   historyRetentionMode: 'forever',
+  showTray: true,
+  closeBehavior: 'ask',
   shortcuts: {
     quickTranslate: DEFAULT_QUICK_TRANSLATE_ACCELERATOR,
     openMain: 'CommandOrControl+Shift+T',
