@@ -61,7 +61,7 @@
     "eslint-plugin-vue": "^10.8.0",
     "happy-dom": "^20.9.0",
     "msw": "^2.13.3",
-    "nuxt": "^4.4.2",
+    "nuxt": "^4.4.5",
     "tsx": "^4.21.0",
     "typescript": "^5.7.2",
     "undici": "^8.1.0",

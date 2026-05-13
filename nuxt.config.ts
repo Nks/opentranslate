@@ -33,12 +33,9 @@ export default defineNuxtConfig({
     strict: true,
     typeCheck: false,
   },
-  // Workaround for Nuxt 4.4.2 bug: @nuxt/nitro-server duplicates the
-  // `useAppConfig` auto-import when serverAppConfig is enabled (see
-  // nuxt/nuxt#34812). We are SSR-off and do not use server app config, so
-  // disabling the experimental flag silences the warn cleanly.
   experimental: {
     serverAppConfig: false,
+    viteEnvironmentApi: true,
   },
   vite: {
     resolve: {
