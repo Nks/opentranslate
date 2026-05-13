@@ -26,7 +26,7 @@ const {
   persistSelection,
   restoreSelection,
 } = useTranslation()
-const { maybeAutoSelectProvider } = useProviderBootstrap()
+const { ensureActiveProviderHydrated } = useProviderBootstrap()
 const handleError = useHandleError()
 
 async function loadProvidersAndSettings(): Promise<void> {
@@ -64,7 +64,7 @@ function registerQuickTranslateListener(): void {
 onMounted(async (): Promise<void> => {
   await loadProvidersAndSettings()
   await restoreSelection()
-  maybeAutoSelectProvider((id: string): void => {
+  ensureActiveProviderHydrated((id: string): void => {
     void switchProvider(id)
   })
   registerQuickTranslateListener()
