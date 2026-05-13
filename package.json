@@ -20,7 +20,7 @@
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {
-    "postinstall": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "electron-rebuild -f -o better-sqlite3",
     "dev": "node scripts/dev.mjs",
     "build:electron": "node scripts/build-electron.mjs",
     "build:renderer": "nuxt build",
