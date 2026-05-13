@@ -19,8 +19,10 @@ import {
 
 const BASE_SETTINGS: GoogleProviderSettings = {
   enabled: true,
+  authMode: 'service-account',
   projectId: 'test-project',
   credentialsJsonPath: '/tmp/fake-creds.json',
+  apiKey: null,
   edition: 'basic',
   location: null,
   requestTimeoutMs: 5_000,
@@ -29,6 +31,7 @@ const BASE_SETTINGS: GoogleProviderSettings = {
 const FAKE_AUTH: GoogleAuthProvider = {
   getAccessToken: async () => 'fake-token',
   getProjectId: async () => 'test-project',
+  getApiKey: () => null,
 }
 
 interface FetchCall {
@@ -262,7 +265,11 @@ describe('Google adapter', () => {
     expect(health.ok).toBe(true)
   })
 
-  it('reports document translation only for Advanced edition with location', async () => {
+  it('never reports document translation support while the v3 doc flow is stubbed', async () => {
+    // Architecture §8.2.5 / §8.7.1: the v3 Advanced document endpoint is
+    // currently a "not yet implemented" stub. The adapter must report
+    // `supportsDocumentTranslation: false` for every auth + edition + location
+    // combination so the Documents page stays honestly disabled.
     const {
       fetch,
     } = makeFakeFetch(() => ({
@@ -273,40 +280,30 @@ describe('Google adapter', () => {
         },
       },
     }))
-    const basicAdapter = createGoogleAdapter({
-      settings: BASE_SETTINGS,
-      getSecret: noSecret,
-      authProvider: FAKE_AUTH,
-      fetchImpl: fetch,
-    })
 
-    expect(await basicAdapter.supportsDocumentTranslation()).toBe(false)
-
-    const advancedAdapter = createGoogleAdapter({
-      settings: {
+    const cases: ReadonlyArray<typeof BASE_SETTINGS> = [
+      BASE_SETTINGS,
+      {
         ...BASE_SETTINGS,
         edition: 'advanced',
         location: 'us-central1',
       },
-      getSecret: noSecret,
-      authProvider: FAKE_AUTH,
-      fetchImpl: fetch,
-    })
-
-    expect(await advancedAdapter.supportsDocumentTranslation()).toBe(true)
-
-    const advancedNoLocation = createGoogleAdapter({
-      settings: {
+      {
         ...BASE_SETTINGS,
         edition: 'advanced',
         location: null,
       },
-      getSecret: noSecret,
-      authProvider: FAKE_AUTH,
-      fetchImpl: fetch,
-    })
+    ]
 
-    expect(await advancedNoLocation.supportsDocumentTranslation()).toBe(false)
+    for (const settings of cases) {
+      const adapter = createGoogleAdapter({
+        settings,
+        getSecret: noSecret,
+        authProvider: FAKE_AUTH,
+        fetchImpl: fetch,
+      })
+      expect(await adapter.supportsDocumentTranslation()).toBe(false)
+    }
   })
 
   it('getCapabilities returns all four capability flags', async () => {
@@ -335,7 +332,8 @@ describe('Google adapter', () => {
     expect(caps.textTranslation).toBe(true)
     expect(caps.languageDetection).toBe(true)
     expect(caps.supportedLanguagesDiscovery).toBe(true)
-    expect(caps.documentTranslation).toBe(true)
+    // V3 document flow is stubbed (architecture §8.2.5 / §8.7.1) — always false.
+    expect(caps.documentTranslation).toBe(false)
   })
 
   it('reports health false when /languages returns error', async () => {

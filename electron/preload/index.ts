@@ -7,6 +7,8 @@ import {
   type ChannelRequest,
   type ChannelResponse,
   type SettingsGetResponseShape,
+  type SettingsPickFileRequestShape,
+  type SettingsPickFileResponseShape,
   type SecretsSetRequestShape,
   type SecretsSetResponseShape,
   type SecretsTestRequestShape,
@@ -79,6 +81,8 @@ const api = {
     update: (patch: SettingsUpdate): Promise<SettingsGetResponseShape> =>
       invoke('settings:update', patch),
     reset: (): Promise<SettingsGetResponseShape> => invoke('settings:reset'),
+    pickFile: (input: SettingsPickFileRequestShape): Promise<SettingsPickFileResponseShape> =>
+      invoke('settings:pick-file', input),
   },
   secrets: {
     set: (input: SecretsSetRequestShape): Promise<SecretsSetResponseShape> =>

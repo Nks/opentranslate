@@ -1,8 +1,18 @@
 import {
   app, dialog, ipcMain, safeStorage,
 } from 'electron'
+import {
+  readFile, stat,
+} from 'node:fs/promises'
 import { join } from 'node:path'
-import { channels } from '@electron/ipc/channels'
+import {
+  channels,
+  type SettingsPickFileRequestShape,
+  type SettingsPickFileResponseShape,
+} from '@electron/ipc/channels'
+import {
+  handlePickFile,
+} from '@electron/main/pick-file'
 import {
   createSettingsStore,
   type SettingsStore,
@@ -164,6 +174,14 @@ function registerSettingsChannels(
   ipcMain.handle(channels['secrets:test'], safeHandler(
     (_event: unknown, input: unknown) =>
       handlers['secrets:test'](input as { providerId: string }),
+  ))
+  ipcMain.handle(channels['settings:pick-file'], safeHandler(
+    (_event: unknown, input: unknown): Promise<SettingsPickFileResponseShape> =>
+      handlePickFile(input as SettingsPickFileRequestShape, {
+        showOpenDialog: dialog.showOpenDialog.bind(dialog),
+        stat: async (filePath: string) => stat(filePath),
+        readFile: async (filePath: string, encoding: 'utf8') => readFile(filePath, encoding),
+      }),
   ))
 }
 

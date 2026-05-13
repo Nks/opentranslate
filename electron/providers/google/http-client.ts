@@ -50,16 +50,39 @@ export interface GoogleHttpClient {
   translate: (input: TranslationInput) => Promise<TranslationOutput>
 }
 
+/**
+ * Append `key=<APIKEY>` to a v2 path while preserving any existing
+ * query string (e.g. `?target=en`). Returns the original path when no
+ * api key is configured.
+ */
+function withApiKey(path: string, apiKey: string | null): string {
+  if (apiKey === null || apiKey.length === 0) {
+    return path
+  }
+
+  const separator: string = path.includes('?') ? '&' : '?'
+  const encoded: string = encodeURIComponent(apiKey)
+
+  return `${path}${separator}key=${encoded}`
+}
+
 export function createGoogleHttpClient(input: GoogleHttpClientInput): GoogleHttpClient {
+  const apiKey: string | null = input.auth.getApiKey()
+  const isApiKeyMode: boolean = apiKey !== null
+
   const http = createProviderHttp({
     providerId: 'google',
     baseUrl: V2_BASE,
     timeoutMs: input.settings.requestTimeoutMs,
     dispatcher: strictAgent,
     errorMapper: throwGoogleHttpError,
-    authHeader: async () => ({
-      Authorization: `Bearer ${await input.auth.getAccessToken()}`,
-    }),
+    ...(isApiKeyMode
+      ? {}
+      : {
+          authHeader: async (): Promise<Record<string, string>> => ({
+            Authorization: `Bearer ${await input.auth.getAccessToken()}`,
+          }),
+        }),
     ...(input.fetchImpl
       ? {
           fetchImpl: input.fetchImpl,
@@ -74,7 +97,7 @@ export function createGoogleHttpClient(input: GoogleHttpClientInput): GoogleHttp
 
   async function listLanguages(): Promise<Language[]> {
     const native = await http.execute<GoogleLanguagesResponse>({
-      path: '/languages?target=en',
+      path: withApiKey('/languages?target=en', apiKey),
       method: 'GET',
     })
 
@@ -83,7 +106,7 @@ export function createGoogleHttpClient(input: GoogleHttpClientInput): GoogleHttp
 
   async function detect(text: string): Promise<LanguageDetectionResult> {
     const native = await http.execute<GoogleDetectResponse>({
-      path: '/detect',
+      path: withApiKey('/detect', apiKey),
       method: 'POST',
       body: new URLSearchParams({
         q: text,
@@ -104,7 +127,7 @@ export function createGoogleHttpClient(input: GoogleHttpClientInput): GoogleHttp
       body.set('source', reqInput.source.code)
     }
     const native = await http.execute<GoogleTranslateResponse>({
-      path: '',
+      path: withApiKey('', apiKey),
       method: 'POST',
       body,
     })

@@ -81,9 +81,23 @@ export function createTranslationHandlers(
       const settings = await deps.store.load()
       const providerSettings = settings.providers[providerId] ?? descriptor.defaultSettings
 
+      // Registry guarantees `secretFields.length <= 1` (see
+      // `electron/providers/registry.ts`); the vault stores plaintext keyed
+      // by `providerId` alone. Only return the value when the adapter asks
+      // for the declared secret field — every other key returns `null` so
+      // an adapter typo cannot silently land on the wrong slot.
+      const expectedSecretFieldKey: string | null =
+        descriptor.secretFields[0]?.key ?? null
+
       const adapter = descriptor.createAdapter({
         settings: providerSettings,
-        getSecret: async () => deps.vault.getMainOnly(providerId),
+        getSecret: async (fieldKey: string): Promise<string | null> => {
+          if (expectedSecretFieldKey === null || fieldKey !== expectedSecretFieldKey) {
+            return null
+          }
+
+          return deps.vault.getMainOnly(providerId)
+        },
       })
 
       deps.orchestrator.setAdapter(adapter)

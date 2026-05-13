@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import type { ProviderSettingsField, ProviderSecretField } from '@shared/providers/descriptor'
+import type {
+  SettingsPickFileFilter,
+  SettingsPickFileValidation,
+} from '@electron/ipc/channels'
 import { useApi } from '@app/composables/useApi'
+import { useHandleError } from '@app/composables/useHandleError'
 
 interface Props {
   providerId: string
@@ -19,8 +24,18 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const api = useApi()
+const handleError = useHandleError()
 const secretValues = ref<Record<string, string>>({})
 const secretPresence = ref<Record<string, boolean>>({})
+const fileFieldErrors = ref<Record<string, string>>({})
+const pickingFor = ref<string | null>(null)
+
+const FILE_PATH_FILTERS: readonly SettingsPickFileFilter[] = [
+  {
+    name: 'JSON',
+    extensions: ['json'],
+  },
+]
 
 function isFieldVisible(field: ProviderSettingsField): boolean {
   if (!field.dependsOn) {
@@ -34,11 +49,11 @@ function getFieldValue(key: string): unknown {
   return props.currentSettings[key]
 }
 
-function onFieldChange(key: string, value: unknown) {
+function onFieldChange(key: string, value: unknown): void {
   emit('update:field', key, value)
 }
 
-function onSecretChange(key: string, value: string) {
+function onSecretChange(key: string, value: string): void {
   secretValues.value[key] = value
   emit('update:secret', key, value)
 }
@@ -55,12 +70,63 @@ const advancedFields = computed<readonly ProviderSettingsField[]>(() =>
   visibleFields.value.filter((field) => field.group === 'advanced'),
 )
 
-async function checkSecretPresence() {
+function clearFileError(key: string): void {
+  if (fileFieldErrors.value[key] !== undefined) {
+    delete fileFieldErrors.value[key]
+  }
+}
+
+function applyFileValidation(
+  key: string,
+  validation: SettingsPickFileValidation | undefined,
+): boolean {
+  if (validation === undefined || validation.ok) {
+    clearFileError(key)
+
+    return true
+  }
+  fileFieldErrors.value[key] = validation.error ?? 'File validation failed.'
+
+  return false
+}
+
+async function onBrowseFile(field: ProviderSettingsField): Promise<void> {
+  if (pickingFor.value !== null) {
+    return
+  }
+  pickingFor.value = field.key
+
+  try {
+    const response = await api.settings.pickFile({
+      filters: FILE_PATH_FILTERS,
+      ...(field.validate ? { validate: field.validate } : {}),
+    })
+
+    if (response.filePath === null) {
+      return
+    }
+    const accepted: boolean = applyFileValidation(field.key, response.validation)
+
+    if (accepted) {
+      onFieldChange(field.key, response.filePath)
+    }
+  } catch (err: unknown) {
+    handleError(err)
+  } finally {
+    pickingFor.value = null
+  }
+}
+
+async function checkSecretPresence(): Promise<void> {
   try {
     const result = await api.secrets.test({ providerId: props.providerId })
     secretPresence.value[props.providerId] = result.present
   } catch {
-    // outside Electron
+    // Intentionally swallowed: this runs at mount time in unit tests
+    // (and in non-Electron SSR contexts) where `api.secrets.test` rejects
+    // because `window.api` isn't defined. The form must still render in
+    // those environments. Real-Electron failures are surfaced when the
+    // user interacts with secret fields, not during the eager probe.
   }
 }
 
@@ -88,6 +154,7 @@ onMounted(() => {
         <UFormField
           :label="field.label"
           :description="field.description"
+          :error="fileFieldErrors[field.key]"
         >
           <USwitch
             v-if="field.type === 'boolean'"
@@ -111,6 +178,26 @@ onMounted(() => {
             :aria-label="field.label"
             @update:model-value="(val: string) => onFieldChange(field.key, Number(val))"
           />
+          <div
+            v-else-if="field.type === 'file-path'"
+            class="flex gap-2"
+          >
+            <UInput
+              :model-value="String(getFieldValue(field.key) ?? '')"
+              :placeholder="field.placeholder ?? 'No file selected'"
+              :aria-label="field.label"
+              readonly
+              class="flex-1"
+            />
+            <UButton
+              variant="soft"
+              icon="i-fluent-folder-open-24-regular"
+              :disabled="pickingFor === field.key"
+              @click="onBrowseFile(field)"
+            >
+              Browse…
+            </UButton>
+          </div>
           <UInput
             v-else
             :model-value="String(getFieldValue(field.key) ?? '')"
