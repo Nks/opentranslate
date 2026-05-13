@@ -82,12 +82,18 @@ electron-builder generates `.icns` (macOS) and `.ico` (Windows) from `icon.png`.
 
 ## Native Modules
 
-`better-sqlite3` requires compilation against Electron's Node ABI.
-electron-builder handles this via `npmRebuild: true`.
+`better-sqlite3` and `uiohook-napi` are the runtime native modules.
+`uiohook-napi` ships prebuilt binaries for every supported platform
+via `node-gyp-build`. `better-sqlite3` is rebuilt against Electron's
+Node ABI by the `postinstall` hook (`electron-rebuild -f -w
+better-sqlite3`), so contributors who run `pnpm install` get a
+ready-to-launch binary. `electron-builder` re-runs the rebuild during
+packaging via `npmRebuild: true`.
 
-After packaging locally, run `pnpm rebuild better-sqlite3` to restore
-the Node-compatible binary for development. The `package` and `package:dir`
-scripts do this automatically.
+Vitest never loads the SQLite native module —
+`tests/unit/electron/history-handlers.test.ts` injects a fake
+`HistoryStore` at the TypeScript interface boundary, so no ABI
+rebuild is needed before running the unit suite.
 
 ---
 
@@ -138,14 +144,6 @@ with all platform artifacts.
 ---
 
 ## Troubleshooting
-
-### better-sqlite3 ABI mismatch after packaging
-
-```
-NODE_MODULE_VERSION 145 vs 137
-```
-
-Run `pnpm rebuild better-sqlite3` to restore the Node-compatible binary.
 
 ### macOS Gatekeeper blocks unsigned app
 

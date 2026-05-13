@@ -17,7 +17,7 @@ _Created: 2026-04-16. Last priority audit: 2026-04-28._
 | Priority | IDs |
 |---|---|
 | **P0** | B-010 |
-| **P1** | B-017, B-040, B-043, B-047, B-049 |
+| **P1** | B-017, B-040, B-043, B-047, B-049, B-051 |
 | **P2** | B-002, B-009, B-011, B-012, B-013, B-018, B-019, B-021, B-022, B-032, B-039, B-041, B-044 |
 | **P3** | B-005, B-014, B-020, B-023, B-024, B-025, B-029, B-030, B-031, B-036, B-045, B-046, B-048, B-050 |
 | **DEFERRED** | B-035 |
@@ -31,6 +31,56 @@ Recommended next bundles:
 ---
 
 ## Provider Selection & State
+
+### B-051: Cold-start auto-selected provider doesn't hydrate language list or enable input
+**Priority:** P1
+
+On a fresh app launch, the persisted provider is restored and shown
+as active in the provider dropdown, but the rest of the UI doesn't
+finish wiring up:
+
+- The source and target language dropdowns render the raw BCP-47
+  codes (e.g. `"en"`, `"ru"`) instead of the full localized names
+  pulled from the provider's `/languages` (or equivalent) catalog.
+- The source text area is disabled — typing is rejected — until the
+  user manually re-selects the same provider in the dropdown. Only
+  after that explicit re-selection do the language names render and
+  the input become writable.
+
+Reproduces every time the app boots with a previously-configured
+provider in `AppSettings`. No console error; the UI silently stays in
+a half-initialized state.
+
+Likely root cause: bootstrap (e.g. `useProviderBootstrap`) sets the
+restored provider in the store but does not run the same effect
+chain that `provider:switch` runs on user-driven change. That chain
+is what:
+- calls `language:list` and populates the language catalog so the
+  selector can map codes → display names,
+- flips the "provider ready" flag the input area uses to gate
+  `disabled` / `readonly`.
+
+Fix direction:
+- On cold start, after the persisted provider is restored, dispatch
+  the same selection-reconcile + catalog-fetch path that
+  `onProviderChange` uses. A single shared `selectProvider(id)`
+  composable that both the bootstrap and the user-driven handler
+  call would prevent the two paths from drifting again.
+- Until the catalog resolves, render the language dropdown items
+  using the cached `languageDisplayName(code)` fallback so the user
+  never sees raw codes — codes are an internal contract, not a UX
+  surface.
+- The input `disabled` gate should key off "is a provider selected
+  + catalog hydrated" rather than the transient "switch event just
+  fired" flag.
+
+Tests:
+- `useProviderBootstrap.test.ts` — assert language catalog is
+  requested and the input-ready flag flips after restoring a
+  persisted provider, without any user interaction.
+- Renderer test that the language selector shows a name (not the
+  raw code) immediately after mount when settings contain a valid
+  provider + language pair.
 
 ### B-002: Provider status indicators in dropdown
 **Priority:** P2

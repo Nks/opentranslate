@@ -85,6 +85,15 @@ export function createHistoryStore(dbPath: string): HistoryStore {
     'DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY created_at DESC LIMIT @keep)',
   )
 
+  function applyRetention(mode: HistoryRetentionMode): void {
+    if (mode === 'last-30-days') {
+      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      pruneOldStmt.run({ cutoff })
+    } else if (mode === 'last-100-entries') {
+      pruneExcessStmt.run({ keep: 100 })
+    }
+  }
+
   function add(
     input: HistoryAddInput,
     retentionMode: HistoryRetentionMode,
@@ -117,15 +126,6 @@ export function createHistoryStore(dbPath: string): HistoryStore {
     applyRetention(retentionMode)
 
     return entry
-  }
-
-  function applyRetention(mode: HistoryRetentionMode): void {
-    if (mode === 'last-30-days') {
-      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      pruneOldStmt.run({ cutoff })
-    } else if (mode === 'last-100-entries') {
-      pruneExcessStmt.run({ keep: 100 })
-    }
   }
 
   function list(input: HistoryListInput): HistoryEntry[] {

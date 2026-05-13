@@ -173,6 +173,7 @@ function registerHistoryChannels(userDataDir: string, store: SettingsStore): voi
   ): (...args: TArgs) => Promise<TResult> => rawSafeHandler(fn, false)
 
   let historyHandlers: HistoryHandlers | null = null
+  let historyInitError: unknown = null
 
   try {
     const historyDb = createHistoryStore(join(userDataDir, 'history.db'))
@@ -181,43 +182,59 @@ function registerHistoryChannels(userDataDir: string, store: SettingsStore): voi
       settings: store,
     })
   } catch (err: unknown) {
+    historyInitError = err
     // eslint-disable-next-line no-console
     console.error('[history] better-sqlite3 initialization failed', err)
   }
 
+  function requireHistoryHandlers(): HistoryHandlers {
+    if (!historyHandlers) {
+      const cause = historyInitError instanceof Error
+        ? historyInitError.message
+        : String(historyInitError)
+
+      throw new Error(
+        `History store is unavailable. better-sqlite3 failed to initialise: ${cause}. ` +
+        'Reinstall (pnpm install) — postinstall rebuilds the native module against the current Electron ABI.',
+      )
+    }
+
+    return historyHandlers
+  }
+
   ipcMain.handle(channels['history:add'], safeHandler(
     (_event: unknown, input: unknown) =>
-      historyHandlers?.['history:add'](
-        input as Parameters<NonNullable<typeof historyHandlers>['history:add']>[0],
-      ) ?? null,
+      requireHistoryHandlers()['history:add'](
+        input as Parameters<HistoryHandlers['history:add']>[0],
+      ),
   ))
   ipcMain.handle(channels['history:list'], safeHandler(
     (_event: unknown, input: unknown) =>
-      historyHandlers?.['history:list'](input as {
+      requireHistoryHandlers()['history:list'](input as {
         limit?: number
         offset?: number
-      }) ?? [],
+      }),
   ))
   ipcMain.handle(channels['history:search'], safeHandler(
     (_event: unknown, input: unknown) =>
-      historyHandlers?.['history:search'](input as {
+      requireHistoryHandlers()['history:search'](input as {
         query: string
         limit?: number
-      }) ?? [],
+      }),
   ))
   ipcMain.handle(channels['history:delete'], safeHandler(
     (_event: unknown, input: unknown): null => {
-      historyHandlers?.['history:delete'](input as { id: string })
+      requireHistoryHandlers()['history:delete'](input as { id: string })
 
       return null
     },
   ))
   ipcMain.handle(channels['history:clear'], safeHandler(
-    () => historyHandlers?.['history:clear'](),
+    () => requireHistoryHandlers()['history:clear'](),
   ))
   ipcMain.handle(channels['history:toggle'], safeHandler(
     (_event: unknown, input: unknown) =>
-      historyHandlers?.['history:toggle'](input as { enabled: boolean }),
+      requireHistoryHandlers()['history:toggle'](input as { enabled: boolean }),
   ))
 }
 

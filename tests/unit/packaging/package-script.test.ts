@@ -69,10 +69,10 @@ describe('scripts/build-electron.mjs', () => {
     expect(content).toContain('preload.cjs')
   })
 
-  it('externalizes electron and better-sqlite3', () => {
+  it('externalizes Electron and other native modules', () => {
     const content = readFileSync(buildScriptPath, 'utf8')
 
     expect(content).toContain("'electron'")
-    expect(content).toContain("'better-sqlite3'")
+    expect(content).toContain("'uiohook-napi'")
   })
 })
