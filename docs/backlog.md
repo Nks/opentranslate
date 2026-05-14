@@ -917,3 +917,53 @@ descriptors that declare more than one secret field (see
 include redaction of `HealthStatus.details` for every adapter so a
 network error containing query-string secrets or a filesystem path
 cannot reach the renderer.
+
+### B-G-17: Tighten dev CSP — drop `'unsafe-eval'` from renderer
+**Priority:** P2
+
+Dev console shows:
+
+```
+Electron Security Warning (Insecure Content-Security-Policy)
+This renderer process has either no Content Security Policy set or
+a policy with "unsafe-eval" enabled. This exposes users of this app
+to unnecessary security risks.
+```
+
+Source: `electron/main/csp.ts` — dev branch sets
+`script-src 'self' 'unsafe-inline' 'unsafe-eval' <devRendererUrl>`.
+Warning suppresses in packaged builds (prod branch already drops
+`'unsafe-eval'`), but the dev policy is still the policy contributors
+audit against and remains the only enforcement during development.
+
+Why `'unsafe-eval'` is there today: Vite dev server emits `eval`-based
+sourcemap shims for HMR. Nuxt 4 + Vite 7 still relies on this in some
+module loaders.
+
+Action items:
+- Audit whether Vite 7 + Nuxt 4 (`viteEnvironmentApi: true`) can run
+  HMR without `'unsafe-eval'`. Try
+  `vite: { server: { hmr: { protocol: 'ws' } } }` + the
+  `build.target: 'esnext'` + transpile path — recent Vite versions
+  ship eval-free HMR for ES module targets.
+- If a clean drop is feasible: remove `'unsafe-eval'` from the dev
+  CSP and `'unsafe-inline'` from `style-src` (Nuxt UI inline styles
+  are scoped — check whether nonce-based CSP is supported by Nuxt UI
+  v4 yet).
+- If not: pin the warning to a tracked `T-I-XX` entry in
+  `docs/threat-model.md` with the residual-risk rationale (no remote
+  code reaches dev renderer because `connect-src` is allow-listed and
+  Nuxt dev server is loopback only) so future audits don't re-flag it.
+- Document the decision in `docs/security.md` under §"Content
+  Security Policy".
+
+Tests:
+- Add an E2E assertion that the prod build's `script-src` does not
+  contain `'unsafe-eval'` (guard against a regression where the dev
+  policy leaks into prod).
+- Add a smoke test that loads the main window in dev and asserts the
+  Electron console does not emit the "Insecure Content-Security-Policy"
+  warning (only meaningful once dev CSP is tightened).
+
+Cross-refs: AGENTS.md §Security rule 1 (`contextIsolation`),
+`docs/threat-model.md` T-E-04, B-G-01 (window-open + nav guards).
