@@ -1,15 +1,46 @@
 # Project State — OpenTranslate Desktop
 
-_Last updated: 2026-04-28 (P0 fix; B-010 in flight)_
+_Last updated: 2026-05-18 (v0.1.0 release prep — Phase 2 metadata wired, awaiting local pre-flight + tag)_
 
 ---
 
 ## Active context
 
-- **Current branch:** `fix/b-010-history-recording` (PR pending)
+- **Current phase:** v0.1.0 release prep — Phase 2 metadata wired,
+  awaiting local pre-flight + tag.
+- **Current branch:** `feat/p1-bundle`
 - **Parent branch:** `develop`
-- **In-flight commit:** `a3b47a3 — fix(b-010): surface history-store failures instead of silently dropping writes`
-- **Last completed iteration:** Bundle (B-049) — `fix(b-049): prevent identical source + target language selection` merged as `922afe9`
+- **Next steps:** manager runs `pnpm exec electron-builder --mac
+  --publish=never` locally as the Phase 3 pre-flight, then Phase 4
+  cuts the `v0.1.0` tag and the GitHub pre-release.
+- **In-flight changes (this phase, uncommitted):**
+  - `scripts/build-icons.py` — `DMG_LOGO_SIZE = 0` (plain DMG canvas)
+    plus a new `--background-only` CLI flag.
+  - `build/background.png` / `background@2x.png` /
+    `background-preview.png` — regenerated as flat `#F5F5F5`.
+  - `electron-builder.yml` — explicit per-platform `icon:` paths,
+    `mac.notarize: false`, `dmg.background` + `dmg.window` +
+    `dmg.iconSize` / `iconTextSize` for the new canvas.
+  - `CHANGELOG.md` (new) — Keep-a-changelog `0.1.0` entry, highlights
+    only, pre-release flag + known limitations.
+  - `docs/install.md` (new) — macOS Gatekeeper + Windows SmartScreen
+    bypass, Linux AppImage/deb steps, SHA-256 verification, issue
+    reporting template.
+  - `docs/backlog.md` — new `B-G-18` (hand-drawn tray template) and
+    `B-G-19` (electron-updater wire-up) under §"v0.1.0 release
+    follow-ups".
+
+## Locked v0.1.0 decisions
+
+- Version: `0.1.0` (no alpha suffix); published as a **GitHub
+  pre-release**.
+- macOS + Windows binaries: **unsigned**; bypass instructions live in
+  `docs/install.md`.
+- Auto-update: **not wired** (tracked as B-G-19 for v0.1.1).
+- Tray template icon: shipped as auto-generated; hand-redesign
+  tracked as B-G-18 for v0.1.1.
+- DMG background: flat `#F5F5F5` canvas, no decorative logo.
+- CHANGELOG.md: user-facing highlights only (no per-B-ID dump).
 
 ## Green-state verification
 
