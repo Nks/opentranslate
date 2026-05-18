@@ -761,3 +761,209 @@ are rotatable in the Azure portal and scoped per-resource. Store via
 **Out of scope for the initial adapter:** document translation
 (revisit separately if S1 support is ever added), Custom Translator
 models, transliteration endpoint, breaksentence endpoint.
+
+---
+
+## Carved out of B-040
+
+### B-052: Persist Google service-account JSON contents through safeStorage
+**Priority:** P1 — security-critical follow-up to B-040.
+
+B-040 added a file picker and validation for the Google service-account
+JSON path, but settings still persist the **path**, not the parsed
+credentials. Two security/UX consequences:
+
+- The file must remain on disk at the original location, exposing the
+  raw private key to anyone with filesystem access.
+- Moving / deleting the file breaks the provider with no in-app hint.
+
+Required work:
+
+- Refactor `electron/providers/google/auth.ts` (`createDefaultGoogleAuth`
+  in service-account mode) to accept `credentials: parsed` (the parsed
+  JSON object) instead of `keyFile: path`. `google-auth-library`
+  supports this constructor shape directly.
+- Update `electron/main/ipc-setup.ts` `settings:pick-file` handler so
+  that, after validation, it round-trips the parsed contents through
+  `safeStorage.encryptString(...)` and persists the encrypted blob via
+  the existing secrets vault under a new `credentialsJson` secret
+  field. Drop `credentialsJsonPath` from `GoogleProviderSettings`.
+- Renderer: replace the read-only path display with a "Credentials
+  loaded — click Browse… to replace" indicator backed by
+  `secrets:test`. The renderer still never sees the JSON contents.
+- Migration: detect legacy `credentialsJsonPath` on load, read +
+  validate + re-encrypt + clear the path field, all in a single
+  settings-store migration step. Quarantine on failure.
+- Tests: extend `tests/unit/electron/providers/google/auth.test.ts` for
+  the `credentials: parsed` shape; add migration unit test;
+  end-to-end smoke test that picking a key file then deleting the
+  source file leaves translation working.
+
+### B-053: Google OAuth installed-app authentication
+**Priority:** P3
+
+A third Google authentication option beyond service account JSON
+(B-040 / B-052) and v2 API key (B-040): full OAuth 2.0 installed-app
+flow using a downloaded OAuth client JSON.
+
+Required pieces:
+
+- New `authMode: 'oauth-installed'` branch in
+  `shared/types/provider-settings.ts` and the descriptor.
+- Settings UI: file picker for the OAuth client JSON (same channel as
+  B-040, with a separate `validate: 'google-oauth-client'` profile)
+  plus a "Sign in with Google" button.
+- Main-process flow: launch the consent screen in the system browser,
+  spin up an ephemeral loopback redirect server, exchange the
+  authorisation code for an access + refresh token via
+  `google-auth-library`'s `OAuth2Client`, then persist the refresh
+  token through `safeStorage` (see B-052).
+- `electron/providers/google/auth.ts`: refresh access tokens from the
+  stored refresh token; reuse the existing service-account error
+  mapping for failure categories.
+- Capability: unlocks v3 (Advanced) like service-account mode does,
+  including document translation.
+- Tests: unit-test the loopback callback parser (URL → code/state),
+  the refresh-token flow against a mocked OAuth2Client, and a
+  state-mismatch / replay-protection assertion. E2E covers the
+  consent-screen launch (mocked browser open).
+
+---
+
+## Bundle follow-ups — `feat/p1-bundle`
+
+### B-G-13: Pick-file error redaction + size cap + filter override (closed by feat/p1-bundle)
+**Priority:** P2 — closed in `feat/p1-bundle` (S1 + S2 + S3 review block).
+
+`electron/main/ipc-setup.ts:handlePickFile` now:
+1. Maps `fs` error codes to fixed string codes (`permission-denied`,
+   `not-a-file`, `unreadable`, `too-large`) so the renderer never sees a
+   raw `err.message` containing filesystem layout.
+2. Calls `stat()` before `readFile`; rejects files > 1MB with code
+   `too-large` so a 1GB "JSON" cannot OOM-crash main.
+3. In `validate: 'google-service-account'` mode, ignores the
+   renderer-supplied `filters` and hardcodes
+   `[{ name: 'JSON', extensions: ['json'] }]`. Validation profile wins
+   over renderer-supplied filter so a tampered request cannot bypass
+   the JSON gate.
+
+Tracked here so the entry survives in the backlog as historical context.
+
+### B-G-14: Pending-close gate for `window:close-response`
+**Priority:** P2
+
+The current `ipcMain.on(eventChannels['window:close-response'], …)` listener
+trusts any payload arriving on the channel: it does not check the sending
+`webContents` against the main window, and it does not require that a
+close-request was actually outstanding. Hardening to do:
+- Track a `pendingCloseRequest: boolean` flag set when
+  `handleMainWindowClose` fires the `window:close-request` event, cleared
+  when the response arrives or when the requesting `BrowserWindow` is
+  destroyed.
+- In the response listener, drop responses that arrive while
+  `pendingCloseRequest === false` (defensive — no harm done, but no
+  zombie-window state changes either).
+- Verify `event.sender === mainWindow.webContents` so a renderer in another
+  window cannot trigger hide/quit on the main window.
+- Tests: extend `tests/unit/electron/main/main-window-close.test.ts` to
+  assert that responses arriving without a pending request are ignored, and
+  that responses from foreign senders are rejected.
+
+### B-G-15: Tray icon graceful fallback when assets missing
+**Priority:** P3
+
+`electron/main/tray.ts:buildTrayImage` calls `nativeImage.createFromPath`
+unconditionally. When the asset directory is missing (broken installer,
+incorrect packaging in a dev branch, a future renamed icon), Electron
+returns an empty `NativeImage` and the tray either fails to display or
+appears blank. Graceful fallback:
+- Detect an empty image via `image.isEmpty()` after `createFromPath`.
+- Log a single warning via the main-process logger including the asset
+  path that was attempted.
+- Return `null` from `createTray` so `index.ts` keeps `trayService =
+  null` and the app continues running without the tray.
+- Tests: extend `tests/unit/electron/main/tray.test.ts` with a "missing
+  icon" case that mocks `nativeImage.createFromPath` returning an empty
+  image and asserts `setVisible(true)` is a no-op.
+
+### B-G-16: Multi-secret vault support per provider
+**Priority:** P3 (raise to P2 if a real provider needs multi-secret).
+
+The current `electron/services/secrets/vault.ts` keys plaintext by
+`providerId` alone (one secret per provider). The descriptor exposes a
+`secretFields: ProviderSecretField[]` array — today only Google with one
+`apiKey` field uses it. As an interim measure the registry now rejects
+descriptors that declare more than one secret field (see
+`electron/providers/registry.ts`); extending support requires:
+- Migrate the on-disk storage key from `secret:<providerId>` to
+  `secret:<providerId>:<fieldKey>` with one-time backfill for legacy
+  values.
+- Add `fieldKey` to `secrets:set` / `secrets:test` IPC payloads (default
+  `'default'` for one release for backwards compatibility).
+- Update `ProviderSettingsForm.vue` to send `fieldKey` per secret field.
+- Update the closure in `electron/services/translation/handlers.ts` so
+  the adapter's `getSecret(fieldKey)` reads the correct vault slot
+  (today returns `null` for any key other than the descriptor's single
+  declared secret).
+- Tests: vault round-trip with two secret fields for the same providerId;
+  legacy-key migration test.
+- Remove the registration guard in `registry.ts` once the above lands.
+
+### B-G-06 (extension): Redact adapter `getHealth.details`
+**Priority:** P2 — scope addition to the existing B-G-06.
+
+`electron/providers/google/adapter.ts:getHealth` currently returns
+`details: err.message` (raw provider/network error). Extend B-G-06 to
+include redaction of `HealthStatus.details` for every adapter so a
+network error containing query-string secrets or a filesystem path
+cannot reach the renderer.
+
+### B-G-17: Tighten dev CSP — drop `'unsafe-eval'` from renderer
+**Priority:** P2
+
+Dev console shows:
+
+```
+Electron Security Warning (Insecure Content-Security-Policy)
+This renderer process has either no Content Security Policy set or
+a policy with "unsafe-eval" enabled. This exposes users of this app
+to unnecessary security risks.
+```
+
+Source: `electron/main/csp.ts` — dev branch sets
+`script-src 'self' 'unsafe-inline' 'unsafe-eval' <devRendererUrl>`.
+Warning suppresses in packaged builds (prod branch already drops
+`'unsafe-eval'`), but the dev policy is still the policy contributors
+audit against and remains the only enforcement during development.
+
+Why `'unsafe-eval'` is there today: Vite dev server emits `eval`-based
+sourcemap shims for HMR. Nuxt 4 + Vite 7 still relies on this in some
+module loaders.
+
+Action items:
+- Audit whether Vite 7 + Nuxt 4 (`viteEnvironmentApi: true`) can run
+  HMR without `'unsafe-eval'`. Try
+  `vite: { server: { hmr: { protocol: 'ws' } } }` + the
+  `build.target: 'esnext'` + transpile path — recent Vite versions
+  ship eval-free HMR for ES module targets.
+- If a clean drop is feasible: remove `'unsafe-eval'` from the dev
+  CSP and `'unsafe-inline'` from `style-src` (Nuxt UI inline styles
+  are scoped — check whether nonce-based CSP is supported by Nuxt UI
+  v4 yet).
+- If not: pin the warning to a tracked `T-I-XX` entry in
+  `docs/threat-model.md` with the residual-risk rationale (no remote
+  code reaches dev renderer because `connect-src` is allow-listed and
+  Nuxt dev server is loopback only) so future audits don't re-flag it.
+- Document the decision in `docs/security.md` under §"Content
+  Security Policy".
+
+Tests:
+- Add an E2E assertion that the prod build's `script-src` does not
+  contain `'unsafe-eval'` (guard against a regression where the dev
+  policy leaks into prod).
+- Add a smoke test that loads the main window in dev and asserts the
+  Electron console does not emit the "Insecure Content-Security-Policy"
+  warning (only meaningful once dev CSP is tightened).
+
+Cross-refs: AGENTS.md §Security rule 1 (`contextIsolation`),
+`docs/threat-model.md` T-E-04, B-G-01 (window-open + nav guards).

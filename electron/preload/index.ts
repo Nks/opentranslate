@@ -3,10 +3,13 @@ import {
 } from 'electron'
 import {
   channels,
+  eventChannels,
   type ChannelName,
   type ChannelRequest,
   type ChannelResponse,
   type SettingsGetResponseShape,
+  type SettingsPickFileRequestShape,
+  type SettingsPickFileResponseShape,
   type SecretsSetRequestShape,
   type SecretsSetResponseShape,
   type SecretsTestRequestShape,
@@ -15,6 +18,7 @@ import {
   type ProviderSwitchResponseShape,
   type LanguageListRequestShape,
   type TranslationDetectRequestShape,
+  type WindowCloseResponsePayload,
 } from '@electron/ipc/channels'
 import type {
   SettingsUpdate,
@@ -79,6 +83,8 @@ const api = {
     update: (patch: SettingsUpdate): Promise<SettingsGetResponseShape> =>
       invoke('settings:update', patch),
     reset: (): Promise<SettingsGetResponseShape> => invoke('settings:reset'),
+    pickFile: (input: SettingsPickFileRequestShape): Promise<SettingsPickFileResponseShape> =>
+      invoke('settings:pick-file', input),
   },
   secrets: {
     set: (input: SecretsSetRequestShape): Promise<SecretsSetResponseShape> =>
@@ -129,6 +135,16 @@ const api = {
       ipcRenderer.on('quick-translate:text', (_event, text: string) => {
         callback(text)
       })
+    },
+  },
+  window: {
+    onCloseRequest: (callback: () => void): void => {
+      ipcRenderer.on(eventChannels['window:close-request'], (): void => {
+        callback()
+      })
+    },
+    respondClose: (input: WindowCloseResponsePayload): void => {
+      ipcRenderer.send(eventChannels['window:close-response'], input)
     },
   },
 } as const

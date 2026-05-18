@@ -41,6 +41,15 @@ export interface ProviderFieldDependency {
   equals: string | number | boolean
 }
 
+/**
+ * Validation profile applied to picked file-path fields. The main-process
+ * `settings:pick-file` handler reads + validates the file according to the
+ * profile and never lets the contents cross the IPC boundary. Adding a new
+ * profile requires adding both a `validate` literal here and the
+ * corresponding branch in the pick-file handler.
+ */
+export type ProviderFieldValidateProfile = 'google-service-account'
+
 export interface ProviderSettingsField {
   key: string
   label: string
@@ -51,6 +60,11 @@ export interface ProviderSettingsField {
   required: boolean
   group: 'general' | 'advanced'
   dependsOn?: ProviderFieldDependency
+  /**
+   * Validation profile for `type: 'file-path'` fields. Only meaningful when
+   * the field type is `file-path`; ignored otherwise.
+   */
+  validate?: ProviderFieldValidateProfile
 }
 
 export interface ProviderSecretField {

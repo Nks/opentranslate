@@ -1,9 +1,14 @@
 import {
   app, BrowserWindow,
+  type Event,
 } from 'electron'
 import { join } from 'node:path'
 import { createWindowOptions } from '@electron/main/window-factory'
 import { isDevToolsShortcut } from '@electron/main/devtools-blocker'
+import {
+  handleMainWindowClose,
+  type CloseHandlerDeps,
+} from '@electron/main/main-window-close'
 
 export interface MainWindowHost {
   getWindow: () => BrowserWindow | null
@@ -16,6 +21,7 @@ export interface MainWindowOptions {
   isDev: boolean
   devRendererUrl: string | undefined
   distElectronDir: string
+  closeHandlerDeps: CloseHandlerDeps
 }
 
 export function createMainWindowHost(options: MainWindowOptions): MainWindowHost {
@@ -44,6 +50,13 @@ export function createMainWindowHost(options: MainWindowOptions): MainWindowHost
       mainWindow?.show()
     })
 
+    mainWindow.on('close', (event: Event): void => {
+      if (!mainWindow) {
+        return
+      }
+      handleMainWindowClose(event, options.closeHandlerDeps, mainWindow)
+    })
+
     mainWindow.on('closed', (): void => {
       mainWindow = null
     })
@@ -64,6 +77,10 @@ export function createMainWindowHost(options: MainWindowOptions): MainWindowHost
 
     if (mainWindow.isMinimized()) {
       mainWindow.restore()
+    }
+
+    if (!mainWindow.isVisible()) {
+      mainWindow.show()
     }
     mainWindow.focus()
   }

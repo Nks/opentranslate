@@ -45,6 +45,7 @@ export const channels = {
   'settings:get': 'settings:get',
   'settings:update': 'settings:update',
   'settings:reset': 'settings:reset',
+  'settings:pick-file': 'settings:pick-file',
   'secrets:set': 'secrets:set',
   'secrets:test': 'secrets:test',
   'translation:translate': 'translation:translate',
@@ -64,9 +65,55 @@ export const channels = {
 
 export type ChannelName = keyof typeof channels
 
+/**
+ * Event-style channels for fire-and-forget main ↔ renderer messages.
+ *
+ * Distinct from invoke/handle `channels` above: these use `webContents.send`
+ * (main → renderer) and `ipcRenderer.send` (renderer → main). The preload
+ * bridge exposes a typed subscriber/sender for each entry below.
+ */
+export const eventChannels = {
+  'window:close-request': 'window:close-request',
+  'window:close-response': 'window:close-response',
+} as const
+
+export type EventChannelName = keyof typeof eventChannels
+
+export type WindowCloseChoice = 'hide' | 'quit' | 'cancel'
+
+export interface WindowCloseResponsePayload {
+  choice: WindowCloseChoice
+  remember: boolean
+}
+
 export interface SettingsGetResponseShape {
   app: AppSettings
   providers: Record<string, unknown>
+}
+
+export interface SettingsPickFileFilter {
+  name: string
+  extensions: string[]
+}
+
+export interface SettingsPickFileRequestShape {
+  filters?: readonly SettingsPickFileFilter[]
+  /**
+   * Validation profile applied to the picked file in the main process.
+   * Only `google-service-account` is supported today; other pickers
+   * accept any file as long as it can be read.
+   */
+  validate?: 'google-service-account'
+}
+
+export interface SettingsPickFileValidation {
+  ok: boolean
+  error?: string
+}
+
+export interface SettingsPickFileResponseShape {
+  filePath: string | null
+  validation?: SettingsPickFileValidation
 }
 
 export interface SecretsSetRequestShape {
@@ -138,6 +185,10 @@ export interface ChannelContract {
   'settings:reset': {
     request: void
     response: SettingsGetResponseShape
+  }
+  'settings:pick-file': {
+    request: SettingsPickFileRequestShape
+    response: SettingsPickFileResponseShape
   }
   'secrets:set': {
     request: SecretsSetRequestShape

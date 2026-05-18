@@ -37,6 +37,36 @@ describe('googleProviderSettingsSchema', () => {
     }
     expect(googleProviderSettingsSchema.safeParse(bad).success).toBe(false)
   })
+
+  it('defaults authMode to service-account and apiKey to null', () => {
+    expect(defaultGoogleProviderSettings.authMode).toBe('service-account')
+    expect(defaultGoogleProviderSettings.apiKey).toBeNull()
+  })
+
+  it('accepts api-key authMode with a non-empty apiKey', () => {
+    const ok = {
+      ...defaultGoogleProviderSettings,
+      authMode: 'api-key' as const,
+      apiKey: 'AIza-test-key',
+    }
+    expect(googleProviderSettingsSchema.safeParse(ok).success).toBe(true)
+  })
+
+  it('rejects unknown authMode', () => {
+    const bad = {
+      ...defaultGoogleProviderSettings,
+      authMode: 'oauth-loopback',
+    }
+    expect(googleProviderSettingsSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects empty apiKey string (use null instead)', () => {
+    const bad = {
+      ...defaultGoogleProviderSettings,
+      apiKey: '',
+    }
+    expect(googleProviderSettingsSchema.safeParse(bad).success).toBe(false)
+  })
 })
 
 describe('libreTranslateProviderSettingsSchema', () => {
