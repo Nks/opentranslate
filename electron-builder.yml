@@ -19,8 +19,9 @@ asarUnpack:
   - '**/node_modules/node-gyp-build/**'
 nodeGypRebuild: false
 buildDependenciesFromSource: false
-npmRebuild: true
+npmRebuild: false
 mac:
+  icon: build/icon.png
   target:
     - target: dmg
       arch:
@@ -30,8 +31,15 @@ mac:
   identity: null
   hardenedRuntime: false
   gatekeeperAssess: false
+  notarize: false
 dmg:
   sign: false
+  background: build/background.png
+  window:
+    width: 540
+    height: 380
+  iconSize: 96
+  iconTextSize: 12
   contents:
     - x: 410
       y: 150
@@ -41,6 +49,7 @@ dmg:
       y: 150
       type: file
 win:
+  icon: build/icon.ico
   target:
     - target: nsis
       arch:
@@ -53,6 +62,7 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
 linux:
+  icon: build/icons/
   target:
     - target: AppImage
       arch:
