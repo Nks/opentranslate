@@ -47,6 +47,7 @@ export interface LibreHttpClient {
 
 const selfSignedAgent = new Agent({
   connect: {
+    // nosemgrep: bypass-tls-verification -- opt-in `allowSelfSignedTls`, self-hosted only.
     rejectUnauthorized: false,
   },
 })

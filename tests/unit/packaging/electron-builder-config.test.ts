@@ -67,10 +67,10 @@ describe('electron-builder.yml', () => {
     expect(unpack).toContain('**/node_modules/node-gyp-build/**')
   })
 
-  it('npmRebuild is enabled for native modules', () => {
+  it('npmRebuild is disabled (electron-builder rebuild flow breaks on uiohook-napi via Python 3.12 node-gyp 9)', () => {
     const config = loadConfig()
 
-    expect(config.npmRebuild).toBe(true)
+    expect(config.npmRebuild).toBe(false)
   })
 
   it('mac target is DMG with x64 + arm64', () => {
