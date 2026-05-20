@@ -165,6 +165,38 @@ A `MISMATCH` result means the file is corrupt or tampered with — do
 
 ---
 
+## Troubleshooting
+
+### Inspect a packaged build (DevTools)
+
+DevTools are disabled in release builds. To open them for support or
+bug diagnosis, launch the app with the `OPENTRANSLATE_DEVTOOLS=1`
+environment variable. DevTools open detached on startup.
+
+**macOS**
+
+```bash
+OPENTRANSLATE_DEVTOOLS=1 "/Applications/OpenTranslate Desktop.app/Contents/MacOS/OpenTranslate Desktop"
+```
+
+**Windows (PowerShell)**
+
+```powershell
+$env:OPENTRANSLATE_DEVTOOLS=1; & "$env:LOCALAPPDATA\Programs\OpenTranslate Desktop\OpenTranslate Desktop.exe"
+```
+
+**Linux**
+
+```bash
+OPENTRANSLATE_DEVTOOLS=1 ./OpenTranslate\ Desktop-0.1.0.AppImage
+```
+
+Without the variable, DevTools and their keyboard shortcuts stay
+disabled. Add `--enable-logging` to also stream Chromium and renderer
+console output to the terminal.
+
+---
+
 ## Reporting issues
 
 File issues at <https://github.com/Nks/opentranslate/issues>. Please

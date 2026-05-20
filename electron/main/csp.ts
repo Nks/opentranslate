@@ -14,11 +14,12 @@ export function applyContentSecurityPolicy(options: {
         "font-src 'self' data:",
       ].join('; ')
     : [
-        "default-src 'self'",
-        "script-src 'self' 'unsafe-inline'",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data:",
-        "font-src 'self' data:",
+        "default-src 'self' app:",
+        "script-src 'self' app: 'unsafe-inline'",
+        "style-src 'self' app: 'unsafe-inline'",
+        "connect-src 'self' app:",
+        "img-src 'self' app: data:",
+        "font-src 'self' app: data:",
       ].join('; ')
 
   try {

@@ -129,7 +129,7 @@ onKeyStroke('Escape', () => {
           @click="supported ? pickFile() : undefined"
         >
           <UIcon
-            name="i-fluent-document-arrow-up-24-regular"
+            name="i-fluent-arrow-upload-24-regular"
             class="text-3xl text-dimmed mb-3"
           />
           <p

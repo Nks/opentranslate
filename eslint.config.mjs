@@ -75,6 +75,7 @@ export default [
       'vitest.config.ts',
       'playwright.config.ts',
       'nuxt.config.ts',
+      'app/app.config.ts',
     ],
   },
 

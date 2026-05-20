@@ -9,6 +9,11 @@ import {
   type CloseHandlerDeps,
 } from '@electron/main/main-window-close'
 import { resolveRuntimePaths } from '@electron/main/runtime-paths'
+import { RENDERER_URL } from '@electron/main/renderer-protocol'
+
+export function isDevToolsAllowed(): boolean {
+  return !app.isPackaged || process.env.OPENTRANSLATE_DEVTOOLS === '1'
+}
 
 export interface MainWindowHost {
   getWindow: () => BrowserWindow | null
@@ -28,7 +33,7 @@ export function createMainWindowHost(options: MainWindowOptions): MainWindowHost
   let mainWindow: BrowserWindow | null = null
 
   async function createWindow(): Promise<void> {
-    const allowDevTools = !app.isPackaged
+    const allowDevTools = isDevToolsAllowed()
     const windowOptions = createWindowOptions({
       preloadPath: options.preloadPath,
       allowDevTools,
@@ -48,6 +53,12 @@ export function createMainWindowHost(options: MainWindowOptions): MainWindowHost
 
     mainWindow.once('ready-to-show', (): void => {
       mainWindow?.show()
+
+      if (allowDevTools && app.isPackaged) {
+        mainWindow?.webContents.openDevTools({
+          mode: 'detach',
+        })
+      }
     })
 
     mainWindow.on('close', (event: Event): void => {
@@ -68,7 +79,7 @@ export function createMainWindowHost(options: MainWindowOptions): MainWindowHost
     } else if (process.env.ELECTRON_SMOKE_TEST) {
       await mainWindow.loadFile(paths.smokeEntry)
     } else {
-      await mainWindow.loadFile(paths.rendererEntry)
+      await mainWindow.loadURL(RENDERER_URL)
     }
   }
 

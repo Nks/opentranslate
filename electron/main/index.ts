@@ -6,6 +6,11 @@ import { registerIpcHandlers } from '@electron/main/ipc-setup'
 import { createMainWindowHost } from '@electron/main/main-window'
 import { resolveRuntimePaths } from '@electron/main/runtime-paths'
 import { applyContentSecurityPolicy } from '@electron/main/csp'
+import {
+  registerRendererProtocol,
+  registerRendererSchemePrivileges,
+  rendererDirFromEntry,
+} from '@electron/main/renderer-protocol'
 import { ensureAccessibilityPermission } from '@electron/main/accessibility'
 import {
   createQuickTranslateController,
@@ -30,6 +35,11 @@ export type { AppSettingsApplier } from '@electron/main/app-settings-applier'
 const DEV_RENDERER_URL: string | undefined = process.env.ELECTRON_RENDERER_URL
 const IS_DEV: boolean = Boolean(DEV_RENDERER_URL)
 const runtimePaths = resolveRuntimePaths(__dirname)
+const SERVE_VIA_PROTOCOL: boolean = !IS_DEV && !process.env.ELECTRON_SMOKE_TEST
+
+if (SERVE_VIA_PROTOCOL) {
+  registerRendererSchemePrivileges()
+}
 
 let quickTranslateController: QuickTranslateController | null = null
 let trayService: TrayService | null = null
@@ -229,6 +239,10 @@ function bootstrap(): void {
   setupTrayCloseResponseListener()
 
   void app.whenReady().then(async (): Promise<void> => {
+    if (SERVE_VIA_PROTOCOL) {
+      registerRendererProtocol(rendererDirFromEntry(runtimePaths.rendererEntry))
+    }
+
     if (!process.env.ELECTRON_SMOKE_TEST) {
       applyContentSecurityPolicy({
         isDev: IS_DEV,
