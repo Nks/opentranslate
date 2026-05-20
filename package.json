@@ -23,7 +23,7 @@
     "postinstall": "electron-rebuild -f -o better-sqlite3",
     "dev": "node scripts/dev.mjs",
     "build:electron": "node scripts/build-electron.mjs",
-    "build:renderer": "nuxt build",
+    "build:renderer": "nuxt generate",
     "build": "pnpm run typecheck && pnpm run build:electron && pnpm run build:renderer",
     "package": "node scripts/package.mjs",
     "package:dir": "node scripts/package.mjs --dir",

@@ -2,13 +2,13 @@ import {
   app, BrowserWindow,
   type Event,
 } from 'electron'
-import { join } from 'node:path'
 import { createWindowOptions } from '@electron/main/window-factory'
 import { isDevToolsShortcut } from '@electron/main/devtools-blocker'
 import {
   handleMainWindowClose,
   type CloseHandlerDeps,
 } from '@electron/main/main-window-close'
+import { resolveRuntimePaths } from '@electron/main/runtime-paths'
 
 export interface MainWindowHost {
   getWindow: () => BrowserWindow | null
@@ -61,12 +61,14 @@ export function createMainWindowHost(options: MainWindowOptions): MainWindowHost
       mainWindow = null
     })
 
+    const paths = resolveRuntimePaths(options.distElectronDir)
+
     if (options.isDev && options.devRendererUrl) {
       await mainWindow.loadURL(options.devRendererUrl)
     } else if (process.env.ELECTRON_SMOKE_TEST) {
-      await mainWindow.loadFile(join(options.distElectronDir, 'smoke.html'))
+      await mainWindow.loadFile(paths.smokeEntry)
     } else {
-      await mainWindow.loadFile(join(app.getAppPath(), '.output/public/index.html'))
+      await mainWindow.loadFile(paths.rendererEntry)
     }
   }
 

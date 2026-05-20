@@ -2,9 +2,9 @@ import {
   app, BrowserWindow, clipboard, dialog, ipcMain,
   type IpcMainEvent,
 } from 'electron'
-import { join } from 'node:path'
 import { registerIpcHandlers } from '@electron/main/ipc-setup'
 import { createMainWindowHost } from '@electron/main/main-window'
+import { resolveRuntimePaths } from '@electron/main/runtime-paths'
 import { applyContentSecurityPolicy } from '@electron/main/csp'
 import { ensureAccessibilityPermission } from '@electron/main/accessibility'
 import {
@@ -29,6 +29,7 @@ export type { AppSettingsApplier } from '@electron/main/app-settings-applier'
 
 const DEV_RENDERER_URL: string | undefined = process.env.ELECTRON_RENDERER_URL
 const IS_DEV: boolean = Boolean(DEV_RENDERER_URL)
+const runtimePaths = resolveRuntimePaths(__dirname)
 
 let quickTranslateController: QuickTranslateController | null = null
 let trayService: TrayService | null = null
@@ -37,10 +38,10 @@ let closeBehavior: CloseBehavior = defaultAppSettings.closeBehavior
 let isQuitting: boolean = false
 
 const mainWindowHost = createMainWindowHost({
-  preloadPath: join(app.getAppPath(), 'preload.cjs'),
+  preloadPath: runtimePaths.preloadPath,
   isDev: IS_DEV,
   devRendererUrl: DEV_RENDERER_URL,
-  distElectronDir: app.getAppPath(),
+  distElectronDir: runtimePaths.distElectronDir,
   closeHandlerDeps: {
     getCloseBehavior: (): CloseBehavior => closeBehavior,
     isTrayActive: (): boolean => showTray && trayService !== null,
@@ -123,7 +124,7 @@ function ensureTray(): void {
   }
   trayService = createTray({
     platform: process.platform,
-    iconBaseDir: join(app.getAppPath(), 'build', 'icons', 'tray'),
+    iconBaseDir: runtimePaths.trayIconBaseDir,
     onOpen: (): void => {
       mainWindowHost.focusOrRestore()
     },

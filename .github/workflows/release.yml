@@ -53,24 +53,6 @@ jobs:
       - name: Unit + integration tests
         run: pnpm test
 
-      - name: Build Electron
-        run: pnpm run build:electron
-
-      - name: Build renderer
-        run: pnpm run build:renderer
-
-      - name: Package (macOS)
-        if: matrix.platform == 'mac'
-        run: pnpm exec electron-builder --mac
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Package (Windows)
-        if: matrix.platform == 'win'
-        run: pnpm exec electron-builder --win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Install Electron runtime deps (Linux)
         if: matrix.platform == 'linux'
         run: |
@@ -90,9 +72,21 @@ jobs:
             libpangocairo-1.0-0 \
             libpango-1.0-0
 
+      - name: Package (macOS)
+        if: matrix.platform == 'mac'
+        run: pnpm run package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package (Windows)
+        if: matrix.platform == 'win'
+        run: pnpm run package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Package (Linux)
         if: matrix.platform == 'linux'
-        run: pnpm exec electron-builder --linux
+        run: pnpm run package
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

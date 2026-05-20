@@ -1,6 +1,6 @@
 # Project State — OpenTranslate Desktop
 
-_Last updated: 2026-05-18 (v0.1.0 release prep — Phase 2 metadata wired, awaiting local pre-flight + tag)_
+_Last updated: 2026-05-19 (v0.1.0 release prep — Phase 3 packaged-app blank-screen triage landed; arm64 .app verified launching live SPA)_
 
 ---
 
@@ -14,6 +14,28 @@ _Last updated: 2026-05-18 (v0.1.0 release prep — Phase 2 metadata wired, await
   --publish=never` locally as the Phase 3 pre-flight, then Phase 4
   cuts the `v0.1.0` tag and the GitHub pre-release.
 - **In-flight changes (this phase, uncommitted):**
+  - **Packaged-app blank screen triage (three independent bugs):**
+    1. `package.json` `build:renderer` switched from `nuxt build` to
+       `nuxt generate` so a static `.output/public/index.html` is
+       actually produced for the SPA (ssr: false).
+    2. `electron/main/runtime-paths.ts` (new) centralises every
+       runtime path off `__dirname` (the dir of the executing
+       `main.cjs`) instead of `app.getAppPath()` (asar root). Fixes
+       preload, renderer entry, smoke entry, tray icon base dir for
+       both dev (`dist-electron/…`) and packed
+       (`app.asar/dist-electron/…`). Wired through
+       `electron/main/index.ts` + `electron/main/main-window.ts`.
+       Regression coverage:
+       `tests/unit/electron/main/runtime-paths.test.ts` (7 specs).
+    3. `electron-builder.yml: files:` now includes
+       `build/icons/tray/**/*` so the tray PNGs get packed.
+    4. `scripts/package.mjs` rewritten to drive **per-arch**
+       `electron-rebuild` of `better-sqlite3` before each
+       `electron-builder --mac --x64` / `--mac --arm64` invocation.
+       Cures the arm64-DMG-shipping-x64-`.node` mismatch caused by
+       `npmRebuild: false` + a single host-arch rebuild.
+       `.github/workflows/release.yml` now uses `pnpm run package`
+       per matrix OS instead of calling `electron-builder` directly.
   - `scripts/build-icons.py` — `DMG_LOGO_SIZE = 0` (plain DMG canvas)
     plus a new `--background-only` CLI flag.
   - `build/background.png` / `background@2x.png` /
@@ -46,7 +68,7 @@ _Last updated: 2026-05-18 (v0.1.0 release prep — Phase 2 metadata wired, await
 
 - `pnpm lint` — clean (`@stylistic` + `@typescript-eslint` strict)
 - `pnpm typecheck` — clean
-- `pnpm test` — **405 tests across 59 suites**
+- `pnpm test` — **499 tests across 70 suites**
 - `pnpm test:e2e` — see CI matrix (Linux xvfb, macOS, Windows)
 
 ## Recently merged (chronological, post-Phase 12)
