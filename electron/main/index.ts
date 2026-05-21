@@ -1,8 +1,10 @@
 import {
-  app, BrowserWindow, clipboard, dialog, ipcMain,
+  app, BrowserWindow, clipboard, dialog, ipcMain, Menu,
   type IpcMainEvent,
 } from 'electron'
 import { registerIpcHandlers } from '@electron/main/ipc-setup'
+import { buildAppMenu } from '@electron/main/app-menu'
+import { isDevToolsAllowed } from '@electron/main/devtools-policy'
 import { createMainWindowHost } from '@electron/main/main-window'
 import { resolveRuntimePaths } from '@electron/main/runtime-paths'
 import { applyContentSecurityPolicy } from '@electron/main/csp'
@@ -249,6 +251,11 @@ function bootstrap(): void {
         devRendererUrl: DEV_RENDERER_URL,
       })
     }
+
+    Menu.setApplicationMenu(buildAppMenu({
+      allowDevTools: isDevToolsAllowed(),
+      appName: app.name,
+    }))
 
     const { store } = registerIpcHandlers({
       isDev: IS_DEV,

@@ -10,10 +10,9 @@ import {
 } from '@electron/main/main-window-close'
 import { resolveRuntimePaths } from '@electron/main/runtime-paths'
 import { RENDERER_URL } from '@electron/main/renderer-protocol'
+import { isDevToolsAllowed } from '@electron/main/devtools-policy'
 
-export function isDevToolsAllowed(): boolean {
-  return !app.isPackaged || process.env.OPENTRANSLATE_DEVTOOLS === '1'
-}
+export { isDevToolsAllowed }
 
 export interface MainWindowHost {
   getWindow: () => BrowserWindow | null
