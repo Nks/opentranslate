@@ -49,6 +49,14 @@ const allItems = computed<LanguageItem[]>(() => {
   return languageItems.value
 })
 
+function findSelectedItem(items: LanguageItem[], code: string | null): LanguageItem | null {
+  if (code === null) {
+    return null
+  }
+
+  return items.find((item) => item.code === code) ?? null
+}
+
 const filteredItems = computed<LanguageItem[]>(() => {
   const query = searchTerm.value.trim().toLowerCase()
 
@@ -63,11 +71,21 @@ const filteredItems = computed<LanguageItem[]>(() => {
     return labelMatches || codeMatches
   })
 
+  const selectedItem = findSelectedItem(languageItems.value, model.value)
+  const matchedWithoutSelected = selectedItem === null
+    ? matchedLanguages
+    : matchedLanguages.filter((item) => item.code !== selectedItem.code)
+
+  const prefix: LanguageItem[] = []
+
   if (props.autoDetectOption) {
-    return [autoDetectItem.value, ...matchedLanguages]
+    prefix.push(autoDetectItem.value)
+  }
+  if (selectedItem !== null) {
+    prefix.push(selectedItem)
   }
 
-  return matchedLanguages
+  return [...prefix, ...matchedWithoutSelected]
 })
 
 const selectedValue = computed<string | null>(() => {

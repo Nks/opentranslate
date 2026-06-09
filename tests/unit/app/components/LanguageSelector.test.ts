@@ -229,7 +229,7 @@ describe('LanguageSelector typed filtering', () => {
   it('matches languages by display name substring (case-insensitive)', async () => {
     const wrapper = mountSelector({
       languages: sampleLanguages,
-      modelValue: 'en',
+      modelValue: 'es',
       label: 'Source language',
     })
 
@@ -245,7 +245,7 @@ describe('LanguageSelector typed filtering', () => {
   it('matches languages by BCP-47 code substring (case-insensitive)', async () => {
     const wrapper = mountSelector({
       languages: sampleLanguages,
-      modelValue: 'en',
+      modelValue: 'pt-BR',
       label: 'Source language',
     })
 
@@ -305,6 +305,68 @@ describe('LanguageSelector typed filtering', () => {
     const select = wrapper.find('[data-disabled]')
 
     expect(select.attributes('data-ignore-filter')).toBe('true')
+  })
+})
+
+describe('LanguageSelector selected item pinning', () => {
+  it('pins the currently selected language above matches when it does not match the query', async () => {
+    const wrapper = mountSelector({
+      languages: sampleLanguages,
+      modelValue: 'ru',
+      label: 'Source language',
+      autoDetectOption: true,
+    })
+
+    await wrapper.findComponent({ name: 'USelectMenu' }).vm.$emit('update:searchTerm', 'eng')
+
+    const labels = listVisibleItems(wrapper).map((entry) => entry.label)
+
+    expect(labels).toEqual(['Auto Detect', 'Russian', 'English'])
+    expect(labels.filter((label) => label === 'Russian')).toHaveLength(1)
+  })
+
+  it('shows the selected language exactly once at the top when it also matches the query', async () => {
+    const wrapper = mountSelector({
+      languages: sampleLanguages,
+      modelValue: 'en',
+      label: 'Target language',
+    })
+
+    await wrapper.findComponent({ name: 'USelectMenu' }).vm.$emit('update:searchTerm', 'en')
+
+    const labels = listVisibleItems(wrapper).map((entry) => entry.label)
+
+    expect(labels.filter((label) => label === 'English')).toHaveLength(1)
+    expect(labels[0]).toBe('English')
+  })
+
+  it('does not add an extra pinned entry when the model is null and Auto-Detect is enabled', async () => {
+    const wrapper = mountSelector({
+      languages: sampleLanguages,
+      modelValue: null,
+      label: 'Source language',
+      autoDetectOption: true,
+    })
+
+    await wrapper.findComponent({ name: 'USelectMenu' }).vm.$emit('update:searchTerm', 'ru')
+
+    const labels = listVisibleItems(wrapper).map((entry) => entry.label)
+
+    expect(labels).toEqual(['Auto Detect', 'Russian'])
+  })
+
+  it('does not invent a synthetic entry when the selected code is not in the languages list', async () => {
+    const wrapper = mountSelector({
+      languages: sampleLanguages,
+      modelValue: 'zz',
+      label: 'Target language',
+    })
+
+    await wrapper.findComponent({ name: 'USelectMenu' }).vm.$emit('update:searchTerm', 'eng')
+
+    const labels = listVisibleItems(wrapper).map((entry) => entry.label)
+
+    expect(labels).toEqual(['English'])
   })
 })
 
