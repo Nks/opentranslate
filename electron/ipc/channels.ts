@@ -1,0 +1,295 @@
+import type {
+  AppSettings,
+} from '@shared/types/settings'
+import type {
+  ProviderDescriptorDto,
+} from '@shared/providers/descriptor'
+import type {
+  SettingsUpdate,
+} from '@electron/services/settings/store'
+import type {
+  TranslationInput,
+  TranslationOutput,
+  LanguageDetectionResult,
+} from '@shared/types/translation'
+import type {
+  Language,
+} from '@shared/types/language'
+import type {
+  HistoryEntry,
+} from '@shared/types/history'
+import type {
+  ProviderCapabilities,
+} from '@shared/types/capabilities'
+import type {
+  SourceLanguageSelection,
+} from '@shared/types/translation'
+
+/**
+ * IPC channel registry — single source of truth for main ↔ renderer messaging.
+ *
+ * Architecture rule (see docs/architecture.md §7): every main ↔ renderer
+ * message must go through a channel declared here. The preload bridge
+ * forwards only the channels listed in this registry.
+ *
+ * Security rule (see docs/architecture.md §8.1): there is no `secrets:get`
+ * channel. Main-process code that needs to use a secret must read it via
+ * the secrets vault directly, never through an IPC handler.
+ */
+
+export const channels = {
+  'app:get-version': 'app:get-version',
+  'app:get-platform': 'app:get-platform',
+  'providers:list': 'providers:list',
+  'provider:switch': 'provider:switch',
+  'settings:get': 'settings:get',
+  'settings:update': 'settings:update',
+  'settings:reset': 'settings:reset',
+  'settings:pick-file': 'settings:pick-file',
+  'secrets:set': 'secrets:set',
+  'secrets:test': 'secrets:test',
+  'translation:translate': 'translation:translate',
+  'translation:cancel': 'translation:cancel',
+  'translation:detect': 'translation:detect',
+  'language:list': 'language:list',
+  'history:add': 'history:add',
+  'history:list': 'history:list',
+  'history:search': 'history:search',
+  'history:delete': 'history:delete',
+  'history:clear': 'history:clear',
+  'history:toggle': 'history:toggle',
+  'document:pick': 'document:pick',
+  'document:translate': 'document:translate',
+  'document:status': 'document:status',
+} as const
+
+export type ChannelName = keyof typeof channels
+
+/**
+ * Event-style channels for fire-and-forget main ↔ renderer messages.
+ *
+ * Distinct from invoke/handle `channels` above: these use `webContents.send`
+ * (main → renderer) and `ipcRenderer.send` (renderer → main). The preload
+ * bridge exposes a typed subscriber/sender for each entry below.
+ */
+export const eventChannels = {
+  'window:close-request': 'window:close-request',
+  'window:close-response': 'window:close-response',
+} as const
+
+export type EventChannelName = keyof typeof eventChannels
+
+export type WindowCloseChoice = 'hide' | 'quit' | 'cancel'
+
+export interface WindowCloseResponsePayload {
+  choice: WindowCloseChoice
+  remember: boolean
+}
+
+export interface SettingsGetResponseShape {
+  app: AppSettings
+  providers: Record<string, unknown>
+}
+
+export interface SettingsPickFileFilter {
+  name: string
+  extensions: string[]
+}
+
+export interface SettingsPickFileRequestShape {
+  filters?: readonly SettingsPickFileFilter[]
+  /**
+   * Validation profile applied to the picked file in the main process.
+   * Only `google-service-account` is supported today; other pickers
+   * accept any file as long as it can be read.
+   */
+  validate?: 'google-service-account'
+}
+
+export interface SettingsPickFileValidation {
+  ok: boolean
+  error?: string
+}
+
+export interface SettingsPickFileResponseShape {
+  filePath: string | null
+  validation?: SettingsPickFileValidation
+}
+
+export interface SecretsSetRequestShape {
+  providerId: string
+  secret: string
+}
+
+export interface SecretsSetResponseShape {
+  stored: boolean
+  ephemeral: boolean
+}
+
+export interface SecretsTestRequestShape {
+  providerId: string
+}
+
+export interface SecretsTestResponseShape {
+  present: boolean
+  lastUpdated: string | null
+}
+
+export interface ProviderSwitchRequestShape {
+  providerId: string
+}
+
+export interface ProviderSwitchResponseShape {
+  languages: Language[]
+  capabilities: ProviderCapabilities
+  selection: {
+    source: SourceLanguageSelection
+    target: string | null
+  }
+  error: string | null
+}
+
+export interface LanguageListRequestShape {
+  providerId: string
+}
+
+export interface TranslationDetectRequestShape {
+  text: string
+}
+
+export interface ChannelContract {
+  'app:get-version': {
+    request: void
+    response: string
+  }
+  'app:get-platform': {
+    request: void
+    response: NodeJS.Platform
+  }
+  'providers:list': {
+    request: void
+    response: readonly ProviderDescriptorDto[]
+  }
+  'provider:switch': {
+    request: ProviderSwitchRequestShape
+    response: ProviderSwitchResponseShape
+  }
+  'settings:get': {
+    request: void
+    response: SettingsGetResponseShape
+  }
+  'settings:update': {
+    request: SettingsUpdate
+    response: SettingsGetResponseShape
+  }
+  'settings:reset': {
+    request: void
+    response: SettingsGetResponseShape
+  }
+  'settings:pick-file': {
+    request: SettingsPickFileRequestShape
+    response: SettingsPickFileResponseShape
+  }
+  'secrets:set': {
+    request: SecretsSetRequestShape
+    response: SecretsSetResponseShape
+  }
+  'secrets:test': {
+    request: SecretsTestRequestShape
+    response: SecretsTestResponseShape
+  }
+  'translation:translate': {
+    request: TranslationInput
+    response: TranslationOutput | null
+  }
+  'translation:cancel': {
+    request: void
+    response: void
+  }
+  'translation:detect': {
+    request: TranslationDetectRequestShape
+    response: LanguageDetectionResult
+  }
+  'language:list': {
+    request: LanguageListRequestShape
+    response: Language[]
+  }
+  'history:add': {
+    request: HistoryAddRequestShape
+    response: HistoryEntry | null
+  }
+  'history:list': {
+    request: HistoryListRequestShape
+    response: HistoryEntry[]
+  }
+  'history:search': {
+    request: HistorySearchRequestShape
+    response: HistoryEntry[]
+  }
+  'history:delete': {
+    request: { id: string }
+    response: void
+  }
+  'history:clear': {
+    request: void
+    response: void
+  }
+  'history:toggle': {
+    request: { enabled: boolean }
+    response: void
+  }
+  'document:pick': {
+    request: void
+    response: DocumentPickResponseShape | null
+  }
+  'document:translate': {
+    request: DocumentTranslateRequestShape
+    response: DocumentTranslateResponseShape | null
+  }
+  'document:status': {
+    request: void
+    response: DocumentStatusResponseShape
+  }
+}
+
+export interface DocumentPickResponseShape {
+  filePath: string
+}
+
+export interface DocumentTranslateRequestShape {
+  filePath: string
+  sourceLanguage: SourceLanguageSelection
+  targetLanguage: string
+}
+
+export interface DocumentTranslateResponseShape {
+  outputPath: string
+  provider: string
+}
+
+export interface DocumentStatusResponseShape {
+  supported: boolean
+  formats?: string[]
+  message?: string
+}
+
+export interface HistoryAddRequestShape {
+  sourceText: string
+  translatedText: string
+  sourceLanguageCode: string
+  targetLanguageCode: string
+  provider: string
+}
+
+export interface HistoryListRequestShape {
+  limit?: number
+  offset?: number
+}
+
+export interface HistorySearchRequestShape {
+  query: string
+  limit?: number
+}
+
+export type ChannelRequest<Name extends ChannelName> = ChannelContract[Name]['request']
+export type ChannelResponse<Name extends ChannelName> = ChannelContract[Name]['response']

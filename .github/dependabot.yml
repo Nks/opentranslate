@@ -1,0 +1,61 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    target-branch: develop
+    labels:
+      - dependencies
+      - npm
+    commit-message:
+      prefix: chore(deps)
+      prefix-development: chore(deps-dev)
+      include: scope
+    groups:
+      electron:
+        patterns:
+          - electron
+          - electron-builder
+          - "@electron/*"
+      nuxt:
+        patterns:
+          - nuxt
+          - "@nuxt/*"
+          - "@nuxtjs/*"
+      vueuse:
+        patterns:
+          - "@vueuse/*"
+      eslint:
+        patterns:
+          - eslint
+          - "@stylistic/*"
+          - "@typescript-eslint/*"
+          - eslint-plugin-*
+          - eslint-config-*
+      vitest:
+        patterns:
+          - vitest
+          - "@vitest/*"
+          - "@vue/test-utils"
+      types:
+        patterns:
+          - "@types/*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    target-branch: develop
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: chore(ci)

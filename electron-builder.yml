@@ -1,0 +1,64 @@
+appId: com.opentranslate.desktop
+productName: OpenTranslate Desktop
+copyright: Copyright © 2026 OpenTranslate Desktop contributors
+directories:
+  output: release/${version}
+  buildResources: build
+files:
+  - dist-electron/**/*
+  - .output/public/**/*
+  - build/icons/tray/**/*
+  - package.json
+  - '!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}'
+  - '!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}'
+  - '!**/node_modules/*.d.ts'
+  - '!**/node_modules/.bin'
+asar: true
+asarUnpack:
+  - '**/*.{node,dll}'
+  - '**/node_modules/uiohook-napi/**'
+  - '**/node_modules/node-gyp-build/**'
+nodeGypRebuild: false
+buildDependenciesFromSource: false
+npmRebuild: false
+mac:
+  icon: build/icon.png
+  target:
+    - target: dmg
+  category: public.app-category.productivity
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  notarize: false
+dmg:
+  sign: false
+  background: build/background.png
+  window:
+    width: 540
+    height: 380
+  iconSize: 96
+  iconTextSize: 12
+  contents:
+    - x: 410
+      y: 150
+      type: link
+      path: /Applications
+    - x: 130
+      y: 150
+      type: file
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+    - target: zip
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+linux:
+  icon: build/icons/
+  target:
+    - target: AppImage
+    - target: deb
+  category: Utility
+  maintainer: OpenTranslate Desktop contributors <contributors@opentranslate.example>

@@ -1,0 +1,45 @@
+# Normalize line endings to LF on checkin and checkout regardless of platform.
+# Required because ESLint @stylistic/linebreak-style is set to 'unix'; without
+# this, Windows CI (core.autocrlf=true by default) converts LF -> CRLF on
+# checkout and lint fails.
+
+* text=auto eol=lf
+
+# Explicit overrides for source + config files we author.
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.mjs       text eol=lf
+*.cjs       text eol=lf
+*.vue       text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.html      text eol=lf
+*.css       text eol=lf
+*.plist     text eol=lf
+*.sh        text eol=lf
+Makefile    text eol=lf
+.nvmrc      text eol=lf
+.editorconfig text eol=lf
+.gitignore  text eol=lf
+.gitattributes text eol=lf
+LICENSE     text eol=lf
+
+# Binary files — never touch.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.icns      binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.otf       binary
+*.pdf       binary
+*.zip       binary
+*.gz        binary
+*.tar       binary
+*.db        binary

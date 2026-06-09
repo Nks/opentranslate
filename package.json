@@ -1,0 +1,99 @@
+{
+  "name": "opentranslate-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MIT-licensed desktop translator with a two-pane workflow. Electron + Nuxt 4 + Nuxt UI + TypeScript.",
+  "license": "MIT",
+  "author": "OpenTranslate Desktop contributors",
+  "homepage": "https://github.com/Nks/opentranslate",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nks/opentranslate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Nks/opentranslate/issues"
+  },
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "type": "module",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "postinstall": "electron-rebuild -f -o better-sqlite3",
+    "dev": "node scripts/dev.mjs",
+    "build:electron": "node scripts/build-electron.mjs",
+    "build:renderer": "nuxt generate",
+    "build": "pnpm run typecheck && pnpm run build:electron && pnpm run build:renderer",
+    "package": "node scripts/package.mjs",
+    "package:dir": "node scripts/package.mjs --dir",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "pretest:e2e": "pnpm run build:electron",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
+    "@eslint/js": "^9.17.0",
+    "@nuxt/test-utils": "^4.0.2",
+    "@nuxt/ui": "^4.6.1",
+    "@playwright/test": "^1.49.0",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@vitejs/plugin-vue": "^6.0.6",
+    "@vitest/coverage-v8": "^2.1.8",
+    "@vue/test-utils": "^2.4.6",
+    "electron": "^41.2.0",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.28.0",
+    "eslint": "^9.17.0",
+    "eslint-plugin-anti-trojan-source": "^1.1.2",
+    "eslint-plugin-boundaries": "^6.0.2",
+    "eslint-plugin-security-node": "^1.1.4",
+    "eslint-plugin-sonarjs": "^4.0.2",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "eslint-plugin-vue": "^10.8.0",
+    "happy-dom": "^20.9.0",
+    "msw": "^2.13.3",
+    "nuxt": "^4.4.5",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.2",
+    "undici": "^8.1.0",
+    "vitest": "^2.1.8",
+    "vue-eslint-parser": "^10.4.0",
+    "vue-tsc": "^3.2.6",
+    "yaml": "^2.8.3"
+  },
+  "dependencies": {
+    "@iconify-json/fluent": "^1.2.45",
+    "@nuxt/fonts": "^0.14.0",
+    "@pinia/nuxt": "^0.11.3",
+    "@vueuse/core": "^14.2.1",
+    "@vueuse/nuxt": "^14.2.1",
+    "better-sqlite3": "^12.9.0",
+    "google-auth-library": "^10.6.2",
+    "pinia": "^3.0.4",
+    "tailwindcss": "^4.2.2",
+    "uiohook-napi": "^1.5.5",
+    "vue": "^3.5.32",
+    "zod": "^4.3.6"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild",
+      "@parcel/watcher",
+      "better-sqlite3",
+      "uiohook-napi"
+    ],
+    "overrides": {
+      "devalue": ">=5.8.1"
+    }
+  }
+}

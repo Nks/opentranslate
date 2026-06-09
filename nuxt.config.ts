@@ -1,0 +1,117 @@
+import {
+  defineNuxtConfig,
+} from 'nuxt/config'
+
+// https://nuxt.com/docs/api/configuration/nuxt-config
+export default defineNuxtConfig({
+  compatibilityDate: '2025-04-01',
+  srcDir: 'app/',
+  ssr: false,
+  devtools: {
+    enabled: true,
+  },
+  modules: ['@nuxt/ui', '@pinia/nuxt', '@vueuse/nuxt', '@nuxt/fonts'],
+  css: ['~/assets/css/main.css'],
+  icon: {
+    mode: 'svg',
+    fallbackToApi: false,
+    clientBundle: {
+      scan: true,
+      includeCustomCollections: true,
+      sizeLimitKb: 512,
+      icons: [
+        'fluent:add-24-regular',
+        'fluent:arrow-clockwise-24-regular',
+        'fluent:arrow-counterclockwise-24-regular',
+        'fluent:arrow-down-24-regular',
+        'fluent:arrow-left-24-regular',
+        'fluent:arrow-next-24-regular',
+        'fluent:arrow-previous-24-regular',
+        'fluent:arrow-right-24-regular',
+        'fluent:arrow-swap-24-regular',
+        'fluent:arrow-sync-24-regular',
+        'fluent:arrow-up-24-regular',
+        'fluent:arrow-upload-24-regular',
+        'fluent:checkmark-24-regular',
+        'fluent:checkmark-circle-24-regular',
+        'fluent:chevron-down-24-regular',
+        'fluent:chevron-left-24-regular',
+        'fluent:chevron-right-24-regular',
+        'fluent:chevron-up-24-regular',
+        'fluent:cloud-24-regular',
+        'fluent:cloud-off-24-regular',
+        'fluent:copy-24-regular',
+        'fluent:desktop-24-regular',
+        'fluent:dismiss-24-regular',
+        'fluent:dismiss-circle-24-regular',
+        'fluent:document-24-regular',
+        'fluent:error-circle-24-regular',
+        'fluent:eye-24-regular',
+        'fluent:eye-off-24-regular',
+        'fluent:folder-24-regular',
+        'fluent:folder-open-24-regular',
+        'fluent:history-24-regular',
+        'fluent:info-24-regular',
+        'fluent:keyboard-24-regular',
+        'fluent:lightbulb-24-regular',
+        'fluent:more-horizontal-24-regular',
+        'fluent:navigation-24-regular',
+        'fluent:number-symbol-24-regular',
+        'fluent:open-24-regular',
+        'fluent:panel-left-contract-24-regular',
+        'fluent:panel-left-expand-24-regular',
+        'fluent:plug-connected-24-regular',
+        'fluent:power-24-regular',
+        'fluent:re-order-dots-vertical-24-regular',
+        'fluent:search-24-regular',
+        'fluent:settings-24-regular',
+        'fluent:stop-24-regular',
+        'fluent:subtract-24-regular',
+        'fluent:warning-24-regular',
+        'fluent:weather-moon-24-regular',
+        'fluent:weather-sunny-24-regular',
+        'fluent:window-arrow-up-24-regular',
+        'fluent:wrench-24-regular',
+      ],
+    },
+  },
+  app: {
+    head: {
+      title: 'OpenTranslate Desktop',
+      meta: [{
+        charset: 'utf-8',
+      }, {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1',
+      }],
+    },
+  },
+  typescript: {
+    strict: true,
+    typeCheck: false,
+  },
+  experimental: {
+    serverAppConfig: false,
+    viteEnvironmentApi: true,
+  },
+  vite: {
+    resolve: {
+      alias: {
+        '@shared': new URL('./shared', import.meta.url).pathname,
+        '@electron': new URL('./electron', import.meta.url).pathname,
+        '@app': new URL('./app', import.meta.url).pathname,
+      },
+    },
+    optimizeDeps: {
+      include: [
+        'zod',
+        'pinia',
+        'vue',
+        '@vueuse/core',
+      ],
+    },
+    server: {
+      strictPort: true,
+    },
+  },
+})
