@@ -25,9 +25,6 @@ mac:
   icon: build/icon.png
   target:
     - target: dmg
-      arch:
-        - x64
-        - arm64
   category: public.app-category.productivity
   identity: null
   hardenedRuntime: false
@@ -53,11 +50,7 @@ win:
   icon: build/icon.ico
   target:
     - target: nsis
-      arch:
-        - x64
     - target: zip
-      arch:
-        - x64
 nsis:
   oneClick: false
   perMachine: false
@@ -66,10 +59,6 @@ linux:
   icon: build/icons/
   target:
     - target: AppImage
-      arch:
-        - x64
     - target: deb
-      arch:
-        - x64
   category: Utility
   maintainer: OpenTranslate Desktop contributors <contributors@opentranslate.example>

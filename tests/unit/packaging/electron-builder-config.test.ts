@@ -73,20 +73,28 @@ describe('electron-builder.yml', () => {
     expect(config.npmRebuild).toBe(false)
   })
 
-  it('mac target is DMG with x64 + arm64', () => {
+  it('mac target is DMG with no inline arch (per-arch driven by scripts/package.mjs)', () => {
     const config = loadConfig()
     const mac = config.mac as Record<string, unknown>
     const targets = mac.target as Array<{
       target: string
-      arch: string[]
+      arch?: string[]
     }>
     expect(targets).toHaveLength(1)
 
     const first = targets[0]!
 
     expect(first.target).toBe('dmg')
-    expect(first.arch).toContain('x64')
-    expect(first.arch).toContain('arm64')
+    expect(first.arch).toBeUndefined()
+  })
+
+  it('scripts/package.mjs drives per-arch mac packaging (both x64 + arm64)', () => {
+    const packageScript = readFileSync(resolve(rootDir, 'scripts/package.mjs'), 'utf8')
+
+    expect(packageScript).toContain('--mac --x64')
+    expect(packageScript).toContain('--mac --arm64')
+    expect(packageScript).toContain("rebuildForArch('x64')")
+    expect(packageScript).toContain("rebuildForArch('arm64')")
   })
 
   it('mac identity is null (unsigned local builds)', () => {
