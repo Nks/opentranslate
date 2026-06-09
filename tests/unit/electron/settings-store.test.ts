@@ -313,4 +313,52 @@ describe('settings store', () => {
       targetLanguage: null,
     })
   })
+
+  it('backfills targetHistory to an empty array for a legacy settings file without quarantine', async () => {
+    const {
+      targetHistory: _unusedTargetHistory,
+      ...legacyAppFields
+    } = defaultAppSettings
+    const legacyPayload = {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      app: legacyAppFields,
+      providers: {
+        google: defaultGoogleProviderSettings,
+        libretranslate: defaultLibreTranslateProviderSettings,
+      },
+    }
+    await writeFile(join(dir, SETTINGS_FILE), JSON.stringify(legacyPayload), 'utf8')
+    const store = createSettingsStore({
+      userDataDir: dir,
+      providers,
+    })
+    const loaded = await store.load()
+
+    expect(loaded.app.targetHistory).toEqual([])
+
+    const entries = await readdir(dir)
+    const quarantined = entries.find((name) => name.startsWith(`${SETTINGS_FILE}.corrupted-`))
+    expect(quarantined).toBeUndefined()
+  })
+
+  it('persists a targetHistory patch and reloads it', async () => {
+    const store = createSettingsStore({
+      userDataDir: dir,
+      providers,
+    })
+    await store.load()
+    await store.save({
+      app: {
+        targetHistory: ['ru', 'es', 'en'],
+      },
+    })
+
+    const storeTwo = createSettingsStore({
+      userDataDir: dir,
+      providers,
+    })
+    const reloaded = await storeTwo.load()
+
+    expect(reloaded.app.targetHistory).toEqual(['ru', 'es', 'en'])
+  })
 })

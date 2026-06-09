@@ -172,6 +172,18 @@ function migrateTrayAndCloseBehavior(app: Record<string, unknown>): Record<strin
   return next
 }
 
+function migrateTargetHistory(app: Record<string, unknown>): Record<string, unknown> {
+  const next: Record<string, unknown> = {
+    ...app,
+  }
+
+  if (next.targetHistory === undefined) {
+    next.targetHistory = defaultSettingsFile.app.targetHistory
+  }
+
+  return next
+}
+
 function migrate(raw: unknown): unknown {
   if (raw === null || typeof raw !== 'object') {
     return raw
@@ -193,9 +205,10 @@ function migrate(raw: unknown): unknown {
     const appCandidate = next.app as Record<string, unknown>
     const withActiveProvider = migrateActiveProvider(appCandidate)
     const withTray = migrateTrayAndCloseBehavior(withActiveProvider)
+    const withTargetHistory = migrateTargetHistory(withTray)
     next = {
       ...next,
-      app: withTray,
+      app: withTargetHistory,
     }
   }
 

@@ -5,11 +5,13 @@ import { useTranslationStore } from '@app/stores/translation'
 import { useProvidersStore } from '@app/stores/providers'
 import { useSettingsStore } from '@app/stores/settings'
 import type { Language } from '@shared/types/language'
+import { TARGET_HISTORY_MAX } from '@shared/types/settings'
 import { formatErrorMessage } from '@shared/errors/format'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
 import { useSelectionPersistence } from '@app/composables/useSelectionPersistence'
 import {
+  pickFallbackTarget,
   reconcileSource,
   reconcileTarget,
 } from '@app/composables/useSelectionReconcile'
@@ -57,6 +59,7 @@ export function useTranslation() {
         translationStore.detectedSourceLanguage = result.detectedSourceLanguage ?? null
 
         recordHistoryEntry(result.translatedText, result.detectedSourceLanguage ?? null)
+        maybeAutoSwitchTarget(result.detectedSourceLanguage ?? null)
       }
     } catch (err: unknown) {
       const formatted = formatErrorMessage(err)
@@ -65,6 +68,40 @@ export function useTranslation() {
     } finally {
       translationStore.loading = false
     }
+  }
+
+  function maybeAutoSwitchTarget(detectedSource: string | null): void {
+    if (detectedSource === null) {
+      return
+    }
+
+    if (providersStore.sourceSelection.mode !== 'auto') {
+      return
+    }
+
+    const currentTarget: string | null = providersStore.targetLanguage
+
+    if (currentTarget === null) {
+      return
+    }
+
+    if (detectedSource !== currentTarget) {
+      return
+    }
+
+    const candidate: string | null = pickFallbackTarget(
+      settingsStore.app.targetHistory,
+      detectedSource,
+      currentTarget,
+    )
+
+    if (candidate === null) {
+      return
+    }
+
+    providersStore.targetLanguage = candidate
+    persistSelection()
+    void scheduleTranslate()
   }
 
   function recordHistoryEntry(translatedText: string, detectedSource: string | null): void {
@@ -110,7 +147,25 @@ export function useTranslation() {
     cancelTranslation()
   }
 
-  function pickFallbackTarget(
+  function pushTargetHistory(code: string | null): void {
+    if (code === null || code.length === 0) {
+      return
+    }
+
+    const previous: readonly string[] = settingsStore.app.targetHistory
+    const filtered: string[] = previous.filter(
+      (entry: string): boolean => entry !== code,
+    )
+    const next: string[] = [code, ...filtered].slice(0, TARGET_HISTORY_MAX)
+
+    settingsStore.app.targetHistory = next
+
+    void api.settings
+      .update({ app: { targetHistory: next } })
+      .catch((err: unknown): void => handleError(err))
+  }
+
+  function pickFirstSupportedTarget(
     reconciledTarget: string | null,
     languages: Language[],
   ): string | null {
@@ -151,7 +206,7 @@ export function useTranslation() {
         result.selection.target,
         result.languages,
       )
-      providersStore.targetLanguage = pickFallbackTarget(reconciledTarget, result.languages)
+      providersStore.targetLanguage = pickFirstSupportedTarget(reconciledTarget, result.languages)
 
       if (result.error) {
         providersStore.error = result.error
@@ -182,5 +237,6 @@ export function useTranslation() {
     switchProvider,
     persistSelection,
     restoreSelection,
+    pushTargetHistory,
   }
 }

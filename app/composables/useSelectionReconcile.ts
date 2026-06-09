@@ -32,3 +32,20 @@ export function reconcileSource(
 
   return isStillSupported ? previous : fromMain
 }
+
+export function pickFallbackTarget(
+  history: readonly string[],
+  detectedSourceCode: string,
+  currentTarget: string | null,
+): string | null {
+  for (const candidate of history) {
+    const isUsable: boolean = candidate !== detectedSourceCode &&
+      candidate !== currentTarget
+
+    if (isUsable) {
+      return candidate
+    }
+  }
+
+  return null
+}

@@ -29,6 +29,7 @@ const {
   switchProvider,
   persistSelection,
   restoreSelection,
+  pushTargetHistory,
 } = useTranslation()
 const { ensureActiveProviderHydrated } = useProviderBootstrap()
 const handleError = useHandleError()
@@ -145,6 +146,7 @@ function onTargetLanguageChange(code: string | null): void {
   providersStore.sourceSelection = next.source
   providersStore.targetLanguage = next.target
 
+  pushTargetHistory(next.target)
   persistSelection()
   scheduleTranslate()
 }

@@ -1035,3 +1035,27 @@ Tests:
 - Unit-test the settings migration that adds the `updates` block.
 - Mock `autoUpdater` events (`update-available`, `update-downloaded`,
   `error`) and assert renderer toast surface via `useHandleError`.
+
+### B-054: Searchable language picker
+**Priority:** P2
+
+Source and target language dropdowns currently render the full
+provider language list with no inline search. Users have to scroll
+manually. Swap the underlying primitive to Nuxt UI v4 `USelectMenu`
+with a typed filter that matches case-insensitively against both
+the display name and the BCP-47 code. Auto-Detect option stays
+pinned at the top. Empty filter shows the full list. See commit
+message for the exact prop wiring.
+
+### B-055: Smart target switch when auto-detect collides with target
+**Priority:** P2
+
+When source is Auto-Detect and the detection result equals the
+currently-selected target language, automatically swap the target
+to the user's most-recent prior target whose code differs from the
+detected source. Persist a global ring buffer (last 5 distinct
+user-picked target codes) in `AppSettings.targetHistory`. Silent
+swap, reschedule the translation. If history is empty or every
+entry equals the detected source, leave the pair as-is. Auto-
+switched targets are NOT pushed back into history to avoid
+feedback loops.

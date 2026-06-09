@@ -120,4 +120,55 @@ describe('appSettingsSchema', () => {
     }
     expect(appSettingsSchema.safeParse(ok).success).toBe(true)
   })
+
+  it('defaults targetHistory to an empty array', () => {
+    expect(defaultAppSettings.targetHistory).toEqual([])
+  })
+
+  it('accepts up to five targetHistory entries', () => {
+    const ok = {
+      ...defaultAppSettings,
+      targetHistory: ['ru', 'es', 'en', 'de', 'fr'],
+    }
+    const result = appSettingsSchema.safeParse(ok)
+    expect(result.success).toBe(true)
+
+    if (result.success) {
+      expect(result.data.targetHistory).toEqual(['ru', 'es', 'en', 'de', 'fr'])
+    }
+  })
+
+  it('trims targetHistory longer than five entries to the first five', () => {
+    const oversized = {
+      ...defaultAppSettings,
+      targetHistory: ['ru', 'es', 'en', 'de', 'fr', 'it', 'ja'],
+    }
+    const result = appSettingsSchema.safeParse(oversized)
+    expect(result.success).toBe(true)
+
+    if (result.success) {
+      expect(result.data.targetHistory).toEqual(['ru', 'es', 'en', 'de', 'fr'])
+    }
+  })
+
+  it('deduplicates targetHistory entries preserving first-occurrence order', () => {
+    const dupes = {
+      ...defaultAppSettings,
+      targetHistory: ['ru', 'es', 'ru', 'en', 'es', 'de'],
+    }
+    const result = appSettingsSchema.safeParse(dupes)
+    expect(result.success).toBe(true)
+
+    if (result.success) {
+      expect(result.data.targetHistory).toEqual(['ru', 'es', 'en', 'de'])
+    }
+  })
+
+  it('rejects targetHistory containing an empty string entry', () => {
+    const bad = {
+      ...defaultAppSettings,
+      targetHistory: ['ru', ''],
+    }
+    expect(appSettingsSchema.safeParse(bad).success).toBe(false)
+  })
 })

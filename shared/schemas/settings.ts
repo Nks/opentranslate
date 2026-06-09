@@ -1,8 +1,9 @@
 import {
   z,
 } from 'zod'
-import type {
-  AppSettings,
+import {
+  TARGET_HISTORY_MAX,
+  type AppSettings,
 } from '@shared/types/settings'
 import {
   DEFAULT_QUICK_TRANSLATE_ACCELERATOR,
@@ -47,6 +48,24 @@ export const activeProviderSelectionSchema = z.object({
   targetLanguage: z.string().min(1).nullable(),
 })
 
+const targetHistorySchema = z
+  .array(z.string().min(1))
+  .transform((values: string[]): string[] => {
+    const deduped: string[] = []
+
+    for (const entry of values) {
+      if (!deduped.includes(entry)) {
+        deduped.push(entry)
+      }
+
+      if (deduped.length >= TARGET_HISTORY_MAX) {
+        break
+      }
+    }
+
+    return deduped
+  })
+
 export const appSettingsSchema = z.object({
   launchAtStartup: z.boolean(),
   theme: themeSchema,
@@ -59,6 +78,7 @@ export const appSettingsSchema = z.object({
   shortcuts: shortcutsSchema,
   advanced: advancedSchema,
   activeProvider: activeProviderSelectionSchema,
+  targetHistory: targetHistorySchema,
 })
 
 export const defaultAppSettings: AppSettings = {
@@ -85,4 +105,5 @@ export const defaultAppSettings: AppSettings = {
     },
     targetLanguage: null,
   },
+  targetHistory: [],
 }

@@ -22,6 +22,8 @@ export interface ActiveProviderSelection {
   targetLanguage: string | null
 }
 
+export const TARGET_HISTORY_MAX = 5
+
 export interface AppSettings {
   launchAtStartup: boolean
   theme: ThemePreference
@@ -34,4 +36,5 @@ export interface AppSettings {
   shortcuts: ShortcutsSettings
   advanced: AdvancedSettings
   activeProvider: ActiveProviderSelection
+  targetHistory: string[]
 }

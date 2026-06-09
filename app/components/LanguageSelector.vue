@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { Language } from '@shared/types/language'
 
 interface Props {
@@ -8,37 +8,74 @@ interface Props {
   autoDetectOption?: boolean
 }
 
-const props = defineProps<Props>()
+interface LanguageItem {
+  label: string
+  value: string
+  code: string
+}
+
+const AUTO_DETECT_VALUE = '__auto__'
+const AUTO_DETECT_LABEL = 'Auto Detect'
+
+const props = withDefaults(defineProps<Props>(), {
+  autoDetectOption: false,
+})
+
 const model = defineModel<string | null>({ required: true })
 
-const codeToName = computed<Map<string, string>>(() => {
-  const map = new Map<string, string>()
+const searchTerm = ref<string>('')
 
-  for (const lang of props.languages) {
-    map.set(lang.code, lang.name)
+const isEmpty = computed<boolean>(() => props.languages.length === 0)
+
+const autoDetectItem = computed<LanguageItem>(() => ({
+  label: AUTO_DETECT_LABEL,
+  value: AUTO_DETECT_VALUE,
+  code: 'auto',
+}))
+
+const languageItems = computed<LanguageItem[]>(() =>
+  props.languages.map((language) => ({
+    label: language.name,
+    value: language.code,
+    code: language.code,
+  })),
+)
+
+const allItems = computed<LanguageItem[]>(() => {
+  if (props.autoDetectOption) {
+    return [autoDetectItem.value, ...languageItems.value]
   }
 
-  return map
+  return languageItems.value
 })
 
-const isEmpty = computed<boolean>((): boolean => props.languages.length === 0)
+const filteredItems = computed<LanguageItem[]>(() => {
+  const query = searchTerm.value.trim().toLowerCase()
 
-const items = computed<string[]>(() => {
-  const names = props.languages.map((lang) => lang.name)
+  if (query === '') {
+    return allItems.value
+  }
+
+  const matchedLanguages = languageItems.value.filter((item) => {
+    const labelMatches = item.label.toLowerCase().includes(query)
+    const codeMatches = item.code.toLowerCase().includes(query)
+
+    return labelMatches || codeMatches
+  })
 
   if (props.autoDetectOption) {
-    return ['Auto Detect', ...names]
+    return [autoDetectItem.value, ...matchedLanguages]
   }
 
-  return names
+  return matchedLanguages
 })
 
-const selectedName = computed<string>(() => {
+const selectedValue = computed<string | null>(() => {
   if (model.value === null) {
-    return 'Auto Detect'
+    return props.autoDetectOption ? AUTO_DETECT_VALUE : null
   }
 
-  return codeToName.value.get(model.value) ?? model.value
+  return model.value
 })
 
 const placeholder = computed<string>(() => {
@@ -46,7 +83,7 @@ const placeholder = computed<string>(() => {
     return 'Provider has no languages'
   }
 
-  return props.autoDetectOption ? 'Auto Detect' : 'Select language'
+  return props.autoDetectOption ? AUTO_DETECT_LABEL : 'Select language'
 })
 
 const disabledTitle = computed<string>(() =>
@@ -55,14 +92,26 @@ const disabledTitle = computed<string>(() =>
     : '',
 )
 
-function onChange(name: string): void {
-  if (name === 'Auto Detect') {
+const searchInputConfig = computed<false | { placeholder: string }>(() => {
+  if (isEmpty.value) {
+    return false
+  }
+
+  return { placeholder: 'Search languages...' }
+})
+
+function onSelect(value: string | null): void {
+  if (value === null || value === AUTO_DETECT_VALUE) {
     model.value = null
 
     return
   }
 
-  model.value = props.languages.find((lang) => lang.name === name)?.code ?? name
+  model.value = value
+}
+
+function onSearchTermUpdate(term: string): void {
+  searchTerm.value = term
 }
 </script>
 
@@ -72,15 +121,22 @@ function onChange(name: string): void {
       :text="disabledTitle"
       :prevent="!isEmpty"
     >
-      <USelect
-        :model-value="selectedName"
-        :items
+      <USelectMenu
+        :model-value="selectedValue"
+        :items="filteredItems"
         :placeholder
         :disabled="isEmpty"
         :aria-label="label"
         :title="disabledTitle"
+        :search-input="searchInputConfig"
+        :search-term="searchTerm"
+        :filter-fields="['label', 'code']"
+        value-key="value"
+        label-key="label"
+        :ignore-filter="true"
         class="w-40"
-        @update:model-value="onChange"
+        @update:model-value="onSelect"
+        @update:search-term="onSearchTermUpdate"
       />
     </UTooltip>
   </UFormField>
