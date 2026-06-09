@@ -2,7 +2,7 @@ import {
   describe, expect, it, beforeEach, afterEach,
 } from 'vitest'
 import {
-  mkdtemp, readFile, rm, writeFile, readdir,
+  mkdtemp, readFile, rm, writeFile, readdir, access,
 } from 'node:fs/promises'
 import {
   tmpdir,
@@ -360,5 +360,113 @@ describe('settings store', () => {
     const reloaded = await storeTwo.load()
 
     expect(reloaded.app.targetHistory).toEqual(['ru', 'es', 'en'])
+  })
+
+  it('serializes concurrent saves without throwing ENOENT on the tmp rename', async () => {
+    const store = createSettingsStore({
+      userDataDir: dir,
+      providers,
+    })
+    await store.load()
+
+    const results = await Promise.allSettled([
+      store.save({ app: { closeBehavior: 'ask' } }),
+      store.save({ app: { closeBehavior: 'hide' } }),
+      store.save({ app: { closeBehavior: 'quit' } }),
+    ])
+
+    for (const outcome of results) {
+      expect(outcome.status).toBe('fulfilled')
+    }
+  })
+
+  it('lands the last enqueued save on disk when many fire in parallel', async () => {
+    const store = createSettingsStore({
+      userDataDir: dir,
+      providers,
+    })
+    await store.load()
+
+    await Promise.all([
+      store.save({ app: { closeBehavior: 'ask' } }),
+      store.save({ app: { closeBehavior: 'hide' } }),
+      store.save({ app: { closeBehavior: 'quit' } }),
+    ])
+
+    const raw = await readFile(join(dir, SETTINGS_FILE), 'utf8')
+    const parsed = JSON.parse(raw)
+
+    expect(parsed.app.closeBehavior).toBe('quit')
+  })
+
+  it('leaves no .tmp file behind after a burst of concurrent saves', async () => {
+    const store = createSettingsStore({
+      userDataDir: dir,
+      providers,
+    })
+    await store.load()
+
+    await Promise.all([
+      store.save({ app: { closeBehavior: 'ask' } }),
+      store.save({ app: { closeBehavior: 'hide' } }),
+      store.save({ app: { closeBehavior: 'quit' } }),
+      store.save({ app: { closeBehavior: 'ask' } }),
+      store.save({ app: { closeBehavior: 'hide' } }),
+    ])
+
+    await expect(access(join(dir, `${SETTINGS_FILE}.tmp`))).rejects.toMatchObject({
+      code: 'ENOENT',
+    })
+
+    const entries = await readdir(dir)
+    expect(entries.every((name: string): boolean => !name.endsWith('.tmp'))).toBe(true)
+  })
+
+  it('keeps draining the queue after one save fails validation', async () => {
+    const store = createSettingsStore({
+      userDataDir: dir,
+      providers,
+    })
+    await store.load()
+
+    const failing = store.save({ app: { debounceMs: -42 } })
+    const succeeding = store.save({ app: { closeBehavior: 'hide' } })
+
+    await expect(failing).rejects.toThrow(/debounceMs/i)
+    await expect(succeeding).resolves.toBeDefined()
+
+    const raw = await readFile(join(dir, SETTINGS_FILE), 'utf8')
+    const parsed = JSON.parse(raw)
+
+    expect(parsed.app.closeBehavior).toBe('hide')
+  })
+
+  it('serializes a reset() against a concurrent save() with the save landing last', async () => {
+    const store = createSettingsStore({
+      userDataDir: dir,
+      providers,
+    })
+    await store.load()
+    await store.save({
+      app: {
+        debounceMs: 777,
+        closeBehavior: 'quit',
+      },
+    })
+
+    const results = await Promise.allSettled([
+      store.reset(),
+      store.save({ app: { closeBehavior: 'hide' } }),
+    ])
+
+    for (const outcome of results) {
+      expect(outcome.status).toBe('fulfilled')
+    }
+
+    const raw = await readFile(join(dir, SETTINGS_FILE), 'utf8')
+    const parsed = JSON.parse(raw)
+
+    expect(parsed.app.closeBehavior).toBe('hide')
+    expect(parsed.app.debounceMs).toBe(defaultAppSettings.debounceMs)
   })
 })

@@ -239,6 +239,14 @@ export function createSettingsStore(input: SettingsStoreInput): SettingsStore {
     providers: buildDefaultProviderSettings(input.providers),
   }
   let current: SettingsFile = defaults
+  let writeChain: Promise<unknown> = Promise.resolve()
+
+  function enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
+    const next = writeChain.then(task, task)
+    writeChain = next.catch((): void => undefined)
+
+    return next
+  }
 
   async function load(): Promise<SettingsFile> {
     try {
@@ -301,34 +309,38 @@ export function createSettingsStore(input: SettingsStoreInput): SettingsStore {
     }
   }
 
-  async function save(patch: SettingsUpdate): Promise<SettingsFile> {
-    const merged = mergeSettings(input.providers, current, patch)
-    const appValidated = settingsFileSchema.shape.app.safeParse(merged.app)
+  function save(patch: SettingsUpdate): Promise<SettingsFile> {
+    return enqueueWrite(async (): Promise<SettingsFile> => {
+      const merged = mergeSettings(input.providers, current, patch)
+      const appValidated = settingsFileSchema.shape.app.safeParse(merged.app)
 
-    if (!appValidated.success) {
-      const issue = appValidated.error.issues[0]
-      const pathLabel = issue?.path.join('.') ?? 'unknown'
+      if (!appValidated.success) {
+        const issue = appValidated.error.issues[0]
+        const pathLabel = issue?.path.join('.') ?? 'unknown'
 
-      throw new Error(`Invalid settings update at app.${pathLabel}: ${issue?.message}`)
-    }
+        throw new Error(`Invalid settings update at app.${pathLabel}: ${issue?.message}`)
+      }
 
-    await mkdir(input.userDataDir, {
-      recursive: true,
+      await mkdir(input.userDataDir, {
+        recursive: true,
+      })
+      await atomicWrite(targetPath, JSON.stringify(merged, null, 2))
+      current = merged
+
+      return current
     })
-    await atomicWrite(targetPath, JSON.stringify(merged, null, 2))
-    current = merged
-
-    return current
   }
 
-  async function reset(): Promise<SettingsFile> {
-    current = defaults
-    await mkdir(input.userDataDir, {
-      recursive: true,
-    })
-    await atomicWrite(targetPath, JSON.stringify(defaults, null, 2))
+  function reset(): Promise<SettingsFile> {
+    return enqueueWrite(async (): Promise<SettingsFile> => {
+      current = defaults
+      await mkdir(input.userDataDir, {
+        recursive: true,
+      })
+      await atomicWrite(targetPath, JSON.stringify(defaults, null, 2))
 
-    return current
+      return current
+    })
   }
 
   return {

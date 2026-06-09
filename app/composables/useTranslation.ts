@@ -147,7 +147,7 @@ export function useTranslation() {
     cancelTranslation()
   }
 
-  function pushTargetHistory(code: string | null): void {
+  async function pushTargetHistory(code: string | null): Promise<void> {
     if (code === null || code.length === 0) {
       return
     }
@@ -160,9 +160,11 @@ export function useTranslation() {
 
     settingsStore.app.targetHistory = next
 
-    void api.settings
-      .update({ app: { targetHistory: next } })
-      .catch((err: unknown): void => handleError(err))
+    try {
+      await api.settings.update({ app: { targetHistory: next } })
+    } catch (err: unknown) {
+      handleError(err)
+    }
   }
 
   function pickFirstSupportedTarget(

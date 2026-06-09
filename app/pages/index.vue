@@ -135,7 +135,7 @@ function onSourceLanguageChange(code: string | null): void {
   scheduleTranslate()
 }
 
-function onTargetLanguageChange(code: string | null): void {
+async function onTargetLanguageChange(code: string | null): Promise<void> {
   const next = applyTargetChange(
     {
       source: providersStore.sourceSelection,
@@ -146,7 +146,7 @@ function onTargetLanguageChange(code: string | null): void {
   providersStore.sourceSelection = next.source
   providersStore.targetLanguage = next.target
 
-  pushTargetHistory(next.target)
+  await pushTargetHistory(next.target)
   persistSelection()
   scheduleTranslate()
 }
