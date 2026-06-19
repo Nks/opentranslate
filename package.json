@@ -63,7 +63,7 @@
     "msw": "^2.13.3",
     "nuxt": "^4.4.5",
     "tsx": "^4.21.0",
-    "typescript": "^5.7.2",
+    "typescript": "^6.0.3",
     "undici": "^8.1.0",
     "vitest": "^2.1.8",
     "vue-eslint-parser": "^10.4.0",
