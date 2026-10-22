@@ -1144,3 +1144,43 @@ module's local provider only) so the renderer build needs no network.
 TypeScript 7.0 is on npm `latest`, but `typescript-eslint` 8.x supports
 `<6.1`. Stay on TypeScript 6.0 until a `typescript-eslint` release declares
 TS 7 support, then bump `typescript`, `vue-tsc` and the parser together.
+
+### B-062: Drop the `@nuxt/ui>@nuxt/fonts` override once Nuxt UI adopts fonts 1.x
+**Priority:** P3
+
+`package.json` overrides `@nuxt/ui>@nuxt/fonts` to `^1.0.1` because
+`@nuxt/ui` (4.11.3 and 4.12.0) still depends on `@nuxt/fonts@^0.14.0`, whose
+`fontless@0.2` pulls `esbuild@^0.27` (GHSA-g7r4-m6w7-qqqr, dev-server
+file read on Windows; fixed in 0.28.1). Remove the override when a
+`@nuxt/ui` release depends on `@nuxt/fonts` 1.x, and re-run `pnpm audit`.
+
+### B-063: Semgrep image pin needs manual bumps
+**Priority:** P3
+
+`security-scan.yml` runs `semgrep/semgrep:<version>@sha256:<digest>`
+inside a `run:` step, which Dependabot's github-actions ecosystem does not
+track. Bump it by hand (newest release at least 7 days old, pinned by the
+image index digest from `docker buildx imagetools inspect`) and update the
+version asserted in `tests/unit/packaging/workflows.test.ts`. Currently
+1.181.0.
+
+### B-064: Protect release tags and gate publishing behind an environment
+**Priority:** P2
+
+Anyone with push access can push a `v*` tag and trigger `release.yml`.
+Add a tag ruleset for `v*` (restrict creation/update/deletion to
+maintainers) and run the publish job in a `release` environment with a
+required reviewer, so a draft release and its provenance attestation are
+only produced after approval.
+
+### B-065: Release builds ship smoke/debug affordances
+**Priority:** P2
+
+Packaged apps include `dist-electron/main.cjs.map`, `preload.cjs.map` and
+`smoke.html`, honour `ELECTRON_SMOKE_TEST` (loads `smoke.html` instead of
+the `app://` renderer) and allow DevTools when `OPENTRANSLATE_DEVTOOLS=1`
+(`electron/main/devtools-policy.ts`). All pre-date this release. Decide
+whether release builds should drop the source maps and smoke page
+(`electron-builder.yml` `files`) and ignore both variables when
+`app.isPackaged`; keep the packaged Playwright smoke working (it uses the
+real renderer, not `ELECTRON_SMOKE_TEST`).

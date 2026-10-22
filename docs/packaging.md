@@ -106,7 +106,9 @@ It reads `name`/`version` from `package.json` and `productName`, the output
 dir and the artifact name patterns from `electron-builder.yml`. Then it checks:
 
 - Every expected installer exists and is non-empty.
-- The unpacked app, its executable and `app.asar` exist.
+- The main executable exists and its binary header matches the target, so
+  an x64 Electron inside the mac-arm64 app fails.
+- `app.asar` exists.
 - The `better-sqlite3` and `uiohook-napi` prebuilds for the target
   platform-arch are present in `app.asar.unpacked` and match the target,
   judged by their binary headers (Mach-O `cputype`, including universal
@@ -115,8 +117,9 @@ dir and the artifact name patterns from `electron-builder.yml`. Then it checks:
   catches a host-arch compile leaking into a cross-arch build.
 
 Binaries the target never loads are not checked: prebuilds for other
-platforms (directory or single-file layout) are skipped, and npm platform
-packages whose `os`/`cpu` exclude the target are listed with `–`.
+platforms (directory, single-file or combined `darwin-x64+arm64` layout)
+are skipped, and npm platform packages whose `os`/`cpu` exclude the target
+are listed with `–`.
 
 Each check prints `✓` or `✗`. Any failure exits 1.
 
@@ -124,15 +127,20 @@ Each check prints `✓` or `✗`. Any failure exits 1.
 line, and exit 1 if any are missing. CI uses them to set the smoke test's
 executable and the upload list.
 
-The header parser (`scripts/packaging/binary-arch.ts`), naming and layout
-rules (`scripts/packaging/artifact-layout.ts`) and native-binary selection
-(`scripts/packaging/native-binaries.ts`) are unit-tested under
-`tests/unit/packaging/`. That includes the real uiohook-napi prebuilds for
-darwin, win32 and linux.
+`verify-package.mjs` only resolves paths and prints. The checks themselves
+(`scripts/packaging/verify-checks.ts`, with an injected read-only file
+system), the header parser (`binary-arch.ts`), naming and layout rules
+(`artifact-layout.ts`) and native-binary selection (`native-binaries.ts`)
+are unit-tested under `tests/unit/packaging/`. That includes the real
+uiohook-napi prebuilds for darwin, win32 and linux.
 
 The `.mjs` entry points import the `.ts` modules directly through Node 24's
-built-in type stripping. Those modules use erasable syntax only and import
-each other only with `import type`.
+built-in type stripping. Inside `scripts/packaging/` the modules import
+each other as `./sibling.ts` (never through the `@scripts` alias, which
+Node cannot resolve). `scripts/tsconfig.json` enables `erasableSyntaxOnly`,
+`verbatimModuleSyntax` and `allowImportingTsExtensions`, and
+`pnpm typecheck` runs it, so non-erasable syntax or an unloadable import
+fails typecheck instead of breaking `node scripts/*.mjs`.
 
 ---
 
@@ -199,16 +207,21 @@ refuses to run as root without `--no-sandbox`.
 |---|---|---|
 | `checks.yml` | `workflow_call` | Lint, typecheck, unit + integration, dev e2e on ubuntu/macos/windows |
 | `package.yml` | `workflow_call`, `workflow_dispatch` | 4-target matrix: install → package → verify → packaged smoke → upload `package-<platform>-<arch>` |
-| `ci.yml` | push to `master`, `develop`, `feature/**`, `release/**`, `hotfix/**`; PRs to `master`/`develop` | `checks.yml`, then `package.yml` |
+| `ci.yml` | push to `master`/`develop`; PRs to `master`/`develop` (one run per PR) | `checks.yml`, then `package.yml` |
 | `release.yml` | tag `v*` | version guard → `checks.yml` → `package.yml` (no dependency cache) → publish |
 
 The release publish job:
 
-1. Downloads every `package-*` artifact into one folder.
-2. Asserts exactly 6 installers are present (a unit test ties the count to
+1. Refuses to run when the tag already has a published (non-draft)
+   release; a draft is updated in place.
+2. Downloads every `package-*` artifact into one folder.
+3. Asserts exactly 6 installers are present (a unit test ties the count to
    `SUPPORTED_TARGETS`).
-3. Writes `SHA256SUMS.txt`.
-4. Creates a **draft pre-release** (`draft: true`, `prerelease: true`,
+4. Writes `SHA256SUMS.txt`.
+5. Attests build provenance (`actions/attest-build-provenance`) for the six
+   installers and `SHA256SUMS.txt`; verify with `gh attestation verify`
+   (see [install.md](install.md#verify-download)).
+6. Creates a **draft pre-release** (`draft: true`, `prerelease: true`,
    `generate_release_notes: true`). It attaches only `.dmg`, `.exe`, `.zip`,
    `.AppImage`, `.deb` and `SHA256SUMS.txt`, with no `latest*.yml` update
    metadata and no blockmaps. Auto-update is not wired yet (backlog B-G-19).
@@ -219,17 +232,30 @@ The version guard fails the run when the tag is not `v` + the
 ### Workflow hardening
 
 - Every workflow defaults the token to `contents: read`. Only the release
-  publish job gets `contents: write`, and the scanning jobs get
-  `security-events: write`.
+  publish job gets `contents: write` (plus `id-token: write` and
+  `attestations: write` for provenance), the scanning jobs get
+  `security-events: write`, and gitleaks gets `pull-requests: read` with
+  PR comments off.
 - Every `actions/checkout` sets `persist-credentials: false`.
 - Every third-party action is pinned to a full commit SHA with a trailing
-  `# vX.Y.Z` comment. The Semgrep image is pinned by digest, and the
+  `# vX.Y.Z` comment, including inside the composite actions. The Semgrep
+  image is pinned by digest to a release at least 7 days old, and the
   license checker by version. Dependabot updates both the npm and
-  github-actions ecosystems with a 7-day cooldown.
+  github-actions ecosystems (workflows and `.github/actions/*`) with a
+  7-day cooldown; it does not track the Semgrep image (B-063).
+- Shared setup lives in composite actions: `setup-workspace` (pnpm from
+  `packageManager`, Node from `.nvmrc`, frozen install, `cache` input) and
+  `linux-electron-deps` (xvfb + Electron/uiohook runtime libraries).
+- Every runner job sets `timeout-minutes` (checks 30, package 45).
+- No `run:` script interpolates `${{ … }}`; matrix values and paths reach
+  scripts through `env` (zizmor template-injection).
 - `pnpm/action-setup` has no `version` input. It reads `packageManager`
   from `package.json`.
 - Release builds skip the Actions dependency cache to avoid cache poisoning.
-- Workflow steps run under `bash` on every runner, including Windows.
+- `package.yml` runs its steps under `bash` on every runner, including
+  Windows (`defaults.run.shell`). `checks.yml` keeps each runner's default
+  shell because its steps are plain `pnpm` commands; composite action steps
+  always declare `shell: bash`.
 
 ### Creating a release
 

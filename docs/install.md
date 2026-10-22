@@ -165,6 +165,19 @@ if ($expected -eq $actual) { "OK" } else { "MISMATCH" }
 A `MISMATCH` result means the file is corrupt or tampered with — do
 **not** install it; re-download from the official release page.
 
+### Build provenance (GitHub CLI)
+
+Every installer and `SHA256SUMS.txt` carries a signed build-provenance
+attestation from the release workflow. With the
+[GitHub CLI](https://cli.github.com/) installed:
+
+```bash
+gh attestation verify opentranslate-desktop-0.1.0-mac-arm64.dmg --repo Nks/opentranslate
+```
+
+A passing check proves the file was built by this repository's release
+workflow from the tagged commit.
+
 ---
 
 ## Troubleshooting

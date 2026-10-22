@@ -73,7 +73,11 @@ instructions.
 - Dependabot/Trivy advisories on transitive packages cleared by the
   dependency refresh; `handlebars` pinned to the patched 4.7.10.
 - GitHub Actions pinned to commit SHAs, read-only default token,
-  `persist-credentials: false`, no dependency cache in release builds.
+  `persist-credentials: false`, no dependency cache in release builds,
+  job timeouts, no expression interpolation in scripts.
+- Every installer and `SHA256SUMS.txt` carries a build-provenance
+  attestation (`gh attestation verify`); the release job never modifies an
+  already-published release.
 
 ### Known limitations
 

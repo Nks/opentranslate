@@ -38,12 +38,32 @@ _Last updated: 2026-10-22 (v0.1.0 release prep — multi-arch builds + dependenc
     `pnpm audit`, Trivy (dev deps included) and license check;
     `handlebars` override to 4.7.10; ignored advisories and license
     exclusions documented in `docs/security.md`.
+  - **CI/release hardening (review + audit follow-ups):** CI runs once per
+    PR (push only on `master`/`develop`); composite actions
+    `setup-workspace` + `linux-electron-deps` replace copy-pasted setup;
+    `timeout-minutes` on every job; no `${{ }}` in `run:` scripts; gitleaks
+    `pull-requests: read`, comments off; Semgrep 1.181.0 (≥ 7 days);
+    publish refuses to touch a published release and attests build
+    provenance; Dependabot scans `.github/actions/*`.
+  - **Code review follow-ups:** tray clipboard forwarding goes through the
+    quick-translate controller (required logger, separate read/send
+    errors); boundaries policies built from a layer table
+    (`eslint.config.mjs` 500 lines); verify logic in typed
+    `scripts/packaging/verify-checks.ts` incl. executable arch check and
+    combined-arch prebuild dirs; `scripts/tsconfig.json`
+    (`erasableSyntaxOnly`, `verbatimModuleSyntax`); packaged smoke fails
+    in CI without an app and never leaks its temp profile.
 - **Deferred (see `docs/backlog.md`):** B-056 boundaries lint has no
   import resolver (5 known violations); B-057 navigation / window-open /
   permission guards + Electron fuses; B-058 Electron 44.8+/45 after the
   cooldown (async `safeStorage` before Electron 46, drop the handlebars
   override); B-059 linux arm64 (uiohook-napi prebuild); B-060
-  `@nuxt/fonts` 1.0 network-dependent build; B-061 TypeScript 7.
+  `@nuxt/fonts` 1.0 network-dependent build; B-061 TypeScript 7; B-062
+  `@nuxt/ui>@nuxt/fonts` override; B-063 manual Semgrep pin bumps; B-064
+  `v*` tag ruleset + `release` environment reviewer; B-065 source maps,
+  `smoke.html`, `ELECTRON_SMOKE_TEST` and `OPENTRANSLATE_DEVTOOLS` in
+  release builds. Electron stays on 44.x, so the async `safeStorage`
+  migration remains backlog-only (B-058).
 
 ## Locked v0.1.0 decisions
 

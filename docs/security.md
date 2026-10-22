@@ -201,6 +201,14 @@ Moderate `GHSA-hp3w-g68c-fv3c` (`sprintf-js` via `electron-builder` ›
 `@electron/get` › `global-agent` › `roarr`) is below the gate and build-time
 only.
 
+### Release provenance
+
+The release publish job attests build provenance for every installer and
+`SHA256SUMS.txt` (`actions/attest-build-provenance`, `id-token` and
+`attestations` write on that job only); users verify with
+`gh attestation verify` (`docs/install.md`). The job refuses to modify a
+release that is already published.
+
 ### License compliance
 
 `license-checker-rseidelsohn` runs on the full tree against the allow-list
