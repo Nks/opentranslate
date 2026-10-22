@@ -1,0 +1,18 @@
+title = "OpenTranslate Desktop gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Paths and patterns that gitleaks must never flag."
+paths = [
+    '''^\.claude/''',
+    '''^\.claude-flow/''',
+    '''^tests/integration/secrets-boundary\.test\.ts$''',
+    '''^pnpm-lock\.yaml$''',
+    '''^.*\.snap$''',
+]
+regexes = [
+    '''SENSITIVE-FIXTURE-[0-9a-f-]+''',
+    '''ed25519_private_key''',
+]

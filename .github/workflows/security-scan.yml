@@ -1,0 +1,152 @@
+name: Security scan
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+    branches:
+      - master
+      - develop
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: pnpm audit (all dependencies)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      - name: pnpm audit
+        run: pnpm audit --audit-level=high
+
+  trivy:
+    name: Trivy (deps + IaC + misconfig)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_INCLUDE_DEV_DEPS: 'true'
+        with:
+          scan-type: fs
+          scanners: vuln,misconfig,secret
+          severity: CRITICAL,HIGH
+          format: sarif
+          output: trivy-results.sarif
+          ignore-unfixed: true
+          skip-dirs: dist,dist-electron,node_modules,.claude
+
+      - name: Upload Trivy SARIF
+        if: hashFiles('trivy-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+  semgrep:
+    name: Semgrep (JS/TS security audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run Semgrep
+        continue-on-error: true
+        run: |
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/src" \
+            -w /src \
+            semgrep/semgrep:1.181.0@sha256:81474464c1f07483ba0682a44787fd93c91397419762a04abe2bafaae396304b \
+            semgrep scan \
+              --config=p/security-audit \
+              --config=p/javascript \
+              --config=p/typescript \
+              --config=p/secrets \
+              --config=p/owasp-top-ten \
+              --sarif \
+              --output=/src/semgrep.sarif \
+              --exclude=dist \
+              --exclude=dist-electron \
+              --exclude=node_modules \
+              --exclude=.claude
+
+      - name: Upload Semgrep SARIF
+        if: hashFiles('semgrep.sarif') != ''
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  licenses:
+    name: License compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      - name: Check licenses
+        run: |
+          pnpm dlx license-checker-rseidelsohn@5.0.1 \
+            --onlyAllow "MIT;MIT-0;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;CC-BY-4.0;0BSD;Unlicense;Python-2.0;BlueOak-1.0.0" \
+            --excludePrivatePackages \
+            --excludePackages "@sonarsource/analyzer-commons-configurations;eslint-plugin-sonarjs;lightningcss;spdx-exceptions;truncate-utf8-bytes;vaul-vue" \
+            --summary
+
+  gitleaks:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "true"
