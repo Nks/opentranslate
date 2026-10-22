@@ -18,7 +18,7 @@ import {
 
 export interface QuickTranslateControllerDeps {
   ensureAccessibilityPermission: () => boolean
-  readClipboardText: () => string
+  readClipboardText: () => Promise<string>
   sendTextToMainWindow: (text: string) => void
   showWarning: (input: {
     title: string
@@ -71,14 +71,22 @@ export function createQuickTranslateController(
     return built
   }
 
-  function handleChord(): void {
-    setTimeout((): void => {
-      const text: string = deps.readClipboardText().trim()
+  async function forwardClipboardText(): Promise<void> {
+    try {
+      const text: string = (await deps.readClipboardText()).trim()
 
       if (text.length === 0) {
         return
       }
       deps.sendTextToMainWindow(text)
+    } catch (err: unknown) {
+      deps.logger?.('[quick-translate] clipboard read failed', err)
+    }
+  }
+
+  function handleChord(): void {
+    setTimeout((): void => {
+      void forwardClipboardText()
     }, CLIPBOARD_READ_DELAY_MS)
   }
 

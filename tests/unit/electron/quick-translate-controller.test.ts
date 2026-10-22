@@ -5,6 +5,9 @@ import {
   createQuickTranslateController,
   type QuickTranslateControllerDeps,
 } from '@electron/main/quick-translate-controller'
+import {
+  createChordDetector,
+} from '@electron/services/shortcuts/chord-detector'
 
 /**
  * The controller lazy-loads `uiohook-napi` inside `buildRegistrar` via
@@ -66,7 +69,7 @@ function makeDeps(
 
   return {
     ensureAccessibilityPermission: ensurePermission,
-    readClipboardText: () => '',
+    readClipboardText: async () => '',
     sendTextToMainWindow: sendSpy,
     showWarning: showWarningSpy,
     logger: () => {},
@@ -85,6 +88,21 @@ function makeDeps(
     ensurePermission: ReturnType<typeof vi.fn>
     onAppExitListeners: Array<() => void>
   }
+}
+
+const CLIPBOARD_READ_DELAY_MS: number = 100
+
+function fireRegisteredChord(): void {
+  const detector: ReturnType<typeof createChordDetector> = vi
+    .mocked(createChordDetector)
+    .mock
+    .results
+    .at(-1)
+    ?.value
+  const onChordListener: (() => void) | undefined = vi.mocked(detector.onChord).mock.calls[0]?.[0]
+
+  expect(onChordListener).toBeTypeOf('function')
+  onChordListener?.()
 }
 
 describe('quick-translate controller', () => {
@@ -205,5 +223,51 @@ describe('quick-translate controller', () => {
     controller.start('Ctrl+C+C', true)
 
     expect(deps.onAppExitListeners.length).toBe(1)
+  })
+
+  it('forwards trimmed clipboard text read asynchronously after the chord fires', async () => {
+    const deps = makeDeps({
+      readClipboardText: vi.fn(async () => '  hello world  '),
+    })
+    const controller = createQuickTranslateController(deps)
+    controller.start('Ctrl+C+C', true)
+
+    fireRegisteredChord()
+    await vi.advanceTimersByTimeAsync(CLIPBOARD_READ_DELAY_MS)
+
+    expect(deps.sendSpy).toHaveBeenCalledOnce()
+    expect(deps.sendSpy).toHaveBeenCalledWith('hello world')
+  })
+
+  it('does not forward whitespace-only clipboard text', async () => {
+    const deps = makeDeps({
+      readClipboardText: vi.fn(async () => '   '),
+    })
+    const controller = createQuickTranslateController(deps)
+    controller.start('Ctrl+C+C', true)
+
+    fireRegisteredChord()
+    await vi.advanceTimersByTimeAsync(CLIPBOARD_READ_DELAY_MS)
+
+    expect(deps.sendSpy).not.toHaveBeenCalled()
+  })
+
+  it('logs clipboard read failures instead of swallowing them', async () => {
+    const failure: Error = new Error('clipboard unavailable')
+    const loggerSpy = vi.fn()
+    const deps = makeDeps({
+      readClipboardText: vi.fn(async () => {
+        throw failure
+      }),
+      logger: loggerSpy,
+    })
+    const controller = createQuickTranslateController(deps)
+    controller.start('Ctrl+C+C', true)
+
+    fireRegisteredChord()
+    await vi.advanceTimersByTimeAsync(CLIPBOARD_READ_DELAY_MS)
+
+    expect(deps.sendSpy).not.toHaveBeenCalled()
+    expect(loggerSpy).toHaveBeenCalledWith('[quick-translate] clipboard read failed', failure)
   })
 })

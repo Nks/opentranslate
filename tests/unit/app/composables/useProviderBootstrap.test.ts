@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import {
-  describe, expect, it, beforeEach, vi,
+  describe, expect, it, beforeEach, vi, type Mock,
 } from 'vitest'
 import {
   setActivePinia, createPinia,
@@ -26,7 +26,7 @@ const LIBRE_DESCRIPTOR = {
 
 describe('useProviderBootstrap.ensureActiveProviderHydrated', () => {
   let providersStore: ReturnType<typeof useProvidersStore>
-  let switchProvider: ReturnType<typeof vi.fn>
+  let switchProvider: Mock<(id: string) => unknown>
 
   beforeEach(() => {
     setActivePinia(createPinia())

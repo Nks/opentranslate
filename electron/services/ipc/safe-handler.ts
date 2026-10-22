@@ -24,7 +24,7 @@ export function safeHandler<TArgs extends unknown[], TResult>(
   return async (...args: TArgs) => {
     try {
       return await fn(...args)
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error
         ? `${err.name}: ${err.message}`
         : String(err)
@@ -33,7 +33,9 @@ export function safeHandler<TArgs extends unknown[], TResult>(
         ? `[${category}] ${message}\n${(err as Error).stack ?? ''}`
         : `[${category}] ${message}`
 
-      throw new Error(detail)
+      throw new Error(detail, {
+        cause: err,
+      })
     }
   }
 }

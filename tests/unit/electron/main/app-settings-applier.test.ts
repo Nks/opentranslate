@@ -1,5 +1,5 @@
 import {
-  describe, expect, it, vi, beforeEach,
+  describe, expect, it, vi, beforeEach, type Mock,
 } from 'vitest'
 import type {
   CloseBehavior,
@@ -30,8 +30,8 @@ function makeHolder(initial: CloseBehavior): CloseBehaviorHolder & {
 
 interface TrayState {
   visible: boolean
-  ensure: ReturnType<typeof vi.fn>
-  teardown: ReturnType<typeof vi.fn>
+  ensure: Mock<() => void>
+  teardown: Mock<() => void>
 }
 
 function makeTray(initialVisible: boolean): TrayLifecycle & {

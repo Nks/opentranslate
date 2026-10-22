@@ -22,7 +22,7 @@ await mkdir(outDir, {
 const sharedOptions = {
   bundle: true,
   platform: 'node',
-  target: 'node22',
+  target: 'node24',
   sourcemap: true,
   minify: false,
   format: 'cjs',
