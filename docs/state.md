@@ -23,10 +23,12 @@ _Last updated: 2026-10-22 (v0.1.0 release prep — multi-arch builds + dependenc
     (`pnpm test:e2e:packaged`), reusable `checks.yml` + `package.yml`,
     `release.yml` draft pre-release with `SHA256SUMS.txt`, SHA-pinned
     actions, Dependabot 7-day cooldown. See `docs/packaging.md`.
-  - **Dependency refresh:** Electron 44.7.2, electron-builder 26.15.3,
+  - **Dependency refresh:** Electron 44.9.3, electron-builder 26.15.3,
     Nuxt 4.6.1, Nuxt UI 4.11.3, Pinia 4, VueUse 15, Vitest 5, ESLint 10,
     TypeScript 6.0, pnpm 10.34.7. `pnpm-workspace.yaml`
-    `minimumReleaseAge: 10080` holds every dependency to ≥ 7 days old.
+    `minimumReleaseAge: 10080` holds every dependency to ≥ 7 days old;
+    only `electron` is exempt (security patch line of the pinned `^44`
+    major).
     Only `better-sqlite3` + `uiohook-napi` stay in `dependencies`.
     Electron 44 async `clipboard.readText()` handled in quick-translate.
   - **Native modules:** better-sqlite3 13 + uiohook-napi load N-API
@@ -55,9 +57,9 @@ _Last updated: 2026-10-22 (v0.1.0 release prep — multi-arch builds + dependenc
     in CI without an app and never leaks its temp profile.
 - **Deferred (see `docs/backlog.md`):** B-056 boundaries lint has no
   import resolver (5 known violations); B-057 navigation / window-open /
-  permission guards + Electron fuses; B-058 Electron 44.8+/45 after the
-  cooldown (async `safeStorage` before Electron 46, drop the handlebars
-  override); B-059 linux arm64 (uiohook-napi prebuild); B-060
+  permission guards + Electron fuses; B-058 Electron 45 after its
+  cooldown (async `safeStorage` before Electron 46); B-066 drop the
+  handlebars override after the cooldown; B-059 linux arm64 (uiohook-napi prebuild); B-060
   `@nuxt/fonts` 1.0 network-dependent build; B-061 TypeScript 7; B-062
   `@nuxt/ui>@nuxt/fonts` override; B-063 manual Semgrep pin bumps; B-064
   `v*` tag ruleset + `release` environment reviewer; B-065 source maps,
@@ -78,8 +80,9 @@ _Last updated: 2026-10-22 (v0.1.0 release prep — multi-arch builds + dependenc
 - CHANGELOG.md: user-facing highlights only (no per-B-ID dump).
 - Release targets: mac arm64, mac x64, win x64, linux x64 (no arm64 on
   Linux/Windows).
-- Supply chain: no dependency younger than 7 days (`minimumReleaseAge`);
-  `0.1.0` ships Electron 44.7.2, not 45.0.0.
+- Supply chain: no dependency younger than 7 days (`minimumReleaseAge`)
+  except the Electron patch line of the pinned major; `0.1.0` ships
+  Electron 44.9.3, not 45.0.0.
 
 ## Green-state verification
 

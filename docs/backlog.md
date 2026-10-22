@@ -1104,21 +1104,21 @@ then add fuses through an `afterPack` hook with a fuse-free smoke variant
 or a post-smoke fuse flip, and extend `verify-package` to assert the fuse
 state.
 
-### B-058: Electron 45 after the release-age cooldown
+### B-058: Electron 45 after its release-age cooldown
 **Priority:** P2
 
-`0.1.0` ships Electron 44.7.2 because 45.0.0 was published the day before
-release and `minimumReleaseAge` is 7 days. 44.8.0 (Chromium 152.0.7977.167
-+ Chromium/V8 security backports, matures 2026-10-23) and 44.9.3
-(ANGLE/Chromium/PDFium/Skia/V8 backports, matures 2026-10-28) are
-non-GHSA security updates: take the newest mature 44.x first, then move to
-45 once it is 7 days old.
+`0.1.0` ships Electron 44.9.3, the newest patch of the pinned 44 line:
+`electron` is in `minimumReleaseAgeExclude` so its Chromium/V8 security
+backports ship immediately, while `package.json` (`^44.9.3`) keeps new
+majors behind the 7-day gate. 45.0.0 was published the day before the
+release; move to 45 once it is at least 7 days old by bumping the range to
+`^45.x.y`.
 
 The 45 bump must also migrate the secrets vault from the synchronous
 `safeStorage.encryptString` / `decryptString` to the async API: the sync
 calls are removed in Electron 46. Keep the async clipboard handling added
-for Electron 44. Drop the `handlebars@<4.7.10` override once
-`eslint-plugin-boundaries` ≥ 7.2.1 resolves (`docs/security.md`).
+for Electron 44, and keep `@types/node` and the esbuild `node<major>`
+target on the bundled Node major.
 
 ### B-059: Linux arm64 target blocked by uiohook-napi prebuild
 **Priority:** P3
@@ -1184,3 +1184,14 @@ whether release builds should drop the source maps and smoke page
 (`electron-builder.yml` `files`) and ignore both variables when
 `app.isPackaged`; keep the packaged Playwright smoke working (it uses the
 real renderer, not `ELECTRON_SMOKE_TEST`).
+
+### B-066: Remove the handlebars override after the cooldown
+**Priority:** P3
+
+`package.json` overrides `handlebars@<4.7.10` → `4.7.10` because
+`eslint-plugin-boundaries@7.2.0` and `@boundaries/elements@3.1.1` pin the
+vulnerable 4.7.9 and the fixed `eslint-plugin-boundaries@7.2.1` was too new
+for `minimumReleaseAge`. Once 7.2.1 is at least 7 days old (2026-10-28),
+bump `eslint-plugin-boundaries` to `^7.2.1`, drop the override and its
+`docs/security.md` row, and confirm `pnpm audit --audit-level=high` stays
+green.

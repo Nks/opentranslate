@@ -174,14 +174,18 @@ the newest version published at least 7 days ago. pnpm 10 ignores this
 setting in the `package.json` `pnpm` field, so it must stay in
 `pnpm-workspace.yaml`.
 
-`minimumReleaseAgeExclude` is empty. When the age gate holds back a security
-fix, prefer an override to an already-mature patched version; exempt a
-package only when no mature fix exists, and pin the exemption to the exact
-version (`name@x.y.z`).
+When the age gate holds back a security fix, prefer an override to an
+already-mature patched version; exempt a package only when no mature fix
+exists.
+
+| `minimumReleaseAgeExclude` | Reason | Guard |
+|---|---|---|
+| `electron` | Security patch line of a pinned major: Electron patch releases carry Chromium/V8 security backports that have no GHSA (44.8.0 – 44.9.3 for `0.1.0`), so the newest patch of the current major ships immediately. New majors still wait. | `package.json` pins `electron` to `^<major>.x.y`; `tests/unit/packaging/dependency-policy.test.ts` fails on any other range shape or exemption |
 
 | Override | Reason | Remove when |
 |---|---|---|
-| `handlebars@<4.7.10` → `4.7.10` | `eslint-plugin-boundaries@7.2.0` and `@boundaries/elements@3.1.1` pin `handlebars@4.7.9` (GHSA-8r5x-fm3f-whwj, GHSA-p8wg-vrv2-v86f, GHSA-xw65-4hp5-5hc7). The fixed plugin release (7.2.1) was one day old; `handlebars@4.7.10` was 17 days old. | `eslint-plugin-boundaries` ≥ 7.2.1 is resolved |
+| `handlebars@<4.7.10` → `4.7.10` | `eslint-plugin-boundaries@7.2.0` and `@boundaries/elements@3.1.1` pin `handlebars@4.7.9` (GHSA-8r5x-fm3f-whwj, GHSA-p8wg-vrv2-v86f, GHSA-xw65-4hp5-5hc7). The fixed plugin release (7.2.1) was one day old; `handlebars@4.7.10` was 17 days old. | `eslint-plugin-boundaries` ≥ 7.2.1 passes the age gate (B-066) |
+| `@nuxt/ui>@nuxt/fonts` → `^1.0.1` | `@nuxt/ui` 4.11/4.12 still depends on `@nuxt/fonts@^0.14`, whose `fontless@0.2` pulls `esbuild@^0.27` (GHSA-g7r4-m6w7-qqqr) | `@nuxt/ui` depends on `@nuxt/fonts` 1.x (B-062) |
 
 ### Vulnerability audit
 

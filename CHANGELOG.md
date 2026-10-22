@@ -50,10 +50,12 @@ instructions.
 
 ### Dependencies
 
-- Electron 44.7.2, electron-builder 26.15.3, Nuxt 4.6, Nuxt UI 4.11,
+- Electron 44.9.3, electron-builder 26.15.3, Nuxt 4.6, Nuxt UI 4.11,
   Pinia 4, VueUse 15, Vitest 5, ESLint 10, TypeScript 6.0, pnpm 10.34.
 - Every dependency, direct and transitive, is at least 7 days old
-  (pnpm `minimumReleaseAge`, matching the Dependabot cooldown).
+  (pnpm `minimumReleaseAge`, matching the Dependabot cooldown), except the
+  Electron 44 patch line, which takes Chromium/V8 security backports
+  immediately; new Electron majors still wait.
 - Only the unbundled native modules (`better-sqlite3`, `uiohook-napi`)
   remain runtime `dependencies`; everything esbuild or Nuxt bundles is a
   `devDependency`.
