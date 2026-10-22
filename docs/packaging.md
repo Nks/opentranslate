@@ -42,10 +42,9 @@ from `scripts/packaging/package-plan.ts`:
 
 1. `pnpm run build:electron` — esbuild bundles main + preload to CJS.
 2. `pnpm run build:renderer` — Nuxt generates the static SPA in `.output/public/`.
-3. For each arch: `electron-rebuild -f -o better-sqlite3 --arch=<arch>`, then
-   `electron-builder --<platform> --<arch> --publish never`.
-4. If the last packaged arch differs from the host arch, rebuild
-   better-sqlite3 for the host again so `pnpm dev` keeps working.
+3. For each arch: `electron-builder --<platform> --<arch> --publish never`.
+
+No native module is rebuilt at any step (see [Native Modules](#native-modules)).
 
 `--publish never` is always passed. `package.json` declares a GitHub
 `repository`, so electron-builder would otherwise auto-publish on tag
@@ -68,16 +67,26 @@ too. Unknown flags fail fast.
 
 `better-sqlite3` and `uiohook-napi` are the runtime native modules.
 
-- **better-sqlite3** is compiled per target arch by `electron-rebuild`
-  (`npmRebuild: false`, because electron-builder's own rebuild breaks on
-  uiohook-napi with node-gyp 9 + Python 3.12). `postinstall` builds it for
-  the host so `pnpm dev` and the dev e2e suite work.
-- **uiohook-napi** ships N-API prebuilds for every platform-arch, loaded by
-  `node-gyp-build`. `node-gyp-build` prefers a compiled `build/Release`
-  binary over prebuilds, and pnpm's side-effects cache can leave a
-  host-arch compile there. `electron-builder.yml` therefore excludes
-  `node_modules/uiohook-napi/{build,bin}/**`, so the packaged app always
-  loads `prebuilds/<platform>-<arch>`.
+Both are N-API modules with prebuilt binaries for every release target, so
+nothing is compiled or rebuilt: there is no `postinstall`, no per-arch
+`electron-rebuild` (`@electron/rebuild` is not a dependency) and
+`npmRebuild: false`. The same binary loads in Node (Vitest) and in every
+Electron version.
+
+- **better-sqlite3** (v13+) ships `prebuilds/<platform>-<arch>.node` (plus
+  `linuxmusl-*`) and loads the one for `process.platform`/`process.arch`
+  before falling back to `build/Release`. Its `binding.gyp` only checks for
+  that prebuild, so pnpm's install-time `node-gyp` run is a no-op that needs
+  a C++ toolchain and leaves a `build/` dir; `package.json` lists it under
+  `pnpm.ignoredBuiltDependencies` to skip it.
+- **uiohook-napi** ships `prebuilds/<platform>-<arch>/uiohook-napi.node`,
+  loaded by `node-gyp-build`. `node-gyp-build` prefers a compiled
+  `build/Release` binary over prebuilds, and pnpm's side-effects cache can
+  restore a host-arch compile there.
+- `electron-builder.yml` therefore excludes `uiohook-napi/{build,bin}`,
+  `better-sqlite3/{build,deps,src}` and `binding.gyp`, and every prebuild
+  except `${platform}-${arch}`. Each packaged app carries exactly one
+  binary per module, and a host-arch compile can never shadow it.
 - Both modules plus `node-gyp-build` are unpacked from `app.asar`
   (`asarUnpack`).
 
@@ -98,19 +107,16 @@ dir and the artifact name patterns from `electron-builder.yml`. Then it checks:
 
 - Every expected installer exists and is non-empty.
 - The unpacked app, its executable and `app.asar` exist.
-- `better_sqlite3.node` in `app.asar.unpacked` matches the target, judged by
-  its binary header (Mach-O `cputype`, including universal slices; PE
-  `Machine`; ELF `e_machine`).
-- The `uiohook-napi` prebuild for the target platform-arch is present and
-  matches.
+- The `better-sqlite3` and `uiohook-napi` prebuilds for the target
+  platform-arch are present in `app.asar.unpacked` and match the target,
+  judged by their binary headers (Mach-O `cputype`, including universal
+  slices; PE `Machine`; ELF `e_machine`).
 - Every other loadable `.node` in `app.asar.unpacked` matches too. That
   catches a host-arch compile leaking into a cross-arch build.
 
-Binaries the target never loads are listed with `–` instead of being
-checked. These are node-gyp-build prebuilds for other platforms, and npm
-platform packages whose `os`/`cpu` exclude the target. Example: the
-`lightningcss-darwin-arm64` copy that a host-arch install drags into the
-mac x64 app.
+Binaries the target never loads are not checked: prebuilds for other
+platforms (directory or single-file layout) are skipped, and npm platform
+packages whose `os`/`cpu` exclude the target are listed with `–`.
 
 Each check prints `✓` or `✗`. Any failure exits 1.
 
@@ -168,7 +174,7 @@ docker run --rm --platform linux/amd64 \
   -v opentranslate-electron-cache:/root/.cache/electron \
   -v opentranslate-builder-cache:/root/.cache/electron-builder \
   node:24-bookworm bash -c '
-    corepack enable && corepack prepare pnpm@10.33.0 --activate &&
+    corepack enable && corepack prepare pnpm@10.34.7 --activate &&
     pnpm install --frozen-lockfile --store-dir=/project/node_modules/.pnpm-store &&
     node scripts/package.mjs --arch=x64 &&
     node scripts/verify-package.mjs --platform linux --arch x64'
@@ -267,10 +273,9 @@ or right-click the app → Open → Open (first launch only).
 ### `verify-package` reports an arch mismatch
 
 The package contains a native binary built for another arch. Usually a
-host-arch build leaked in. Re-run `node scripts/package.mjs --arch=<arch>`:
-it rebuilds better-sqlite3 for the target first. If the offender is under
-`uiohook-napi`, check that the `files` exclusion in `electron-builder.yml`
-is intact.
+host-arch compile leaked in. Check that the `files` exclusions for
+`better-sqlite3` and `uiohook-napi` in `electron-builder.yml` are intact,
+then re-run `node scripts/package.mjs --arch=<arch>`.
 
 ### Large installer size
 

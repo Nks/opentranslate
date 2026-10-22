@@ -1,9 +1,9 @@
 /**
- * Packaging orchestrator: build:electron → build:renderer → per-arch
- * electron-rebuild → electron-builder (--publish never).
+ * Packaging orchestrator: build:electron → build:renderer → electron-builder
+ * per arch (--publish never).
  *
- * npmRebuild is disabled (uiohook-napi + node-gyp 9 + Python 3.12), so each
- * target arch gets its own better-sqlite3 rebuild before its builder run.
+ * No native rebuild: better-sqlite3 and uiohook-napi ship N-API prebuilds for
+ * every target, and electron-builder.yml packs only the target-arch one.
  *
  * Usage:
  *   node scripts/package.mjs                 # host platform, default arches
@@ -43,7 +43,7 @@ function run(command) {
 function main() {
   const request = parsePackageCliArgs(process.argv.slice(2), process.platform)
 
-  planPackageCommands(request, process.arch).forEach(run)
+  planPackageCommands(request).forEach(run)
   console.log(`\n✓ Packaged ${request.platform} ${request.arches.join(', ')}. Output in release/.\n`)
 }
 

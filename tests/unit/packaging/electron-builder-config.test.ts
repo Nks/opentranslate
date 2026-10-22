@@ -115,6 +115,24 @@ describe('electron-builder.yml', () => {
     expect(files).toContain('!**/node_modules/uiohook-napi/{build,bin}/**')
   })
 
+  it('excludes better-sqlite3 build outputs and sources so only its prebuilds ship', () => {
+    const config: Record<string, unknown> = loadConfig()
+    const files: string[] = config.files as string[]
+
+    expect(files).toContain('!**/node_modules/better-sqlite3/{build,deps,src}/**')
+    expect(files).toContain('!**/node_modules/better-sqlite3/binding.gyp')
+  })
+
+  it.each([
+    ['better-sqlite3', '!**/node_modules/better-sqlite3/prebuilds/!(${platform}-${arch}).node'],
+    ['uiohook-napi', '!**/node_modules/uiohook-napi/prebuilds/!(${platform}-${arch})/**'],
+  ])('ships only the target-arch %s prebuild', (_name: string, pattern: string) => {
+    const config: Record<string, unknown> = loadConfig()
+    const files: string[] = config.files as string[]
+
+    expect(files).toContain(pattern)
+  })
+
   it('mac identity is null (unsigned local builds)', () => {
     const config = loadConfig()
     const mac = config.mac as Record<string, unknown>
@@ -186,6 +204,20 @@ describe('package.json packaging fields', () => {
     const pkg = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'))
 
     expect(pkg.dependencies['uiohook-napi']).toBeDefined()
+  })
+
+  it('never rebuilds native modules on install', () => {
+    const pkg = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'))
+
+    expect(pkg.scripts.postinstall ?? '').not.toContain('electron-rebuild')
+    expect(pkg.devDependencies['@electron/rebuild']).toBeUndefined()
+  })
+
+  it('skips the no-op node-gyp build of better-sqlite3, whose prebuilds load directly', () => {
+    const pkg = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'))
+
+    expect(pkg.pnpm.onlyBuiltDependencies).not.toContain('better-sqlite3')
+    expect(pkg.pnpm.ignoredBuiltDependencies).toContain('better-sqlite3')
   })
 
   it('electron is in devDependencies (not bundled)', () => {

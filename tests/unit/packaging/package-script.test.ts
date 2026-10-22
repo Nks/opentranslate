@@ -41,7 +41,7 @@ describe('scripts/package.mjs', () => {
     expect(content).toContain("from './packaging/targets.ts'")
     expect(content).toContain("from './packaging/package-plan.ts'")
     expect(content).toContain('parsePackageCliArgs(process.argv.slice(2), process.platform)')
-    expect(content).toContain('planPackageCommands(request, process.arch)')
+    expect(content).toContain('planPackageCommands(request)')
   })
 
   it('does not hardcode builder invocations outside the plan', () => {

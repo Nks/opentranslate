@@ -15,6 +15,10 @@ files:
   - '!**/node_modules/*.d.ts'
   - '!**/node_modules/.bin'
   - '!**/node_modules/uiohook-napi/{build,bin}/**'
+  - '!**/node_modules/uiohook-napi/prebuilds/!(${platform}-${arch})/**'
+  - '!**/node_modules/better-sqlite3/{build,deps,src}/**'
+  - '!**/node_modules/better-sqlite3/binding.gyp'
+  - '!**/node_modules/better-sqlite3/prebuilds/!(${platform}-${arch}).node'
 asar: true
 asarUnpack:
   - '**/*.{node,dll}'

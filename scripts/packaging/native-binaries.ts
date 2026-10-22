@@ -12,6 +12,8 @@ export interface PlatformManifest {
   cpu?: readonly string[]
 }
 
+const NATIVE_EXTENSION: string = '.node'
+
 function prebuildDirName(target: NativeTarget): string {
   return `${target.nodePlatform}-${target.arch}`
 }
@@ -34,8 +36,8 @@ function allowsValue(constraint: readonly string[] | undefined, value: string): 
 export function nativeBinaryExpectations(target: NativeTarget): NativeBinaryExpectation[] {
   return [
     {
-      label: 'better-sqlite3',
-      segments: ['node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node'],
+      label: 'better-sqlite3 prebuild',
+      segments: ['node_modules', 'better-sqlite3', 'prebuilds', `${prebuildDirName(target)}${NATIVE_EXTENSION}`],
     },
     {
       label: 'uiohook-napi prebuild',
@@ -51,9 +53,17 @@ export function isForeignPrebuild(segments: readonly string[], target: NativeTar
     return false
   }
 
-  const platformArchDir: string | undefined = segments[prebuildsIndex + 1]
+  const platformArchEntry: string | undefined = segments[prebuildsIndex + 1]
 
-  return platformArchDir !== undefined && platformArchDir !== prebuildDirName(target)
+  if (platformArchEntry === undefined) {
+    return false
+  }
+
+  const platformArch: string = platformArchEntry.endsWith(NATIVE_EXTENSION)
+    ? platformArchEntry.slice(0, -NATIVE_EXTENSION.length)
+    : platformArchEntry
+
+  return platformArch !== prebuildDirName(target)
 }
 
 export function packageRootSegments(segments: readonly string[]): string[] | null {

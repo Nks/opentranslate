@@ -35,11 +35,11 @@ describe('nativeBinaryExpectations', () => {
     [MAC_X64, 'darwin-x64'],
     [WIN_X64, 'win32-x64'],
     [LINUX_X64, 'linux-x64'],
-  ])('requires better-sqlite3 and the %o uiohook prebuild (%s)', (target: NativeTarget, prebuild: string) => {
+  ])('requires the %o better-sqlite3 and uiohook prebuilds (%s)', (target: NativeTarget, prebuild: string) => {
     expect(nativeBinaryExpectations(target)).toEqual([
       {
-        label: 'better-sqlite3',
-        segments: ['node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node'],
+        label: 'better-sqlite3 prebuild',
+        segments: ['node_modules', 'better-sqlite3', 'prebuilds', `${prebuild}.node`],
       },
       {
         label: 'uiohook-napi prebuild',
@@ -60,6 +60,24 @@ describe('isForeignPrebuild', () => {
     const segments: string[] = ['node_modules', 'uiohook-napi', 'prebuilds', 'darwin-arm64', 'uiohook-napi.node']
 
     expect(isForeignPrebuild(segments, MAC_ARM64)).toBe(false)
+  })
+
+  it('ignores single-file prebuilds for other platforms', () => {
+    const segments: string[] = ['node_modules', 'better-sqlite3', 'prebuilds', 'win32-x64.node']
+
+    expect(isForeignPrebuild(segments, MAC_ARM64)).toBe(true)
+  })
+
+  it('keeps the single-file prebuild matching the target', () => {
+    const segments: string[] = ['node_modules', 'better-sqlite3', 'prebuilds', 'darwin-arm64.node']
+
+    expect(isForeignPrebuild(segments, MAC_ARM64)).toBe(false)
+  })
+
+  it('treats musl prebuilds as foreign to the glibc linux target', () => {
+    const segments: string[] = ['node_modules', 'better-sqlite3', 'prebuilds', 'linuxmusl-x64.node']
+
+    expect(isForeignPrebuild(segments, LINUX_X64)).toBe(true)
   })
 
   it('keeps compiled build outputs, which node-gyp-build loads before prebuilds', () => {
