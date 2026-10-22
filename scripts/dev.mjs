@@ -30,7 +30,7 @@ const esbuildAlias = {
 const sharedEsbuildOptions = {
   bundle: true,
   platform: 'node',
-  target: 'node22',
+  target: 'node24',
   sourcemap: true,
   format: 'cjs',
   outExtension: {
