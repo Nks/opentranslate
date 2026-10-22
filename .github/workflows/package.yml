@@ -21,6 +21,7 @@ jobs:
   package:
     name: Package (${{ matrix.platform }}-${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -40,6 +41,9 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+      TARGET_PLATFORM: ${{ matrix.platform }}
+      TARGET_ARCH: ${{ matrix.arch }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -56,15 +60,15 @@ jobs:
         uses: ./.github/actions/linux-electron-deps
 
       - name: Build + package
-        run: node scripts/package.mjs --arch=${{ matrix.arch }}
+        run: node scripts/package.mjs --arch="${TARGET_ARCH}"
 
       - name: Verify package
-        run: node scripts/verify-package.mjs --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+        run: node scripts/verify-package.mjs --platform "${TARGET_PLATFORM}" --arch "${TARGET_ARCH}"
 
       - name: Locate packaged executable and installers
         id: locate
         run: |
-          target=(--platform "${{ matrix.platform }}" --arch "${{ matrix.arch }}")
+          target=(--platform "${TARGET_PLATFORM}" --arch "${TARGET_ARCH}")
           executable="$(node scripts/verify-package.mjs "${target[@]}" --print executable)"
           installers="$(node scripts/verify-package.mjs "${target[@]}" --print installers)"
           echo "OPENTRANSLATE_PACKAGED_APP=${executable}" >> "${GITHUB_ENV}"

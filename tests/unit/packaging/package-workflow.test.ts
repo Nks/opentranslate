@@ -35,6 +35,8 @@ interface WorkflowJob {
   needs?: string
   uses?: string
   'runs-on'?: string
+  'timeout-minutes'?: number
+  env?: Record<string, string>
   defaults?: { run?: { shell?: string } }
   strategy?: {
     matrix?: {
@@ -144,10 +146,18 @@ describe('package.yml', () => {
     expect([...order].sort((left: number, right: number): number => left - right)).toEqual(order)
   })
 
-  it('passes the matrix target to the package and verify scripts', () => {
-    expect(packageStep('Build + package').run).toBe('node scripts/package.mjs --arch=${{ matrix.arch }}')
+  it('passes the matrix target to the package and verify scripts through env', () => {
+    expect(packageJob.env).toEqual({
+      TARGET_PLATFORM: '${{ matrix.platform }}',
+      TARGET_ARCH: '${{ matrix.arch }}',
+    })
+    expect(packageStep('Build + package').run).toBe('node scripts/package.mjs --arch="${TARGET_ARCH}"')
     expect(packageStep('Verify package').run)
-      .toBe('node scripts/verify-package.mjs --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}')
+      .toBe('node scripts/verify-package.mjs --platform "${TARGET_PLATFORM}" --arch "${TARGET_ARCH}"')
+  })
+
+  it('gives each package job 45 minutes', () => {
+    expect(packageJob['timeout-minutes']).toBe(45)
   })
 
   it('points the packaged smoke test at the verified executable', () => {
@@ -209,6 +219,10 @@ describe('checks.yml', () => {
       'E2E Linux (xvfb-wrapped)',
       'E2E macOS / Windows',
     ]))
+  })
+
+  it('gives each checks job 30 minutes', () => {
+    expect(checksJob['timeout-minutes']).toBe(30)
   })
 
   it('runs unit tests before e2e', () => {

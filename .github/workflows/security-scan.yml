@@ -23,6 +23,7 @@ jobs:
   audit:
     name: pnpm audit (all dependencies)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -38,6 +39,7 @@ jobs:
   trivy:
     name: Trivy (deps + IaC + misconfig)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       security-events: write
@@ -70,6 +72,7 @@ jobs:
   semgrep:
     name: Semgrep (JS/TS security audit)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       security-events: write
@@ -83,9 +86,9 @@ jobs:
         continue-on-error: true
         run: |
           docker run --rm \
-            -v "${{ github.workspace }}:/src" \
+            -v "${GITHUB_WORKSPACE}:/src" \
             -w /src \
-            semgrep/semgrep:1.182.0@sha256:4a34048c04fef049f71665047f074cffb00cc3d89482f965a5cd151d589237af \
+            semgrep/semgrep:1.181.0@sha256:81474464c1f07483ba0682a44787fd93c91397419762a04abe2bafaae396304b \
             semgrep scan \
               --config=p/security-audit \
               --config=p/javascript \
@@ -109,6 +112,7 @@ jobs:
   licenses:
     name: License compliance
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -129,6 +133,10 @@ jobs:
   gitleaks:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -140,5 +148,5 @@ jobs:
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_COMMENTS: "true"
+          GITLEAKS_ENABLE_COMMENTS: "false"
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "true"

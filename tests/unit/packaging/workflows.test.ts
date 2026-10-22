@@ -20,6 +20,10 @@ interface WorkflowStep {
 }
 
 interface WorkflowJob {
+  'runs-on'?: string
+  'timeout-minutes'?: number
+  permissions?: Record<string, string>
+  env?: Record<string, string>
   steps?: WorkflowStep[]
 }
 
@@ -104,6 +108,23 @@ describe.each(workflowFiles)('%s', (file: string) => {
     })
   })
 
+  it('bounds every runner job with timeout-minutes', () => {
+    Object.values(loadWorkflow(file).jobs)
+      .filter((job: WorkflowJob): boolean => job['runs-on'] !== undefined)
+      .forEach((job: WorkflowJob): void => {
+        expect(job['timeout-minutes']).toBeGreaterThan(0)
+        expect(job['timeout-minutes']).toBeLessThanOrEqual(60)
+      })
+  })
+
+  it('never interpolates expressions into run scripts (passes them through env instead)', () => {
+    allSteps(loadWorkflow(file))
+      .filter((step: WorkflowStep): boolean => step.run !== undefined)
+      .forEach((step: WorkflowStep): void => {
+        expect(step.run).not.toContain('${{')
+      })
+  })
+
   it('lets pnpm/action-setup read the pnpm version from packageManager', () => {
     stepsUsing(loadWorkflow(file), 'pnpm/action-setup').forEach((step: WorkflowStep): void => {
       expect(step.with?.version).toBeUndefined()
@@ -143,6 +164,23 @@ describe('security-scan.yml', () => {
     expect(semgrepStep?.run).toMatch(/semgrep\/semgrep:\d+\.\d+\.\d+@sha256:[0-9a-f]{64} /)
     expect(text).not.toContain('returntocorp/semgrep')
     expect(text).not.toContain(':latest')
+  })
+
+  it('runs Semgrep from an image at least as old as the 7-day dependency cooldown', () => {
+    expect(stepNamed('Run Semgrep')?.run).toContain(
+      'semgrep/semgrep:1.181.0@sha256:81474464c1f07483ba0682a44787fd93c91397419762a04abe2bafaae396304b',
+    )
+  })
+
+  it('lets gitleaks read PR commits without any write scope', () => {
+    const gitleaks: WorkflowJob | undefined = loadWorkflow('security-scan.yml').jobs.gitleaks
+    const gitleaksStep: WorkflowStep | undefined = stepNamed('Run gitleaks')
+
+    expect(gitleaks?.permissions).toEqual({
+      contents: 'read',
+      'pull-requests': 'read',
+    })
+    expect(gitleaksStep?.env?.GITLEAKS_ENABLE_COMMENTS).toBe('false')
   })
 
   it('audits devDependencies too, because the shipped bundles are built from them', () => {
