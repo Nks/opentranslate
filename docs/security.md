@@ -143,7 +143,7 @@ Adds `'unsafe-eval'` and Vite dev server URLs for HMR.
 
 Layer import rules configured for lint time (not effective yet: the
 plugin has no import resolver, so aliased imports never match a layer —
-see `docs/backlog.md`):
+see B-056 in `docs/backlog.md`):
 
 - `app/` can only import from `shared/`
 - `electron/providers/` can import from `shared/` and `electron/services/`

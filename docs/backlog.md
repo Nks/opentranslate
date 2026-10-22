@@ -1059,3 +1059,88 @@ swap, reschedule the translation. If history is empty or every
 entry equals the detected source, leave the pair as-is. Auto-
 switched targets are NOT pushed back into history to avoid
 feedback loops.
+
+---
+
+## v0.1.0 release prep follow-ups — multi-arch builds + dependency refresh
+
+### B-056: Layer boundaries lint never fires — no import resolver
+**Priority:** P1
+
+`eslint-plugin-boundaries` classifies a dependency by resolving its import
+path, but `eslint.config.mjs` configures no import resolver, so aliased
+imports (`@shared/*`, `@electron/*`, `@app/*`) never resolve to an element
+and `boundaries/dependencies` (`default: 'disallow'`) never reports. Adding a
+TypeScript resolver (`eslint-import-resolver-typescript` reading
+`tsconfig.base.json` paths) surfaces 5 known violations:
+
+- `app/components/ProviderSettingsForm.vue`
+- `app/composables/useApi.ts`
+- `app/pages/index.vue`
+- `electron/ipc/channels.ts`
+- `electron/preload/index.ts`
+
+Decide per file whether the import is the sanctioned `import type` of IPC
+contract shapes (AGENTS.md §Clean Architecture) — then encode that exception
+in the policy — or a real layering leak to move into `shared/`. Add a lint
+fixture test that fails when a known-bad import stops being reported.
+`docs/security.md` §Boundary Enforcement notes the gap until this lands.
+
+### B-057: Navigation, window-open and permission guards + Electron fuses
+**Priority:** P1 — hardening before a signed release.
+
+No `BrowserWindow` registers `setWindowOpenHandler` or a `will-navigate`
+guard (threat-model T-E-04, B-G-01), and no session sets
+`setPermissionRequestHandler` / `setPermissionCheckHandler`, so the renderer
+falls back to Electron's default permission grants. Release binaries also
+keep every Electron fuse at its default (`RunAsNode`,
+`EnableNodeCliInspectArguments`, `EnableNodeOptionsEnvironmentVariable`,
+`OnlyLoadAppFromAsar`, `EnableEmbeddedAsarIntegrityValidation`).
+
+Flipping `RunAsNode` / `EnableNodeCliInspectArguments` stops Playwright from
+attaching to the packaged app, which breaks `tests/e2e/packaged-app.e2e.ts`
+on every target. Land the guards first (they are smoke-test compatible),
+then add fuses through an `afterPack` hook with a fuse-free smoke variant
+or a post-smoke fuse flip, and extend `verify-package` to assert the fuse
+state.
+
+### B-058: Electron 45 after the release-age cooldown
+**Priority:** P2
+
+`0.1.0` ships Electron 44.7.2 because 45.0.0 was published the day before
+release and `minimumReleaseAge` is 7 days. 44.8.0 (Chromium 152.0.7977.167
++ Chromium/V8 security backports, matures 2026-10-23) and 44.9.3
+(ANGLE/Chromium/PDFium/Skia/V8 backports, matures 2026-10-28) are
+non-GHSA security updates: take the newest mature 44.x first, then move to
+45 once it is 7 days old.
+
+The 45 bump must also migrate the secrets vault from the synchronous
+`safeStorage.encryptString` / `decryptString` to the async API: the sync
+calls are removed in Electron 46. Keep the async clipboard handling added
+for Electron 44. Drop the `handlebars@<4.7.10` override once
+`eslint-plugin-boundaries` ≥ 7.2.1 resolves (`docs/security.md`).
+
+### B-059: Linux arm64 target blocked by uiohook-napi prebuild
+**Priority:** P3
+
+`uiohook-napi@1.5.5` ships an x86-64 ELF in `prebuilds/linux-arm64/`, so a
+linux-arm64 package would load a wrong-arch binary (`verify-package` would
+fail it). Re-add `linux-arm64` to `SUPPORTED_TARGETS` once upstream ships a
+real aarch64 prebuild, or build it in an arm64 CI job and pin the result.
+better-sqlite3 13 already ships a correct `linux-arm64.node`.
+
+### B-060: @nuxt/fonts 1.0 fails `nuxt generate` on font download errors
+**Priority:** P2
+
+Since `@nuxt/fonts` 1.0, a failed font download (offline runner, provider
+outage, proxy) aborts `pnpm build:renderer` instead of falling back to
+system fonts, so a transient network error fails packaging on every
+target. Self-host the font files under `app/assets/` (or configure the
+module's local provider only) so the renderer build needs no network.
+
+### B-061: TypeScript 7 blocked by typescript-eslint
+**Priority:** P3
+
+TypeScript 7.0 is on npm `latest`, but `typescript-eslint` 8.x supports
+`<6.1`. Stay on TypeScript 6.0 until a `typescript-eslint` release declares
+TS 7 support, then bump `typescript`, `vue-tsc` and the parser together.

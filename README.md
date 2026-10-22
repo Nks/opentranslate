@@ -38,10 +38,10 @@ pnpm install
 pnpm dev
 ```
 
-Starts Nuxt dev server + Electron with hot reload. The `postinstall`
-script rebuilds `better-sqlite3` against Electron's Node ABI, so a
-fresh `pnpm install` followed by `pnpm dev` boots the app cleanly —
-no manual rebuild needed. Unit tests use an in-memory mock at the
+Starts Nuxt dev server + Electron with hot reload. `better-sqlite3` and
+`uiohook-napi` load N-API prebuilds that work in both Node and Electron,
+so a fresh `pnpm install` followed by `pnpm dev` boots the app cleanly —
+no native rebuild needed. Unit tests use an in-memory mock at the
 `HistoryStore` interface boundary, so vitest never loads the native
 SQLite binary.
 

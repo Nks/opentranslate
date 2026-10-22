@@ -8,11 +8,11 @@ File normative. Agents follow when reading, planning, implementing, testing, ref
 
 | Area             | Stack                                                                        |
 |------------------|------------------------------------------------------------------------------|
-| Desktop runtime  | Electron 41 (`contextIsolation: true`, `nodeIntegration: false`)             |
+| Desktop runtime  | Electron 44 (`contextIsolation: true`, `nodeIntegration: false`)             |
 | Renderer         | Nuxt 4 (SPA mode, `ssr: false`) + Nuxt UI                                    |
 | Language         | TypeScript strict mode                                                       |
 | Bundler          | esbuild (electron main/preload), Vite (renderer)                             |
-| Packaging        | electron-builder (npmRebuild + asarUnpack for `.node`)                       |
+| Packaging        | electron-builder (per-target N-API prebuilds, asarUnpack for `.node`)        |
 | State            | Pinia stores in renderer; per-process service classes in main                |
 | Storage          | better-sqlite3 (history), file-backed JSON (settings), safeStorage (secrets) |
 | Global shortcuts | uiohook-napi (N-API, ABI-stable prebuilds)                                   |
@@ -66,7 +66,7 @@ Renderer calls providers only through channels. No fetch to translation APIs fro
 ## Build, Test & Dev
 
 ```bash
-pnpm install        # postinstall rebuilds better-sqlite3 vs Electron ABI
+pnpm install        # native modules use N-API prebuilds, no rebuild
 pnpm dev            # esbuild watch + nuxt dev + electron launch
 pnpm test           # vitest run (unit + integration)
 pnpm test:e2e       # playwright (auto-builds electron bundle)
@@ -76,7 +76,7 @@ pnpm run build      # typecheck + build:electron + build:renderer
 pnpm run package    # installer for current OS (release/)   (package:dir for unpacked)
 ```
 
-ALWAYS `pnpm test` after code changes. ALWAYS `pnpm lint` + `pnpm run typecheck` before commit. Native modules (`better-sqlite3`, `uiohook-napi`) need ABI match — `postinstall` rebuilds.
+ALWAYS `pnpm test` after code changes. ALWAYS `pnpm lint` + `pnpm run typecheck` before commit. Native modules (`better-sqlite3`, `uiohook-napi`) load N-API prebuilds — never add an Electron rebuild step.
 
 ## Source of Truth
 
