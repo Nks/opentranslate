@@ -89,6 +89,8 @@ describe('release.yml triggers and permissions', () => {
     })
     expect(job('publish').permissions).toEqual({
       contents: 'write',
+      'id-token': 'write',
+      attestations: 'write',
     })
     Object.entries(workflow.jobs)
       .filter(([name]: [string, WorkflowJob]): boolean => name !== 'publish')
@@ -186,5 +188,34 @@ describe('release.yml publish job', () => {
 
         expect(isInstaller).toBe(true)
       })
+  })
+
+  it('refuses to touch a release that is already published, reading the tag from env', () => {
+    const guard: WorkflowStep = publishStep('Refuse to modify a published release')
+
+    expect(guard.env?.TAG_NAME).toBe('${{ github.ref_name }}')
+    expect(guard.env?.GH_REPO).toBe('${{ github.repository }}')
+    expect(guard.run).toContain('gh release view "${TAG_NAME}" --json isDraft')
+    expect(guard.run).toContain('exit 1')
+    expect(guard.run).not.toContain('${{')
+    expect(publishStepIndex('Refuse to modify a published release'))
+      .toBeLessThan(publishStepIndex('Create draft GitHub pre-release'))
+  })
+
+  it('attests build provenance for every installer and the checksum file', () => {
+    const attest: WorkflowStep = publishStep('Attest build provenance')
+    const subjects: string[] = String(attest.with?.['subject-path'])
+      .split('\n')
+      .map((line: string): string => line.trim())
+      .filter((line: string): boolean => line.length > 0)
+    const released: string[] = String(publishStep('Create draft GitHub pre-release').with?.files)
+      .split('\n')
+      .map((line: string): string => line.trim())
+      .filter((line: string): boolean => line.length > 0)
+
+    expect(attest.uses).toMatch(/^actions\/attest-build-provenance@[0-9a-f]{40}$/)
+    expect(subjects).toEqual(released)
+    expect(publishStepIndex('Check installer set and write SHA256SUMS.txt'))
+      .toBeLessThan(publishStepIndex('Attest build provenance'))
   })
 })
