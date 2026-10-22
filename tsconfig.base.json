@@ -29,7 +29,8 @@
     "paths": {
       "@shared/*": ["shared/*"],
       "@electron/*": ["electron/*"],
-      "@app/*": ["app/*"]
+      "@app/*": ["app/*"],
+      "@scripts/*": ["scripts/*"]
     }
   }
 }
