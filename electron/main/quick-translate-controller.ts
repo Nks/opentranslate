@@ -25,7 +25,7 @@ export interface QuickTranslateControllerDeps {
     message: string
     detail: string
   }) => void
-  logger?: (message: string, err?: unknown) => void
+  logger: (message: string, err?: unknown) => void
   onAppExit: (listener: () => void) => void
   platform: NodeJS.Platform
 }
@@ -34,9 +34,10 @@ export interface QuickTranslateController {
   start: (accelerator: string, enabled: boolean) => void
   applyFromSettings: (accelerator: string, enabled: boolean) => void
   registrar: () => QuickTranslateRegistrar | null
+  forwardClipboardText: () => Promise<void>
 }
 
-const CLIPBOARD_READ_DELAY_MS: number = 100
+export const CLIPBOARD_READ_DELAY_MS: number = 100
 const CHORD_WINDOW_MS: number = 500
 
 export function createQuickTranslateController(
@@ -47,23 +48,14 @@ export function createQuickTranslateController(
   let lastEnabled: boolean = false
 
   function buildRegistrar(): QuickTranslateRegistrar {
-    const registrarDeps: Parameters<typeof createQuickTranslateRegistrar>[0] = deps.logger
-      ? {
-          createObserver: createKeyObserver,
-          createDetector: (): ReturnType<typeof createChordDetector> =>
-            createChordDetector({ windowMs: CHORD_WINDOW_MS }),
-          keyMap: loadUiohookKeyMap(),
-          onChord: handleChord,
-          logger: deps.logger,
-        }
-      : {
-          createObserver: createKeyObserver,
-          createDetector: (): ReturnType<typeof createChordDetector> =>
-            createChordDetector({ windowMs: CHORD_WINDOW_MS }),
-          keyMap: loadUiohookKeyMap(),
-          onChord: handleChord,
-        }
-    const built: QuickTranslateRegistrar = createQuickTranslateRegistrar(registrarDeps)
+    const built: QuickTranslateRegistrar = createQuickTranslateRegistrar({
+      createObserver: createKeyObserver,
+      createDetector: (): ReturnType<typeof createChordDetector> =>
+        createChordDetector({ windowMs: CHORD_WINDOW_MS }),
+      keyMap: loadUiohookKeyMap(),
+      onChord: handleChord,
+      logger: deps.logger,
+    })
     deps.onAppExit((): void => {
       built.stop()
     })
@@ -71,16 +63,27 @@ export function createQuickTranslateController(
     return built
   }
 
-  async function forwardClipboardText(): Promise<void> {
+  async function readTrimmedClipboardText(): Promise<string> {
     try {
-      const text: string = (await deps.readClipboardText()).trim()
+      return (await deps.readClipboardText()).trim()
+    } catch (err: unknown) {
+      deps.logger('[quick-translate] clipboard read failed', err)
 
-      if (text.length === 0) {
-        return
-      }
+      return ''
+    }
+  }
+
+  async function forwardClipboardText(): Promise<void> {
+    const text: string = await readTrimmedClipboardText()
+
+    if (text.length === 0) {
+      return
+    }
+
+    try {
       deps.sendTextToMainWindow(text)
     } catch (err: unknown) {
-      deps.logger?.('[quick-translate] clipboard read failed', err)
+      deps.logger('[quick-translate] sending clipboard text failed', err)
     }
   }
 
@@ -112,7 +115,7 @@ export function createQuickTranslateController(
     const result: ReturnType<QuickTranslateRegistrar['apply']> = registrar.apply(accelerator)
 
     if (!result.ok) {
-      deps.logger?.('[shortcuts] quick-translate registration failed', result.reason)
+      deps.logger('[shortcuts] quick-translate registration failed', result.reason)
       deps.showWarning({
         title: WARNING_COPY.unavailable.title,
         message: WARNING_COPY.unavailable.message,
@@ -166,7 +169,7 @@ export function createQuickTranslateController(
     const result: ReturnType<QuickTranslateRegistrar['apply']> = registrar.apply(accelerator)
 
     if (!result.ok) {
-      deps.logger?.('[shortcuts] quick-translate re-registration failed', result.reason)
+      deps.logger('[shortcuts] quick-translate re-registration failed', result.reason)
       deps.showWarning({
         title: WARNING_COPY.notApplied.title,
         message: WARNING_COPY.notApplied.message,
@@ -184,6 +187,7 @@ export function createQuickTranslateController(
     start,
     applyFromSettings,
     registrar: (): QuickTranslateRegistrar | null => registrar,
+    forwardClipboardText,
   }
 }
 

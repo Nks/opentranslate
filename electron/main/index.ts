@@ -116,26 +116,13 @@ function buildQuickTranslateController(): QuickTranslateController {
   })
 }
 
-async function forwardClipboardToWindow(window: BrowserWindow): Promise<void> {
-  try {
-    const text: string = (await clipboard.readText()).trim()
-
-    if (text.length > 0 && !window.isDestroyed()) {
-      window.webContents.send('quick-translate:text', text)
-    }
-  } catch (err: unknown) {
-    // eslint-disable-next-line no-console
-    console.error('[quick-translate] clipboard read failed', err)
-  }
-}
-
 function triggerQuickTranslateFromTray(): void {
   const window = mainWindowHost.getWindow()
 
   if (window) {
     mainWindowHost.focusOrRestore()
     window.show()
-    void forwardClipboardToWindow(window)
+    void quickTranslateController?.forwardClipboardText()
   }
 }
 
