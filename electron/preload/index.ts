@@ -61,12 +61,14 @@ async function invoke<Name extends ChannelName>(
   // they cross the context bridge. No additional stripping needed here.
   try {
     return await ipcRenderer.invoke(channel, ...args) as ChannelResponse<Name>
-  } catch (err) {
+  } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     // eslint-disable-next-line no-console
     console.error(`[IPC:${channel}]`, message, err)
 
-    throw new Error(`[${channel}] ${message}`)
+    throw new Error(`[${channel}] ${message}`, {
+      cause: err,
+    })
   }
 }
 

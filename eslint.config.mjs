@@ -267,90 +267,193 @@ export default [
     },
     settings: {
       'boundaries/dependency-nodes': ['import', 'dynamic-import'],
+      'boundaries/legacy-warnings': false,
       'boundaries/elements': [
         {
           type: 'shared',
-          pattern: 'shared/**/*',
-          mode: 'full',
+          pattern: 'shared',
+          partialMatch: false,
         },
         {
           type: 'electron-providers',
-          pattern: 'electron/providers/**/*',
-          mode: 'full',
+          pattern: 'electron/providers',
+          partialMatch: false,
         },
         {
           type: 'electron-services',
-          pattern: 'electron/services/**/*',
-          mode: 'full',
+          pattern: 'electron/services',
+          partialMatch: false,
         },
         {
           type: 'electron-ipc',
-          pattern: 'electron/ipc/**/*',
-          mode: 'full',
+          pattern: 'electron/ipc',
+          partialMatch: false,
         },
         {
           type: 'electron-preload',
-          pattern: 'electron/preload/**/*',
-          mode: 'full',
+          pattern: 'electron/preload',
+          partialMatch: false,
         },
         {
           type: 'electron-main',
-          pattern: 'electron/main/**/*',
-          mode: 'full',
+          pattern: 'electron/main',
+          partialMatch: false,
         },
         {
           type: 'app',
-          pattern: 'app/**/*',
-          mode: 'full',
+          pattern: 'app',
+          partialMatch: false,
         },
       ],
     },
     rules: {
-      'boundaries/no-ignored': 'off',
+      'boundaries/no-ignored-dependencies': 'off',
       'boundaries/no-private': 'off',
-      'boundaries/no-unknown': 'off',
+      'boundaries/no-unknown-dependencies': 'off',
       'boundaries/dependencies': [
         'error',
         {
           default: 'disallow',
-          message: '${file.type} is not allowed to import ${dependency.type}',
-          rules: [
+          message: '{{from.element.types.[0]}} is not allowed to import {{to.element.types.[0]}}',
+          policies: [
             {
-              from: { type: 'shared' },
-              allow: { to: [{ type: 'shared' }] },
-            },
-            {
-              from: { type: 'electron-providers' },
-              allow: { to: [{ type: 'shared' }, { type: 'electron-services' }, { type: 'electron-providers' }] },
-            },
-            {
-              from: { type: 'electron-services' },
-              allow: { to: [{ type: 'shared' }, { type: 'electron-providers' }, { type: 'electron-services' }] },
-            },
-            {
-              from: { type: 'electron-ipc' },
-              allow: { to: [{ type: 'shared' }, { type: 'electron-ipc' }] },
-            },
-            {
-              from: { type: 'electron-preload' },
-              allow: { to: [{ type: 'shared' }, { type: 'electron-ipc' }, { type: 'electron-preload' }] },
-            },
-            {
-              from: { type: 'electron-main' },
+              from: {
+                element: {
+                  type: 'shared',
+                },
+              },
               allow: {
-                to: [
-                  { type: 'shared' },
-                  { type: 'electron-providers' },
-                  { type: 'electron-services' },
-                  { type: 'electron-ipc' },
-                  { type: 'electron-preload' },
-                  { type: 'electron-main' },
-                ],
+                to: {
+                  element: {
+                    types: {
+                      anyOf: [
+                        'shared',
+                      ],
+                    },
+                  },
+                },
               },
             },
             {
-              from: { type: 'app' },
-              allow: { to: [{ type: 'shared' }, { type: 'app' }] },
+              from: {
+                element: {
+                  type: 'electron-providers',
+                },
+              },
+              allow: {
+                to: {
+                  element: {
+                    types: {
+                      anyOf: [
+                        'shared',
+                        'electron-services',
+                        'electron-providers',
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+            {
+              from: {
+                element: {
+                  type: 'electron-services',
+                },
+              },
+              allow: {
+                to: {
+                  element: {
+                    types: {
+                      anyOf: [
+                        'shared',
+                        'electron-providers',
+                        'electron-services',
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+            {
+              from: {
+                element: {
+                  type: 'electron-ipc',
+                },
+              },
+              allow: {
+                to: {
+                  element: {
+                    types: {
+                      anyOf: [
+                        'shared',
+                        'electron-ipc',
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+            {
+              from: {
+                element: {
+                  type: 'electron-preload',
+                },
+              },
+              allow: {
+                to: {
+                  element: {
+                    types: {
+                      anyOf: [
+                        'shared',
+                        'electron-ipc',
+                        'electron-preload',
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+            {
+              from: {
+                element: {
+                  type: 'electron-main',
+                },
+              },
+              allow: {
+                to: {
+                  element: {
+                    types: {
+                      anyOf: [
+                        'shared',
+                        'electron-providers',
+                        'electron-services',
+                        'electron-ipc',
+                        'electron-preload',
+                        'electron-main',
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+            {
+              from: {
+                element: {
+                  type: 'app',
+                },
+              },
+              allow: {
+                to: {
+                  element: {
+                    types: {
+                      anyOf: [
+                        'shared',
+                        'app',
+                      ],
+                    },
+                  },
+                },
+              },
             },
           ],
         },
