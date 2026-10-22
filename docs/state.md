@@ -1,56 +1,71 @@
 # Project State — OpenTranslate Desktop
 
-_Last updated: 2026-05-19 (v0.1.0 release prep — Phase 3 packaged-app blank-screen triage landed; arm64 .app verified launching live SPA)_
+_Last updated: 2026-10-22 (v0.1.0 release prep — multi-arch builds + dependency refresh + security alert cleanup integrated on `feature/multi-arch-builds`)_
 
 ---
 
 ## Active context
 
-- **Current phase:** v0.1.0 release prep — Phase 2 metadata wired,
-  awaiting local pre-flight + tag.
-- **Current branch:** `feat/p1-bundle`
+- **Current phase:** v0.1.0 release prep — multi-arch builds, dependency
+  refresh, security alert cleanup. Integrated and validated locally;
+  awaiting review, push and PR.
+- **Current branch:** `feature/multi-arch-builds`
 - **Parent branch:** `develop`
-- **Next steps:** manager runs `pnpm exec electron-builder --mac
-  --publish=never` locally as the Phase 3 pre-flight, then Phase 4
-  cuts the `v0.1.0` tag and the GitHub pre-release.
-- **In-flight changes (this phase, uncommitted):**
-  - **Packaged-app blank screen triage (three independent bugs):**
-    1. `package.json` `build:renderer` switched from `nuxt build` to
-       `nuxt generate` so a static `.output/public/index.html` is
-       actually produced for the SPA (ssr: false).
-    2. `electron/main/runtime-paths.ts` (new) centralises every
-       runtime path off `__dirname` (the dir of the executing
-       `main.cjs`) instead of `app.getAppPath()` (asar root). Fixes
-       preload, renderer entry, smoke entry, tray icon base dir for
-       both dev (`dist-electron/…`) and packed
-       (`app.asar/dist-electron/…`). Wired through
-       `electron/main/index.ts` + `electron/main/main-window.ts`.
-       Regression coverage:
-       `tests/unit/electron/main/runtime-paths.test.ts` (7 specs).
-    3. `electron-builder.yml: files:` now includes
-       `build/icons/tray/**/*` so the tray PNGs get packed.
-    4. `scripts/package.mjs` rewritten to drive **per-arch**
-       `electron-rebuild` of `better-sqlite3` before each
-       `electron-builder --mac --x64` / `--mac --arm64` invocation.
-       Cures the arm64-DMG-shipping-x64-`.node` mismatch caused by
-       `npmRebuild: false` + a single host-arch rebuild.
-       `.github/workflows/release.yml` now uses `pnpm run package`
-       per matrix OS instead of calling `electron-builder` directly.
-  - `scripts/build-icons.py` — `DMG_LOGO_SIZE = 0` (plain DMG canvas)
-    plus a new `--background-only` CLI flag.
-  - `build/background.png` / `background@2x.png` /
-    `background-preview.png` — regenerated as flat `#F5F5F5`.
-  - `electron-builder.yml` — explicit per-platform `icon:` paths,
-    `mac.notarize: false`, `dmg.background` + `dmg.window` +
-    `dmg.iconSize` / `iconTextSize` for the new canvas.
-  - `CHANGELOG.md` (new) — Keep-a-changelog `0.1.0` entry, highlights
-    only, pre-release flag + known limitations.
-  - `docs/install.md` (new) — macOS Gatekeeper + Windows SmartScreen
-    bypass, Linux AppImage/deb steps, SHA-256 verification, issue
-    reporting template.
-  - `docs/backlog.md` — new `B-G-18` (hand-drawn tray template) and
-    `B-G-19` (electron-updater wire-up) under §"v0.1.0 release
-    follow-ups".
+- **Next steps:** review the branch, push, open the PR into `develop`, let
+  `ci.yml` run `checks.yml` + the 4-target `package.yml` (first run of the
+  Windows x64 and native Intel mac jobs), then tag `v0.1.0` and publish the
+  draft pre-release.
+- **What landed on this branch:**
+  - **Multi-arch builds:** four targets (mac arm64, mac x64, win x64,
+    linux x64) with arch-suffixed artifact names, `scripts/package.mjs
+    --arch`, `--publish never`, `scripts/verify-package.mjs` (native
+    binary header checks per target), packaged Playwright smoke
+    (`pnpm test:e2e:packaged`), reusable `checks.yml` + `package.yml`,
+    `release.yml` draft pre-release with `SHA256SUMS.txt`, SHA-pinned
+    actions, Dependabot 7-day cooldown. See `docs/packaging.md`.
+  - **Dependency refresh:** Electron 44.9.3, electron-builder 26.15.3,
+    Nuxt 4.6.1, Nuxt UI 4.11.3, Pinia 4, VueUse 15, Vitest 5, ESLint 10,
+    TypeScript 6.0, pnpm 10.34.7. `pnpm-workspace.yaml`
+    `minimumReleaseAge: 10080` holds every dependency to ≥ 7 days old;
+    only `electron` is exempt (security patch line of the pinned `^44`
+    major).
+    Only `better-sqlite3` + `uiohook-napi` stay in `dependencies`.
+    Electron 44 async `clipboard.readText()` handled in quick-translate.
+  - **Native modules:** better-sqlite3 13 + uiohook-napi load N-API
+    prebuilds; postinstall `electron-rebuild`, the per-arch rebuild and
+    `@electron/rebuild` are gone; better-sqlite3 is in
+    `pnpm.ignoredBuiltDependencies`; each package ships only its target
+    prebuild.
+  - **Security:** `safeHandler` rethrow carries no `cause`; full-tree
+    `pnpm audit`, Trivy (dev deps included) and license check;
+    `handlebars` override to 4.7.10; ignored advisories and license
+    exclusions documented in `docs/security.md`.
+  - **CI/release hardening (review + audit follow-ups):** CI runs once per
+    PR (push only on `master`/`develop`); composite actions
+    `setup-workspace` + `linux-electron-deps` replace copy-pasted setup;
+    `timeout-minutes` on every job; no `${{ }}` in `run:` scripts; gitleaks
+    `pull-requests: read`, comments off; Semgrep 1.181.0 (≥ 7 days);
+    publish refuses to touch a published release and attests build
+    provenance; Dependabot scans `.github/actions/*`.
+  - **Code review follow-ups:** tray clipboard forwarding goes through the
+    quick-translate controller (required logger, separate read/send
+    errors); boundaries policies built from a layer table
+    (`eslint.config.mjs` 500 lines); verify logic in typed
+    `scripts/packaging/verify-checks.ts` incl. executable arch check and
+    combined-arch prebuild dirs; `scripts/tsconfig.json`
+    (`erasableSyntaxOnly`, `verbatimModuleSyntax`); packaged smoke fails
+    in CI without an app and never leaks its temp profile.
+- **Deferred (see `docs/backlog.md`):** B-056 boundaries lint has no
+  import resolver (5 known violations); B-057 navigation / window-open /
+  permission guards + Electron fuses; B-058 Electron 45 after its
+  cooldown (async `safeStorage` before Electron 46); B-066 drop the
+  handlebars override after the cooldown; B-059 linux arm64 (uiohook-napi prebuild); B-060
+  `@nuxt/fonts` 1.0 network-dependent build; B-061 TypeScript 7; B-062
+  `@nuxt/ui>@nuxt/fonts` override; B-063 manual Semgrep pin bumps; B-064
+  `v*` tag ruleset + `release` environment reviewer; B-065 source maps,
+  `smoke.html`, `ELECTRON_SMOKE_TEST` and `OPENTRANSLATE_DEVTOOLS` in
+  release builds. Electron stays on 44.x, so the async `safeStorage`
+  migration remains backlog-only (B-058).
 
 ## Locked v0.1.0 decisions
 
@@ -63,13 +78,29 @@ _Last updated: 2026-05-19 (v0.1.0 release prep — Phase 3 packaged-app blank-sc
   tracked as B-G-18 for v0.1.1.
 - DMG background: flat `#F5F5F5` canvas, no decorative logo.
 - CHANGELOG.md: user-facing highlights only (no per-B-ID dump).
+- Release targets: mac arm64, mac x64, win x64, linux x64 (no arm64 on
+  Linux/Windows).
+- Supply chain: no dependency younger than 7 days (`minimumReleaseAge`)
+  except the Electron patch line of the pinned major; `0.1.0` ships
+  Electron 44.9.3, not 45.0.0.
 
 ## Green-state verification
 
-- `pnpm lint` — clean (`@stylistic` + `@typescript-eslint` strict)
+_`feature/multi-arch-builds`, 2026-10-22, after `rm -rf node_modules && pnpm install --frozen-lockfile`:_
+
+- `pnpm lint` — clean
 - `pnpm typecheck` — clean
-- `pnpm test` — **499 tests across 70 suites**
-- `pnpm test:e2e` — see CI matrix (Linux xvfb, macOS, Windows)
+- `pnpm test` — **835 tests across 86 files**
+- `pnpm test:e2e` — 1/1 (electron-dev, macOS arm64)
+- `pnpm audit --audit-level=high` — pass (2 documented ignores, 1 moderate)
+- Trivy (lockfile, dev deps included) — only the 2 unfixed, documented highs
+- License check (full tree, documented exclusions) — pass
+- actionlint — clean; Semgrep 1.181.0 (security-scan configs) — 0 findings;
+  zizmor (offline) — no template-injection or permission findings
+- Packaged on Electron 44.9.3: mac arm64, mac x64 (Rosetta), linux x64
+  (Docker amd64) —
+  `verify-package` ✓ and packaged smoke 2/2 each. Windows x64 is
+  verified only in CI.
 
 ## Recently merged (chronological, post-Phase 12)
 
@@ -129,10 +160,11 @@ _Last updated: 2026-05-19 (v0.1.0 release prep — Phase 3 packaged-app blank-sc
 
 - `.github/workflows/codeql.yml` — JS/TS SAST, push + PR + weekly cron,
   CodeQL Action `@v4`.
-- `.github/workflows/security-scan.yml` — `pnpm audit --prod`, Trivy
-  (`@master`, deps + IaC + secrets), Semgrep (Docker, security-audit /
-  javascript / typescript / secrets / owasp-top-ten), license-checker
-  (MIT/Apache/BSD/ISC/CC0/BlueOak whitelist), gitleaks full history.
+- `.github/workflows/security-scan.yml` — full-tree `pnpm audit`, Trivy
+  (SHA-pinned, deps incl. dev + IaC + secrets), Semgrep (digest-pinned
+  Docker image, security-audit / javascript / typescript / secrets /
+  owasp-top-ten), full-tree license-checker (MIT/Apache/BSD/ISC/CC0/BlueOak
+  allow-list, documented exclusions), gitleaks full history.
 - `.github/dependabot.yml` — weekly npm + github-actions, grouped by
   ecosystem (electron / nuxt / vueuse / eslint / vitest / types).
 - Repo-side actions still required: enable Dependabot alerts +

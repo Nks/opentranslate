@@ -88,13 +88,49 @@ describe('electron-builder.yml', () => {
     expect(first.arch).toBeUndefined()
   })
 
-  it('scripts/package.mjs drives per-arch mac packaging (both x64 + arm64)', () => {
-    const packageScript = readFileSync(resolve(rootDir, 'scripts/package.mjs'), 'utf8')
+  it('names every artifact with ${arch} so per-target CI outputs never collide', () => {
+    const config: Record<string, unknown> = loadConfig()
+    const nsis: Record<string, unknown> = config.nsis as Record<string, unknown>
 
-    expect(packageScript).toContain('--mac --x64')
-    expect(packageScript).toContain('--mac --arm64')
-    expect(packageScript).toContain("rebuildForArch('x64')")
-    expect(packageScript).toContain("rebuildForArch('arm64')")
+    expect(config.artifactName).toBe('${name}-${version}-${os}-${arch}.${ext}')
+    expect(nsis.artifactName).toBe('${name}-${version}-${os}-${arch}-setup.${ext}')
+  })
+
+  it('has no platform- or target-level artifactName override that could drop ${arch}', () => {
+    const config: Record<string, unknown> = loadConfig()
+    const sections: string[] = ['mac', 'dmg', 'win', 'linux', 'appImage', 'deb', 'zip']
+
+    sections.forEach((section: string): void => {
+      const options: Record<string, unknown> | undefined =
+        config[section] as Record<string, unknown> | undefined
+
+      expect(options?.artifactName).toBeUndefined()
+    })
+  })
+
+  it('excludes host-compiled uiohook-napi outputs so node-gyp-build loads the per-arch prebuild', () => {
+    const config: Record<string, unknown> = loadConfig()
+    const files: string[] = config.files as string[]
+
+    expect(files).toContain('!**/node_modules/uiohook-napi/{build,bin}/**')
+  })
+
+  it('excludes better-sqlite3 build outputs and sources so only its prebuilds ship', () => {
+    const config: Record<string, unknown> = loadConfig()
+    const files: string[] = config.files as string[]
+
+    expect(files).toContain('!**/node_modules/better-sqlite3/{build,deps,src}/**')
+    expect(files).toContain('!**/node_modules/better-sqlite3/binding.gyp')
+  })
+
+  it.each([
+    ['better-sqlite3', '!**/node_modules/better-sqlite3/prebuilds/!(${platform}-${arch}).node'],
+    ['uiohook-napi', '!**/node_modules/uiohook-napi/prebuilds/!(${platform}-${arch})/**'],
+  ])('ships only the target-arch %s prebuild', (_name: string, pattern: string) => {
+    const config: Record<string, unknown> = loadConfig()
+    const files: string[] = config.files as string[]
+
+    expect(files).toContain(pattern)
   })
 
   it('mac identity is null (unsigned local builds)', () => {
@@ -168,6 +204,20 @@ describe('package.json packaging fields', () => {
     const pkg = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'))
 
     expect(pkg.dependencies['uiohook-napi']).toBeDefined()
+  })
+
+  it('never rebuilds native modules on install', () => {
+    const pkg = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'))
+
+    expect(pkg.scripts.postinstall ?? '').not.toContain('electron-rebuild')
+    expect(pkg.devDependencies['@electron/rebuild']).toBeUndefined()
+  })
+
+  it('skips the no-op node-gyp build of better-sqlite3, whose prebuilds load directly', () => {
+    const pkg = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'))
+
+    expect(pkg.pnpm.onlyBuiltDependencies).not.toContain('better-sqlite3')
+    expect(pkg.pnpm.ignoredBuiltDependencies).toContain('better-sqlite3')
   })
 
   it('electron is in devDependencies (not bundled)', () => {

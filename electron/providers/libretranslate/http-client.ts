@@ -45,9 +45,11 @@ export interface LibreHttpClient {
   probeDocumentSupport: () => Promise<boolean>
 }
 
+// Used only when the user opts into `allowSelfSignedTls` for a self-hosted LibreTranslate.
 const selfSignedAgent = new Agent({
+  // eslint-disable-next-line @stylistic/max-len
+  // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
   connect: {
-    // nosemgrep: bypass-tls-verification -- opt-in `allowSelfSignedTls`, self-hosted only.
     rejectUnauthorized: false,
   },
 })

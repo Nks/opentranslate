@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import {
-  afterEach, beforeEach, describe, expect, it, vi,
+  afterEach, beforeEach, describe, expect, it, vi, type Mock,
 } from 'vitest'
 import type * as UseResetLocalDataModule from '@app/composables/useResetLocalData'
 
@@ -47,7 +47,7 @@ describe('useResetLocalData', () => {
   })
 
   it('calls the settings:reset IPC handler and returns true on success', async () => {
-    const settingsReset: ReturnType<typeof vi.fn> = vi.fn(async () => ({
+    const settingsReset: Mock<() => Promise<unknown>> = vi.fn(async () => ({
       app: {},
       providers: {},
     }))

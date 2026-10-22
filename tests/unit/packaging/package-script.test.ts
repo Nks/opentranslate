@@ -7,62 +7,73 @@ import {
 import {
   resolve,
 } from 'node:path'
+import type {
+  PlaywrightTestConfig,
+} from '@playwright/test'
 
-const rootDir = resolve(__dirname, '..', '..', '..')
-const scriptPath = resolve(rootDir, 'scripts/package.mjs')
+interface PlaywrightProject {
+  name?: string
+  testMatch?: string[]
+  testIgnore?: string[]
+}
 
-describe('scripts/package.mjs', () => {
-  it('exists', () => {
-    expect(existsSync(scriptPath)).toBe(true)
+const rootDir: string = resolve(__dirname, '..', '..', '..')
+const pkg: { scripts: Record<string, string> } = JSON.parse(
+  readFileSync(resolve(rootDir, 'package.json'), 'utf8'),
+) as { scripts: Record<string, string> }
+
+async function loadPlaywrightProjects(): Promise<PlaywrightProject[]> {
+  const configModule: { default: PlaywrightTestConfig } = await import(resolve(rootDir, 'playwright.config.ts'))
+
+  return (configModule.default.projects ?? []) as PlaywrightProject[]
+}
+
+describe('package.json scripts', () => {
+  it('keeps package and package:dir entry points', () => {
+    expect(pkg.scripts.package).toBe('node scripts/package.mjs')
+    expect(pkg.scripts['package:dir']).toBe('node scripts/package.mjs --dir')
   })
 
-  it('imports build-related modules', () => {
-    const content = readFileSync(scriptPath, 'utf8')
-
-    expect(content).toContain('execSync')
-    expect(content).toContain('child_process')
+  it('exposes verify:package', () => {
+    expect(pkg.scripts['verify:package']).toBe('node scripts/verify-package.mjs')
   })
 
-  it('runs build:electron step', () => {
-    const content = readFileSync(scriptPath, 'utf8')
+  it('keeps the packaged smoke test out of the default e2e run', () => {
+    expect(pkg.scripts['test:e2e']).toBe('playwright test --project=electron-dev')
+    expect(pkg.scripts['test:e2e:packaged']).toBe('playwright test --project=electron-packaged')
+  })
+})
 
-    expect(content).toContain('build:electron')
+describe('playwright projects', () => {
+  it('ignores packaged-*.e2e.ts in the dev project', async () => {
+    const projects: PlaywrightProject[] = await loadPlaywrightProjects()
+    const dev: PlaywrightProject | undefined = projects.find(
+      (project: PlaywrightProject): boolean => project.name === 'electron-dev',
+    )
+
+    expect(dev?.testMatch).toEqual(['**/*.e2e.ts'])
+    expect(dev?.testIgnore).toEqual(['**/packaged-*.e2e.ts'])
   })
 
-  it('runs build:renderer step', () => {
-    const content = readFileSync(scriptPath, 'utf8')
+  it('runs only packaged-*.e2e.ts in the packaged project', async () => {
+    const projects: PlaywrightProject[] = await loadPlaywrightProjects()
+    const packaged: PlaywrightProject | undefined = projects.find(
+      (project: PlaywrightProject): boolean => project.name === 'electron-packaged',
+    )
 
-    expect(content).toContain('build:renderer')
-  })
-
-  it('invokes electron-builder', () => {
-    const content = readFileSync(scriptPath, 'utf8')
-
-    expect(content).toContain('electron-builder')
-  })
-
-  it('supports --dir flag for unpacked output', () => {
-    const content = readFileSync(scriptPath, 'utf8')
-
-    expect(content).toContain('--dir')
-  })
-
-  it('sets NODE_ENV to production', () => {
-    const content = readFileSync(scriptPath, 'utf8')
-
-    expect(content).toContain("NODE_ENV: 'production'")
+    expect(packaged?.testMatch).toEqual(['**/packaged-*.e2e.ts'])
   })
 })
 
 describe('scripts/build-electron.mjs', () => {
-  const buildScriptPath = resolve(rootDir, 'scripts/build-electron.mjs')
+  const buildScriptPath: string = resolve(rootDir, 'scripts/build-electron.mjs')
 
   it('exists', () => {
     expect(existsSync(buildScriptPath)).toBe(true)
   })
 
   it('bundles main and preload as CJS', () => {
-    const content = readFileSync(buildScriptPath, 'utf8')
+    const content: string = readFileSync(buildScriptPath, 'utf8')
 
     expect(content).toContain("format: 'cjs'")
     expect(content).toContain('main.cjs')
@@ -70,7 +81,7 @@ describe('scripts/build-electron.mjs', () => {
   })
 
   it('externalizes Electron and other native modules', () => {
-    const content = readFileSync(buildScriptPath, 'utf8')
+    const content: string = readFileSync(buildScriptPath, 'utf8')
 
     expect(content).toContain("'electron'")
     expect(content).toContain("'uiohook-napi'")

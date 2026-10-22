@@ -9,6 +9,8 @@ updates:
       timezone: Etc/UTC
     open-pull-requests-limit: 5
     target-branch: develop
+    cooldown:
+      default-days: 7
     labels:
       - dependencies
       - npm
@@ -47,13 +49,17 @@ updates:
           - "@types/*"
 
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
       interval: weekly
       day: monday
       time: "06:00"
       timezone: Etc/UTC
     target-branch: develop
+    cooldown:
+      default-days: 7
     labels:
       - dependencies
       - github-actions

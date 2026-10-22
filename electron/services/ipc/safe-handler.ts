@@ -12,7 +12,9 @@
 
 /**
  * Wrap an IPC handler so thrown errors become plain `Error` objects
- * that Electron's structured clone can transfer to the renderer.
+ * that Electron's structured clone can transfer to the renderer. The
+ * rethrown error carries only `[category] Name: message` (plus the stack
+ * in dev) and never a `cause`, so raw provider errors stay in main.
  *
  * @param fn    The actual handler implementation.
  * @param isDev When `true`, stack traces are appended to the error detail.
@@ -24,7 +26,7 @@ export function safeHandler<TArgs extends unknown[], TResult>(
   return async (...args: TArgs) => {
     try {
       return await fn(...args)
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error
         ? `${err.name}: ${err.message}`
         : String(err)
@@ -33,6 +35,7 @@ export function safeHandler<TArgs extends unknown[], TResult>(
         ? `[${category}] ${message}\n${(err as Error).stack ?? ''}`
         : `[${category}] ${message}`
 
+      // eslint-disable-next-line preserve-caught-error -- cause would leak raw errors over IPC
       throw new Error(detail)
     }
   }

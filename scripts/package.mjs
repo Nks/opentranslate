@@ -1,15 +1,14 @@
 /**
- * Packaging orchestrator.
+ * Packaging orchestrator: build:electron → build:renderer → electron-builder
+ * per arch (--publish never).
  *
- * Runs: build:electron → build:renderer → per-arch electron-rebuild → electron-builder.
- *
- * Per-arch native rebuild is required because npmRebuild is disabled
- * (uiohook-napi + node-gyp 9 + Python 3.12 incompatibility), so each
- * target architecture needs its own better-sqlite3 binary baked in.
+ * No native rebuild: better-sqlite3 and uiohook-napi ship N-API prebuilds for
+ * every target, and electron-builder.yml packs only the target-arch one.
  *
  * Usage:
- *   node scripts/package.mjs            # full installer(s) for current platform
- *   node scripts/package.mjs --dir      # unpacked dir output (for inspection)
+ *   node scripts/package.mjs                 # host platform, default arches
+ *   node scripts/package.mjs --arch=arm64    # single arch
+ *   node scripts/package.mjs --dir           # unpacked dir output
  */
 import {
   execSync,
@@ -20,14 +19,18 @@ import {
 import {
   dirname, resolve,
 } from 'node:path'
+import {
+  parsePackageCliArgs,
+} from './packaging/targets.ts'
+import {
+  planPackageCommands,
+} from './packaging/package-plan.ts'
 
-const scriptDir = dirname(fileURLToPath(import.meta.url))
-const rootDir = resolve(scriptDir, '..')
-const dirOnly = process.argv.includes('--dir')
+const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
-function run(cmd) {
-  console.log(`\n> ${cmd}\n`)
-  execSync(cmd, {
+function run(command) {
+  console.log(`\n> ${command}\n`)
+  execSync(command, {
     cwd: rootDir,
     stdio: 'inherit',
     env: {
@@ -37,56 +40,16 @@ function run(cmd) {
   })
 }
 
-function rebuildForArch(arch) {
-  run(`pnpm exec electron-rebuild -f -o better-sqlite3 --arch=${arch}`)
+function main() {
+  const request = parsePackageCliArgs(process.argv.slice(2), process.platform)
+
+  planPackageCommands(request).forEach(run)
+  console.log(`\n✓ Packaged ${request.platform} ${request.arches.join(', ')}. Output in release/.\n`)
 }
 
-function builderFlag() {
-  return dirOnly ? ' --dir' : ''
+try {
+  main()
+} catch (error) {
+  console.error(`✗ package: ${error instanceof Error ? error.message : String(error)}`)
+  process.exit(1)
 }
-
-function buildMac() {
-  rebuildForArch('x64')
-  run(`pnpm exec electron-builder --mac --x64${builderFlag()}`)
-  rebuildForArch('arm64')
-  run(`pnpm exec electron-builder --mac --arm64${builderFlag()}`)
-}
-
-function buildWin() {
-  rebuildForArch('x64')
-  run(`pnpm exec electron-builder --win --x64${builderFlag()}`)
-}
-
-function buildLinux() {
-  rebuildForArch('x64')
-  run(`pnpm exec electron-builder --linux --x64${builderFlag()}`)
-}
-
-function buildHostPlatform() {
-  if (process.platform === 'darwin') {
-    buildMac()
-
-    return
-  }
-
-  if (process.platform === 'win32') {
-    buildWin()
-
-    return
-  }
-
-  if (process.platform === 'linux') {
-    buildLinux()
-
-    return
-  }
-
-  throw new Error(`Unsupported platform: ${process.platform}`)
-}
-
-run('pnpm run build:electron')
-run('pnpm run build:renderer')
-
-buildHostPlatform()
-
-console.log('\n✓ Packaging complete. Output in release/ directory.\n')

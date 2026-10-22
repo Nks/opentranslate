@@ -52,6 +52,58 @@ const nodeGlobals = {
 
 const idLengthExceptions = ['_']
 
+const ARCHITECTURE_LAYERS = [
+  {
+    type: 'shared',
+    pattern: 'shared',
+    mayImport: ['shared'],
+  },
+  {
+    type: 'electron-providers',
+    pattern: 'electron/providers',
+    mayImport: ['shared', 'electron-services', 'electron-providers'],
+  },
+  {
+    type: 'electron-services',
+    pattern: 'electron/services',
+    mayImport: ['shared', 'electron-providers', 'electron-services'],
+  },
+  {
+    type: 'electron-ipc',
+    pattern: 'electron/ipc',
+    mayImport: ['shared', 'electron-ipc'],
+  },
+  {
+    type: 'electron-preload',
+    pattern: 'electron/preload',
+    mayImport: ['shared', 'electron-ipc', 'electron-preload'],
+  },
+  {
+    type: 'electron-main',
+    pattern: 'electron/main',
+    mayImport: [
+      'shared',
+      'electron-providers',
+      'electron-services',
+      'electron-ipc',
+      'electron-preload',
+      'electron-main',
+    ],
+  },
+  {
+    type: 'app',
+    pattern: 'app',
+    mayImport: ['shared', 'app'],
+  },
+]
+
+function layer(from, to) {
+  return {
+    from: { element: { type: from } },
+    allow: { to: { element: { types: { anyOf: to } } } },
+  }
+}
+
 export default [
   {
     ignores: [
@@ -267,92 +319,22 @@ export default [
     },
     settings: {
       'boundaries/dependency-nodes': ['import', 'dynamic-import'],
-      'boundaries/elements': [
-        {
-          type: 'shared',
-          pattern: 'shared/**/*',
-          mode: 'full',
-        },
-        {
-          type: 'electron-providers',
-          pattern: 'electron/providers/**/*',
-          mode: 'full',
-        },
-        {
-          type: 'electron-services',
-          pattern: 'electron/services/**/*',
-          mode: 'full',
-        },
-        {
-          type: 'electron-ipc',
-          pattern: 'electron/ipc/**/*',
-          mode: 'full',
-        },
-        {
-          type: 'electron-preload',
-          pattern: 'electron/preload/**/*',
-          mode: 'full',
-        },
-        {
-          type: 'electron-main',
-          pattern: 'electron/main/**/*',
-          mode: 'full',
-        },
-        {
-          type: 'app',
-          pattern: 'app/**/*',
-          mode: 'full',
-        },
-      ],
+      'boundaries/elements': ARCHITECTURE_LAYERS.map((entry) => ({
+        type: entry.type,
+        pattern: entry.pattern,
+        partialMatch: false,
+      })),
     },
     rules: {
-      'boundaries/no-ignored': 'off',
+      'boundaries/no-ignored-dependencies': 'off',
       'boundaries/no-private': 'off',
-      'boundaries/no-unknown': 'off',
+      'boundaries/no-unknown-dependencies': 'off',
       'boundaries/dependencies': [
         'error',
         {
           default: 'disallow',
-          message: '${file.type} is not allowed to import ${dependency.type}',
-          rules: [
-            {
-              from: { type: 'shared' },
-              allow: { to: [{ type: 'shared' }] },
-            },
-            {
-              from: { type: 'electron-providers' },
-              allow: { to: [{ type: 'shared' }, { type: 'electron-services' }, { type: 'electron-providers' }] },
-            },
-            {
-              from: { type: 'electron-services' },
-              allow: { to: [{ type: 'shared' }, { type: 'electron-providers' }, { type: 'electron-services' }] },
-            },
-            {
-              from: { type: 'electron-ipc' },
-              allow: { to: [{ type: 'shared' }, { type: 'electron-ipc' }] },
-            },
-            {
-              from: { type: 'electron-preload' },
-              allow: { to: [{ type: 'shared' }, { type: 'electron-ipc' }, { type: 'electron-preload' }] },
-            },
-            {
-              from: { type: 'electron-main' },
-              allow: {
-                to: [
-                  { type: 'shared' },
-                  { type: 'electron-providers' },
-                  { type: 'electron-services' },
-                  { type: 'electron-ipc' },
-                  { type: 'electron-preload' },
-                  { type: 'electron-main' },
-                ],
-              },
-            },
-            {
-              from: { type: 'app' },
-              allow: { to: [{ type: 'shared' }, { type: 'app' }] },
-            },
-          ],
+          message: '{{from.element.types.[0]}} is not allowed to import {{to.element.types.[0]}}',
+          policies: ARCHITECTURE_LAYERS.map((entry) => layer(entry.type, entry.mayImport)),
         },
       ],
     },

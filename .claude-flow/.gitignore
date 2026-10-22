@@ -1,7 +1,3 @@
-# Claude Flow runtime files
-data/
-logs/
-sessions/
-neural/
-*.log
-*.tmp
+*
+!CAPABILITIES.md
+config.yaml

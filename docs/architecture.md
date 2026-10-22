@@ -894,17 +894,20 @@ Two native modules ship at runtime:
 - **`uiohook-napi`** (global key observer behind quick-translate). N-API
   prebuilt binaries shipped per platform/arch via `node-gyp-build` — no
   source rebuild required.
-- **`better-sqlite3`** (translation history). Compiles against Electron's
-  Node ABI via the `postinstall` script (`electron-rebuild -f -w
-  better-sqlite3`); `electron-builder` re-runs the rebuild during
-  packaging via `npmRebuild: true` so distributed installers ship the
-  correct ABI. The unit test suite never loads the native module — the
-  history handler test injects a fake `HistoryStore` at the TypeScript
-  interface boundary.
+- **`better-sqlite3`** (translation history). Since v13 it ships N-API
+  prebuilds (`prebuilds/<platform>-<arch>.node`) for every release target
+  and loads them before any `build/Release` compile, so nothing is rebuilt:
+  no `postinstall`, no per-arch `electron-rebuild`, and pnpm skips its no-op
+  `node-gyp` step (`ignoredBuiltDependencies`). The unit test suite never
+  loads the native module — the history handler test injects a fake
+  `HistoryStore` at the TypeScript interface boundary.
 
+`electron-builder.yml` packs only the target platform-arch prebuild of each
+module (`${platform}-${arch}` file-pattern macros) and drops build outputs
+and sources, so a host-arch compile can never shadow the target binary.
 The `.node` binaries are excluded from asar via
 `asarUnpack: ['**/*.{node,dll}']` so dynamic loaders can find them
-inside packaged builds.
+inside packaged builds. See `docs/packaging.md` for the verification flow.
 
 ### 11.4 Code signing
 

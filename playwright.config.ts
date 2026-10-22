@@ -4,7 +4,6 @@ import {
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testMatch: ['**/*.e2e.ts'],
   timeout: 60_000,
   expect: {
     timeout: 5_000,
@@ -23,4 +22,16 @@ export default defineConfig({
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
+  projects: [
+    {
+      name: 'electron-dev',
+      testMatch: ['**/*.e2e.ts'],
+      testIgnore: ['**/packaged-*.e2e.ts'],
+    },
+    {
+      name: 'electron-packaged',
+      testMatch: ['**/packaged-*.e2e.ts'],
+      timeout: 120_000,
+    },
+  ],
 })

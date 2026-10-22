@@ -25,11 +25,11 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "verbatimModuleSyntax": false,
-    "baseUrl": ".",
     "paths": {
-      "@shared/*": ["shared/*"],
-      "@electron/*": ["electron/*"],
-      "@app/*": ["app/*"]
+      "@shared/*": ["./shared/*"],
+      "@electron/*": ["./electron/*"],
+      "@app/*": ["./app/*"],
+      "@scripts/*": ["./scripts/*"]
     }
   }
 }

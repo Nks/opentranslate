@@ -82,7 +82,7 @@ function buildQuickTranslateController(): QuickTranslateController {
   return createQuickTranslateController({
     platform: process.platform,
     ensureAccessibilityPermission,
-    readClipboardText: (): string => clipboard.readText(),
+    readClipboardText: (): Promise<string> => clipboard.readText(),
     sendTextToMainWindow: (text: string): void => {
       const window = mainWindowHost.getWindow()
 
@@ -118,15 +118,11 @@ function buildQuickTranslateController(): QuickTranslateController {
 
 function triggerQuickTranslateFromTray(): void {
   const window = mainWindowHost.getWindow()
-  const text: string = clipboard.readText().trim()
 
   if (window) {
     mainWindowHost.focusOrRestore()
     window.show()
-
-    if (text.length > 0) {
-      window.webContents.send('quick-translate:text', text)
-    }
+    void quickTranslateController?.forwardClipboardText()
   }
 }
 

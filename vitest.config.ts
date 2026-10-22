@@ -14,6 +14,7 @@ export default defineConfig({
       '@shared': resolve(rootDir, 'shared'),
       '@electron': resolve(rootDir, 'electron'),
       '@app': resolve(rootDir, 'app'),
+      '@scripts': resolve(rootDir, 'scripts'),
     },
   },
   test: {

@@ -1,0 +1,53 @@
+name: Checks
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-typecheck-test:
+    name: Lint / Typecheck / Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit + integration tests
+        run: pnpm test
+
+      - name: Install Electron runtime deps (Linux)
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/linux-electron-deps
+
+      - name: E2E Linux (xvfb-wrapped)
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" pnpm test:e2e
+        env:
+          CI: 'true'
+
+      - name: E2E macOS / Windows
+        if: runner.os != 'Linux'
+        run: pnpm test:e2e
+        env:
+          CI: 'true'

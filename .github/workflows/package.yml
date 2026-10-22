@@ -1,0 +1,111 @@
+name: Package
+
+on:
+  workflow_call:
+    inputs:
+      cache-dependencies:
+        description: Restore the pnpm store from the Actions cache (disable for release builds)
+        type: boolean
+        default: true
+  workflow_dispatch:
+    inputs:
+      cache-dependencies:
+        description: Restore the pnpm store from the Actions cache (disable for release builds)
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package (${{ matrix.platform }}-${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: mac
+            arch: arm64
+            runner: macos-latest
+          - platform: mac
+            arch: x64
+            runner: macos-26-intel
+          - platform: win
+            arch: x64
+            runner: windows-latest
+          - platform: linux
+            arch: x64
+            runner: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      TARGET_PLATFORM: ${{ matrix.platform }}
+      TARGET_ARCH: ${{ matrix.arch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+        with:
+          cache: ${{ inputs.cache-dependencies }}
+
+      - name: Install Electron runtime deps (Linux)
+        if: matrix.platform == 'linux'
+        uses: ./.github/actions/linux-electron-deps
+
+      - name: Build + package
+        run: node scripts/package.mjs --arch="${TARGET_ARCH}"
+
+      - name: Verify package
+        run: node scripts/verify-package.mjs --platform "${TARGET_PLATFORM}" --arch "${TARGET_ARCH}"
+
+      - name: Locate packaged executable and installers
+        id: locate
+        run: |
+          target=(--platform "${TARGET_PLATFORM}" --arch "${TARGET_ARCH}")
+          executable="$(node scripts/verify-package.mjs "${target[@]}" --print executable)"
+          installers="$(node scripts/verify-package.mjs "${target[@]}" --print installers)"
+          echo "OPENTRANSLATE_PACKAGED_APP=${executable}" >> "${GITHUB_ENV}"
+          {
+            echo 'installers<<INSTALLERS_EOF'
+            echo "${installers}"
+            echo 'INSTALLERS_EOF'
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Packaged smoke test (Linux, xvfb-wrapped)
+        if: matrix.platform == 'linux'
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" pnpm run test:e2e:packaged
+        env:
+          CI: 'true'
+
+      - name: Packaged smoke test (macOS / Windows)
+        if: matrix.platform != 'linux'
+        run: pnpm run test:e2e:packaged
+        env:
+          CI: 'true'
+
+      - name: Upload smoke test report
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: packaged-smoke-report-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload installers
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package-${{ matrix.platform }}-${{ matrix.arch }}
+          path: ${{ steps.locate.outputs.installers }}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

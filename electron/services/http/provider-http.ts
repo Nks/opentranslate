@@ -110,7 +110,7 @@ export function createProviderHttp(config: ProviderHttpConfig): ProviderHttp {
     }
 
     if (!response.ok) {
-      let body: unknown = null
+      let body: unknown
 
       try {
         body = await response.json()

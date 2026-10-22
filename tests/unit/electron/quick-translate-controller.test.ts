@@ -1,10 +1,19 @@
 import {
   describe, expect, it, vi, beforeEach, afterEach,
+  type Mock,
 } from 'vitest'
 import {
+  CLIPBOARD_READ_DELAY_MS,
   createQuickTranslateController,
+  type QuickTranslateController,
   type QuickTranslateControllerDeps,
 } from '@electron/main/quick-translate-controller'
+import type {
+  QuickTranslateRegistrar,
+} from '@electron/services/shortcuts/quick-translate-registrar'
+import {
+  createChordDetector,
+} from '@electron/services/shortcuts/chord-detector'
 
 /**
  * The controller lazy-loads `uiohook-napi` inside `buildRegistrar` via
@@ -51,22 +60,24 @@ vi.mock('@electron/services/shortcuts/chord-detector', () => {
   }
 })
 
-function makeDeps(
-  overrides: Partial<QuickTranslateControllerDeps> = {},
-): QuickTranslateControllerDeps & {
+type WarningInput = Parameters<QuickTranslateControllerDeps['showWarning']>[0]
+
+type TestDeps = QuickTranslateControllerDeps & {
   showWarningSpy: ReturnType<typeof vi.fn>
   sendSpy: ReturnType<typeof vi.fn>
   ensurePermission: ReturnType<typeof vi.fn>
   onAppExitListeners: Array<() => void>
-} {
-  const showWarningSpy = vi.fn()
-  const sendSpy = vi.fn()
-  const ensurePermission = vi.fn(() => true)
+}
+
+function makeDeps(overrides: Partial<QuickTranslateControllerDeps> = {}): TestDeps {
+  const showWarningSpy: ReturnType<typeof vi.fn> = vi.fn()
+  const sendSpy: ReturnType<typeof vi.fn> = vi.fn()
+  const ensurePermission: ReturnType<typeof vi.fn> = vi.fn(() => true)
   const onAppExitListeners: Array<() => void> = []
 
   return {
     ensureAccessibilityPermission: ensurePermission,
-    readClipboardText: () => '',
+    readClipboardText: async () => '',
     sendTextToMainWindow: sendSpy,
     showWarning: showWarningSpy,
     logger: () => {},
@@ -79,12 +90,23 @@ function makeDeps(
     sendSpy,
     ensurePermission,
     onAppExitListeners,
-  } as QuickTranslateControllerDeps & {
-    showWarningSpy: ReturnType<typeof vi.fn>
-    sendSpy: ReturnType<typeof vi.fn>
-    ensurePermission: ReturnType<typeof vi.fn>
-    onAppExitListeners: Array<() => void>
-  }
+  } as TestDeps
+}
+
+function fireRegisteredChord(): void {
+  const detector: ReturnType<typeof createChordDetector> | undefined = vi
+    .mocked(createChordDetector)
+    .mock
+    .results
+    .at(-1)
+    ?.value
+
+  expect(detector).toBeDefined()
+
+  const onChordListener: (() => void) | undefined = vi.mocked(detector!.onChord).mock.calls[0]?.[0]
+
+  expect(onChordListener).toBeTypeOf('function')
+  onChordListener?.()
 }
 
 describe('quick-translate controller', () => {
@@ -98,10 +120,10 @@ describe('quick-translate controller', () => {
   })
 
   it('does not register when Accessibility permission is missing', () => {
-    const deps = makeDeps({
+    const deps: TestDeps = makeDeps({
       ensureAccessibilityPermission: vi.fn(() => false),
     })
-    const controller = createQuickTranslateController(deps)
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
     controller.start('Ctrl+C+C', true)
 
     expect(controller.registrar()).toBeNull()
@@ -109,8 +131,8 @@ describe('quick-translate controller', () => {
   })
 
   it('registers the observer on start when permission is granted', () => {
-    const deps = makeDeps()
-    const controller = createQuickTranslateController(deps)
+    const deps: TestDeps = makeDeps()
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
     controller.start('Ctrl+C+C', true)
 
     expect(controller.registrar()?.current()?.key).toBe('C')
@@ -118,8 +140,8 @@ describe('quick-translate controller', () => {
   })
 
   it('does not register when the shortcut is disabled in settings', () => {
-    const deps = makeDeps()
-    const controller = createQuickTranslateController(deps)
+    const deps: TestDeps = makeDeps()
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
     controller.start('Ctrl+C+C', false)
 
     expect(controller.registrar()).toBeNull()
@@ -127,18 +149,18 @@ describe('quick-translate controller', () => {
   })
 
   it('surfaces a warning when start receives a malformed accelerator', () => {
-    const deps = makeDeps()
-    const controller = createQuickTranslateController(deps)
+    const deps: TestDeps = makeDeps()
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
     controller.start('definitely-not-valid', true)
 
     expect(deps.showWarningSpy).toHaveBeenCalledOnce()
-    const call = deps.showWarningSpy.mock.calls[0]![0] as { title: string }
+    const call: WarningInput = deps.showWarningSpy.mock.calls[0]![0] as WarningInput
     expect(call.title).toBe('Quick Translate unavailable')
   })
 
   it('applyFromSettings is a no-op when nothing changed', () => {
-    const deps = makeDeps()
-    const controller = createQuickTranslateController(deps)
+    const deps: TestDeps = makeDeps()
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
     controller.start('Ctrl+C+C', true)
 
     controller.applyFromSettings('Ctrl+C+C', true)
@@ -147,8 +169,8 @@ describe('quick-translate controller', () => {
   })
 
   it('applyFromSettings starts the observer when re-enabled after Accessibility was granted', () => {
-    const deps = makeDeps()
-    const controller = createQuickTranslateController(deps)
+    const deps: TestDeps = makeDeps()
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
     controller.start('Ctrl+C+C', false)
     expect(controller.registrar()).toBeNull()
 
@@ -159,11 +181,11 @@ describe('quick-translate controller', () => {
   })
 
   it('applyFromSettings tears the observer down when disabled', () => {
-    const deps = makeDeps()
-    const controller = createQuickTranslateController(deps)
+    const deps: TestDeps = makeDeps()
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
     controller.start('Ctrl+C+C', true)
-    const registrar = controller.registrar()
-    const stopSpy = vi.spyOn(registrar!, 'stop')
+    const registrar: QuickTranslateRegistrar | null = controller.registrar()
+    const stopSpy: ReturnType<typeof vi.spyOn> = vi.spyOn(registrar!, 'stop')
 
     controller.applyFromSettings('Ctrl+C+C', false)
 
@@ -172,8 +194,8 @@ describe('quick-translate controller', () => {
   })
 
   it('applyFromSettings switches to a new valid accelerator', () => {
-    const deps = makeDeps()
-    const controller = createQuickTranslateController(deps)
+    const deps: TestDeps = makeDeps()
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
     controller.start('Ctrl+C+C', true)
     expect(controller.registrar()?.current()?.key).toBe('C')
 
@@ -183,27 +205,98 @@ describe('quick-translate controller', () => {
   })
 
   it('applyFromSettings warns and keeps the old shortcut when the new one is malformed', () => {
-    const deps = makeDeps()
-    const controller = createQuickTranslateController(deps)
+    const deps: TestDeps = makeDeps()
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
     controller.start('Ctrl+C+C', true)
 
     controller.applyFromSettings('not+a+real+shortcut', true)
 
     expect(deps.showWarningSpy).toHaveBeenCalledOnce()
-    const warning = deps.showWarningSpy.mock.calls[0]![0] as {
-      title: string
-      detail: string
-    }
+    const warning: WarningInput = deps.showWarningSpy.mock.calls[0]![0] as WarningInput
     expect(warning.title).toBe('Quick Translate shortcut not applied')
     expect(warning.detail).toContain('previous shortcut')
     expect(controller.registrar()?.current()?.key).toBe('C')
   })
 
   it('registers a teardown listener on startup', () => {
-    const deps = makeDeps()
-    const controller = createQuickTranslateController(deps)
+    const deps: TestDeps = makeDeps()
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
     controller.start('Ctrl+C+C', true)
 
     expect(deps.onAppExitListeners.length).toBe(1)
+  })
+
+  it('forwards trimmed clipboard text read asynchronously after the chord fires', async () => {
+    const deps: TestDeps = makeDeps({
+      readClipboardText: vi.fn(async () => '  hello world  '),
+    })
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
+    controller.start('Ctrl+C+C', true)
+
+    fireRegisteredChord()
+    await vi.advanceTimersByTimeAsync(CLIPBOARD_READ_DELAY_MS)
+
+    expect(deps.sendSpy).toHaveBeenCalledOnce()
+    expect(deps.sendSpy).toHaveBeenCalledWith('hello world')
+  })
+
+  it('does not forward whitespace-only clipboard text', async () => {
+    const deps: TestDeps = makeDeps({
+      readClipboardText: vi.fn(async () => '   '),
+    })
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
+    controller.start('Ctrl+C+C', true)
+
+    fireRegisteredChord()
+    await vi.advanceTimersByTimeAsync(CLIPBOARD_READ_DELAY_MS)
+
+    expect(deps.sendSpy).not.toHaveBeenCalled()
+  })
+
+  it('logs clipboard read failures instead of swallowing them', async () => {
+    const failure: Error = new Error('clipboard unavailable')
+    const loggerSpy: Mock<QuickTranslateControllerDeps['logger']> = vi.fn<QuickTranslateControllerDeps['logger']>()
+    const deps: TestDeps = makeDeps({
+      readClipboardText: vi.fn(async () => {
+        throw failure
+      }),
+      logger: loggerSpy,
+    })
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
+    controller.start('Ctrl+C+C', true)
+
+    fireRegisteredChord()
+    await vi.advanceTimersByTimeAsync(CLIPBOARD_READ_DELAY_MS)
+
+    expect(deps.sendSpy).not.toHaveBeenCalled()
+    expect(loggerSpy).toHaveBeenCalledWith('[quick-translate] clipboard read failed', failure)
+  })
+
+  it('forwards trimmed clipboard text on demand, for the tray entry point', async () => {
+    const deps: TestDeps = makeDeps({
+      readClipboardText: vi.fn(async () => '  from tray  '),
+    })
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
+
+    await controller.forwardClipboardText()
+
+    expect(deps.sendSpy).toHaveBeenCalledExactlyOnceWith('from tray')
+  })
+
+  it('logs send failures under their own label, not as clipboard read failures', async () => {
+    const failure: Error = new Error('window destroyed')
+    const loggerSpy: Mock<QuickTranslateControllerDeps['logger']> = vi.fn<QuickTranslateControllerDeps['logger']>()
+    const deps: TestDeps = makeDeps({
+      readClipboardText: vi.fn(async () => 'hello'),
+      sendTextToMainWindow: vi.fn(() => {
+        throw failure
+      }),
+      logger: loggerSpy,
+    })
+    const controller: QuickTranslateController = createQuickTranslateController(deps)
+
+    await expect(controller.forwardClipboardText()).resolves.toBeUndefined()
+
+    expect(loggerSpy).toHaveBeenCalledExactlyOnceWith('[quick-translate] sending clipboard text failed', failure)
   })
 })
