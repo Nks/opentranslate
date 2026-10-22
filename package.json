@@ -27,13 +27,15 @@
     "build": "pnpm run typecheck && pnpm run build:electron && pnpm run build:renderer",
     "package": "node scripts/package.mjs",
     "package:dir": "node scripts/package.mjs --dir",
+    "verify:package": "node scripts/verify-package.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "pretest:e2e": "pnpm run build:electron",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test --project=electron-dev",
+    "test:e2e:packaged": "playwright test --project=electron-packaged"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.2.1",

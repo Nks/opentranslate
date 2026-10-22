@@ -88,13 +88,31 @@ describe('electron-builder.yml', () => {
     expect(first.arch).toBeUndefined()
   })
 
-  it('scripts/package.mjs drives per-arch mac packaging (both x64 + arm64)', () => {
-    const packageScript = readFileSync(resolve(rootDir, 'scripts/package.mjs'), 'utf8')
+  it('names every artifact with ${arch} so per-target CI outputs never collide', () => {
+    const config: Record<string, unknown> = loadConfig()
+    const nsis: Record<string, unknown> = config.nsis as Record<string, unknown>
 
-    expect(packageScript).toContain('--mac --x64')
-    expect(packageScript).toContain('--mac --arm64')
-    expect(packageScript).toContain("rebuildForArch('x64')")
-    expect(packageScript).toContain("rebuildForArch('arm64')")
+    expect(config.artifactName).toBe('${name}-${version}-${os}-${arch}.${ext}')
+    expect(nsis.artifactName).toBe('${name}-${version}-${os}-${arch}-setup.${ext}')
+  })
+
+  it('has no platform- or target-level artifactName override that could drop ${arch}', () => {
+    const config: Record<string, unknown> = loadConfig()
+    const sections: string[] = ['mac', 'dmg', 'win', 'linux', 'appImage', 'deb', 'zip']
+
+    sections.forEach((section: string): void => {
+      const options: Record<string, unknown> | undefined =
+        config[section] as Record<string, unknown> | undefined
+
+      expect(options?.artifactName).toBeUndefined()
+    })
+  })
+
+  it('excludes host-compiled uiohook-napi outputs so node-gyp-build loads the per-arch prebuild', () => {
+    const config: Record<string, unknown> = loadConfig()
+    const files: string[] = config.files as string[]
+
+    expect(files).toContain('!**/node_modules/uiohook-napi/{build,bin}/**')
   })
 
   it('mac identity is null (unsigned local builds)', () => {

@@ -2,6 +2,9 @@ import {
   describe, expect, it,
 } from 'vitest'
 import {
+  join, resolve,
+} from 'node:path'
+import {
   RENDERER_HOST,
   RENDERER_SCHEME,
   RENDERER_URL,
@@ -9,31 +12,31 @@ import {
   resolveRendererAssetPath,
 } from '@electron/main/renderer-protocol'
 
-const RENDERER_DIR = '/A.app/Contents/Resources/app.asar/.output/public'
+const RENDERER_DIR: string = resolve('/A.app/Contents/Resources/app.asar/.output/public')
 
 describe('resolveRendererAssetPath', () => {
   it('maps the root path to index.html inside the renderer dir', () => {
     const resolved = resolveRendererAssetPath(RENDERER_DIR, '/')
 
-    expect(resolved).toBe(`${RENDERER_DIR}/index.html`)
+    expect(resolved).toBe(join(RENDERER_DIR, 'index.html'))
   })
 
   it('maps an absolute asset path into the renderer dir', () => {
     const resolved = resolveRendererAssetPath(RENDERER_DIR, '/_nuxt/BGl01Uhq.js')
 
-    expect(resolved).toBe(`${RENDERER_DIR}/_nuxt/BGl01Uhq.js`)
+    expect(resolved).toBe(join(RENDERER_DIR, '_nuxt', 'BGl01Uhq.js'))
   })
 
   it('maps a nested asset path into the renderer dir', () => {
     const resolved = resolveRendererAssetPath(RENDERER_DIR, '/_nuxt/builds/meta/app.json')
 
-    expect(resolved).toBe(`${RENDERER_DIR}/_nuxt/builds/meta/app.json`)
+    expect(resolved).toBe(join(RENDERER_DIR, '_nuxt', 'builds', 'meta', 'app.json'))
   })
 
   it('decodes percent-encoded path segments before resolving', () => {
     const resolved = resolveRendererAssetPath(RENDERER_DIR, '/_nuxt/entry%20copy.css')
 
-    expect(resolved).toBe(`${RENDERER_DIR}/_nuxt/entry copy.css`)
+    expect(resolved).toBe(join(RENDERER_DIR, '_nuxt', 'entry copy.css'))
   })
 
   it('rejects a traversal request that escapes the renderer dir', () => {
@@ -57,15 +60,15 @@ describe('resolveRendererAssetPath', () => {
   it('keeps a traversal that stays within the renderer dir', () => {
     const resolved = resolveRendererAssetPath(RENDERER_DIR, '/_nuxt/../index.html')
 
-    expect(resolved).toBe(`${RENDERER_DIR}/index.html`)
+    expect(resolved).toBe(join(RENDERER_DIR, 'index.html'))
   })
 })
 
 describe('rendererDirFromEntry', () => {
   it('derives the renderer dir from the renderer entry file', () => {
-    const dir = rendererDirFromEntry('/A.app/Contents/Resources/app.asar/.output/public/index.html')
+    const dir: string = rendererDirFromEntry(join(RENDERER_DIR, 'index.html'))
 
-    expect(dir).toBe('/A.app/Contents/Resources/app.asar/.output/public')
+    expect(dir).toBe(RENDERER_DIR)
   })
 })
 

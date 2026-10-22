@@ -4,6 +4,7 @@ copyright: Copyright © 2026 OpenTranslate Desktop contributors
 directories:
   output: release/${version}
   buildResources: build
+artifactName: '${name}-${version}-${os}-${arch}.${ext}'
 files:
   - dist-electron/**/*
   - .output/public/**/*
@@ -13,6 +14,7 @@ files:
   - '!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}'
   - '!**/node_modules/*.d.ts'
   - '!**/node_modules/.bin'
+  - '!**/node_modules/uiohook-napi/{build,bin}/**'
 asar: true
 asarUnpack:
   - '**/*.{node,dll}'
@@ -52,6 +54,7 @@ win:
     - target: nsis
     - target: zip
 nsis:
+  artifactName: '${name}-${version}-${os}-${arch}-setup.${ext}'
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
