@@ -33,9 +33,8 @@ export function safeHandler<TArgs extends unknown[], TResult>(
         ? `[${category}] ${message}\n${(err as Error).stack ?? ''}`
         : `[${category}] ${message}`
 
-      throw new Error(detail, {
-        cause: err,
-      })
+      // eslint-disable-next-line preserve-caught-error -- cause would leak raw errors over IPC
+      throw new Error(detail)
     }
   }
 }
