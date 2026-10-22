@@ -90,13 +90,15 @@ _`feature/multi-arch-builds`, 2026-10-22, after `rm -rf node_modules && pnpm ins
 
 - `pnpm lint` — clean
 - `pnpm typecheck` — clean
-- `pnpm test` — **758 tests across 82 files**
+- `pnpm test` — **835 tests across 86 files**
 - `pnpm test:e2e` — 1/1 (electron-dev, macOS arm64)
 - `pnpm audit --audit-level=high` — pass (2 documented ignores, 1 moderate)
 - Trivy (lockfile, dev deps included) — only the 2 unfixed, documented highs
 - License check (full tree, documented exclusions) — pass
-- actionlint — clean; Semgrep 1.182.0 (security-scan configs) — 0 findings
-- Packaged: mac arm64, mac x64 (Rosetta), linux x64 (Docker amd64) —
+- actionlint — clean; Semgrep 1.181.0 (security-scan configs) — 0 findings;
+  zizmor (offline) — no template-injection or permission findings
+- Packaged on Electron 44.9.3: mac arm64, mac x64 (Rosetta), linux x64
+  (Docker amd64) —
   `verify-package` ✓ and packaged smoke 2/2 each. Windows x64 is
   verified only in CI.
 
