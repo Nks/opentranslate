@@ -51,27 +51,41 @@ interface PackagedSession {
 const packagedAppPath: string = process.env.OPENTRANSLATE_PACKAGED_APP ?? ''
 const OS_KEYRING_ISOLATION_ARGS: readonly string[] = ['--use-mock-keychain', '--password-store=basic']
 
+if (packagedAppPath === '' && process.env.CI) {
+  throw new Error('OPENTRANSLATE_PACKAGED_APP must point at the packaged executable when CI is set')
+}
+
 test.skip(packagedAppPath === '', 'Set OPENTRANSLATE_PACKAGED_APP to a packaged executable to run this smoke test')
+
+function removeUserDataDir(userDataDir: string): void {
+  rmSync(userDataDir, {
+    recursive: true,
+    force: true,
+    maxRetries: 5,
+    retryDelay: 200,
+  })
+}
 
 async function withPackagedApp(run: (session: PackagedSession) => Promise<void>): Promise<void> {
   const userDataDir: string = realpathSync(mkdtempSync(join(tmpdir(), 'opentranslate-packaged-')))
-  const app: ElectronApplication = await electron.launch({
-    executablePath: packagedAppPath,
-    args: [`--user-data-dir=${userDataDir}`, ...OS_KEYRING_ISOLATION_ARGS],
-    timeout: 60_000,
-  })
+  let app: ElectronApplication | null = null
 
   try {
+    app = await electron.launch({
+      executablePath: packagedAppPath,
+      args: [`--user-data-dir=${userDataDir}`, ...OS_KEYRING_ISOLATION_ARGS],
+      timeout: 60_000,
+    })
     await run({
       app,
       userDataDir,
     })
   } finally {
-    await app.close()
-    rmSync(userDataDir, {
-      recursive: true,
-      force: true,
-    })
+    try {
+      await app?.close()
+    } finally {
+      removeUserDataDir(userDataDir)
+    }
   }
 }
 
