@@ -12,7 +12,9 @@
 
 /**
  * Wrap an IPC handler so thrown errors become plain `Error` objects
- * that Electron's structured clone can transfer to the renderer.
+ * that Electron's structured clone can transfer to the renderer. The
+ * rethrown error carries only `[category] Name: message` (plus the stack
+ * in dev) and never a `cause`, so raw provider errors stay in main.
  *
  * @param fn    The actual handler implementation.
  * @param isDev When `true`, stack traces are appended to the error detail.
