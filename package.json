@@ -98,6 +98,12 @@
     "overrides": {
       "@nuxt/ui>@nuxt/fonts": "^1.0.1",
       "handlebars@<4.7.10": "4.7.10"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-vfj7-8cjw-p6xm",
+        "GHSA-86w9-cpqp-85rv"
+      ]
     }
   }
 }

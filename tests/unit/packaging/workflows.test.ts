@@ -16,6 +16,7 @@ interface WorkflowStep {
   uses?: string
   run?: string
   with?: Record<string, unknown>
+  env?: Record<string, string>
 }
 
 interface WorkflowJob {
@@ -122,25 +123,68 @@ describe.each(['ci.yml', 'codeql.yml', 'security-scan.yml'])('%s branch triggers
 describe('security-scan.yml', () => {
   const text: string = readWorkflowText('security-scan.yml')
   const steps: WorkflowStep[] = allSteps(loadWorkflow('security-scan.yml'))
+  const securityDoc: string = readFileSync(resolve(rootDir, 'docs', 'security.md'), 'utf8')
+  const EXCLUDED_PACKAGES: RegExp = /--excludePackages "([^"]+)"/
+  const BARE_PACKAGE_NAME: RegExp = /^(?:@[\w.-]+\/)?[\w.-]+$/
+
+  function stepNamed(name: string): WorkflowStep | undefined {
+    return steps.find((step: WorkflowStep): boolean => step.name === name)
+  }
+
+  function licenseExclusions(): string[] {
+    const match: RegExpExecArray | null = EXCLUDED_PACKAGES.exec(stepNamed('Check licenses')?.run ?? '')
+
+    return match?.[1]?.split(';') ?? []
+  }
 
   it('runs Semgrep from a versioned image pinned by digest', () => {
-    const semgrepStep: WorkflowStep | undefined = steps.find(
-      (step: WorkflowStep): boolean => step.name === 'Run Semgrep',
-    )
+    const semgrepStep: WorkflowStep | undefined = stepNamed('Run Semgrep')
 
     expect(semgrepStep?.run).toMatch(/semgrep\/semgrep:\d+\.\d+\.\d+@sha256:[0-9a-f]{64} /)
     expect(text).not.toContain('returntocorp/semgrep')
     expect(text).not.toContain(':latest')
   })
 
-  it('excludes private packages from the license check instead of a hardcoded version', () => {
-    const licenseStep: WorkflowStep | undefined = steps.find(
-      (step: WorkflowStep): boolean => step.name === 'Check production licenses',
-    )
+  it('audits devDependencies too, because the shipped bundles are built from them', () => {
+    expect(stepNamed('pnpm audit')?.run).toBe('pnpm audit --audit-level=high')
+  })
 
+  it('lets Trivy scan devDependencies as well', () => {
+    expect(stepNamed('Run Trivy filesystem scan')?.env?.TRIVY_INCLUDE_DEV_DEPS).toBe('true')
+  })
+
+  it('checks licenses across the full tree instead of production dependencies only', () => {
+    const licenseStep: WorkflowStep | undefined = stepNamed('Check licenses')
+
+    expect(licenseStep?.run).not.toContain('--production')
     expect(licenseStep?.run).toContain('--excludePrivatePackages')
-    expect(licenseStep?.run).not.toContain('--excludePackages')
     expect(licenseStep?.run).toMatch(/license-checker-rseidelsohn@\d+\.\d+\.\d+/)
+  })
+
+  it('excludes license-check packages by bare name, never by hardcoded version', () => {
+    expect(licenseExclusions().length).toBeGreaterThan(0)
+    licenseExclusions().forEach((name: string): void => {
+      expect(name).toMatch(BARE_PACKAGE_NAME)
+    })
+  })
+
+  it('documents every license-check exclusion in docs/security.md', () => {
+    licenseExclusions().forEach((name: string): void => {
+      expect(securityDoc).toContain(`\`${name}\``)
+    })
+  })
+
+  it('documents every ignored advisory in docs/security.md', () => {
+    const pkg: { pnpm?: { auditConfig?: { ignoreGhsas?: string[] } } } = JSON.parse(
+      readFileSync(resolve(rootDir, 'package.json'), 'utf8'),
+    ) as { pnpm?: { auditConfig?: { ignoreGhsas?: string[] } } }
+    const ignored: string[] = pkg.pnpm?.auditConfig?.ignoreGhsas ?? []
+
+    expect(ignored.length).toBeGreaterThan(0)
+    ignored.forEach((ghsa: string): void => {
+      expect(ghsa).toMatch(/^GHSA(?:-[23456789cfghjmpqrvwx]{4}){3}$/)
+      expect(securityDoc).toContain(ghsa)
+    })
   })
 })
 
