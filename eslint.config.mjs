@@ -52,6 +52,58 @@ const nodeGlobals = {
 
 const idLengthExceptions = ['_']
 
+const ARCHITECTURE_LAYERS = [
+  {
+    type: 'shared',
+    pattern: 'shared',
+    mayImport: ['shared'],
+  },
+  {
+    type: 'electron-providers',
+    pattern: 'electron/providers',
+    mayImport: ['shared', 'electron-services', 'electron-providers'],
+  },
+  {
+    type: 'electron-services',
+    pattern: 'electron/services',
+    mayImport: ['shared', 'electron-providers', 'electron-services'],
+  },
+  {
+    type: 'electron-ipc',
+    pattern: 'electron/ipc',
+    mayImport: ['shared', 'electron-ipc'],
+  },
+  {
+    type: 'electron-preload',
+    pattern: 'electron/preload',
+    mayImport: ['shared', 'electron-ipc', 'electron-preload'],
+  },
+  {
+    type: 'electron-main',
+    pattern: 'electron/main',
+    mayImport: [
+      'shared',
+      'electron-providers',
+      'electron-services',
+      'electron-ipc',
+      'electron-preload',
+      'electron-main',
+    ],
+  },
+  {
+    type: 'app',
+    pattern: 'app',
+    mayImport: ['shared', 'app'],
+  },
+]
+
+function layer(from, to) {
+  return {
+    from: { element: { type: from } },
+    allow: { to: { element: { types: { anyOf: to } } } },
+  }
+}
+
 export default [
   {
     ignores: [
@@ -267,44 +319,11 @@ export default [
     },
     settings: {
       'boundaries/dependency-nodes': ['import', 'dynamic-import'],
-      'boundaries/legacy-warnings': false,
-      'boundaries/elements': [
-        {
-          type: 'shared',
-          pattern: 'shared',
-          partialMatch: false,
-        },
-        {
-          type: 'electron-providers',
-          pattern: 'electron/providers',
-          partialMatch: false,
-        },
-        {
-          type: 'electron-services',
-          pattern: 'electron/services',
-          partialMatch: false,
-        },
-        {
-          type: 'electron-ipc',
-          pattern: 'electron/ipc',
-          partialMatch: false,
-        },
-        {
-          type: 'electron-preload',
-          pattern: 'electron/preload',
-          partialMatch: false,
-        },
-        {
-          type: 'electron-main',
-          pattern: 'electron/main',
-          partialMatch: false,
-        },
-        {
-          type: 'app',
-          pattern: 'app',
-          partialMatch: false,
-        },
-      ],
+      'boundaries/elements': ARCHITECTURE_LAYERS.map((entry) => ({
+        type: entry.type,
+        pattern: entry.pattern,
+        partialMatch: false,
+      })),
     },
     rules: {
       'boundaries/no-ignored-dependencies': 'off',
@@ -315,147 +334,7 @@ export default [
         {
           default: 'disallow',
           message: '{{from.element.types.[0]}} is not allowed to import {{to.element.types.[0]}}',
-          policies: [
-            {
-              from: {
-                element: {
-                  type: 'shared',
-                },
-              },
-              allow: {
-                to: {
-                  element: {
-                    types: {
-                      anyOf: [
-                        'shared',
-                      ],
-                    },
-                  },
-                },
-              },
-            },
-            {
-              from: {
-                element: {
-                  type: 'electron-providers',
-                },
-              },
-              allow: {
-                to: {
-                  element: {
-                    types: {
-                      anyOf: [
-                        'shared',
-                        'electron-services',
-                        'electron-providers',
-                      ],
-                    },
-                  },
-                },
-              },
-            },
-            {
-              from: {
-                element: {
-                  type: 'electron-services',
-                },
-              },
-              allow: {
-                to: {
-                  element: {
-                    types: {
-                      anyOf: [
-                        'shared',
-                        'electron-providers',
-                        'electron-services',
-                      ],
-                    },
-                  },
-                },
-              },
-            },
-            {
-              from: {
-                element: {
-                  type: 'electron-ipc',
-                },
-              },
-              allow: {
-                to: {
-                  element: {
-                    types: {
-                      anyOf: [
-                        'shared',
-                        'electron-ipc',
-                      ],
-                    },
-                  },
-                },
-              },
-            },
-            {
-              from: {
-                element: {
-                  type: 'electron-preload',
-                },
-              },
-              allow: {
-                to: {
-                  element: {
-                    types: {
-                      anyOf: [
-                        'shared',
-                        'electron-ipc',
-                        'electron-preload',
-                      ],
-                    },
-                  },
-                },
-              },
-            },
-            {
-              from: {
-                element: {
-                  type: 'electron-main',
-                },
-              },
-              allow: {
-                to: {
-                  element: {
-                    types: {
-                      anyOf: [
-                        'shared',
-                        'electron-providers',
-                        'electron-services',
-                        'electron-ipc',
-                        'electron-preload',
-                        'electron-main',
-                      ],
-                    },
-                  },
-                },
-              },
-            },
-            {
-              from: {
-                element: {
-                  type: 'app',
-                },
-              },
-              allow: {
-                to: {
-                  element: {
-                    types: {
-                      anyOf: [
-                        'shared',
-                        'app',
-                      ],
-                    },
-                  },
-                },
-              },
-            },
-          ],
+          policies: ARCHITECTURE_LAYERS.map((entry) => layer(entry.type, entry.mayImport)),
         },
       ],
     },
