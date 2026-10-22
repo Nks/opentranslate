@@ -1,5 +1,5 @@
 import {
-  describe, expect, it, vi, beforeEach,
+  describe, expect, it, vi, beforeEach, type Mock,
 } from 'vitest'
 import {
   createKeyObserver,
@@ -54,7 +54,7 @@ const BASE_EVENT: HookKeyEvent = {
 
 describe('key observer', () => {
   let hook: ReturnType<typeof createFakeHook>
-  let onKey: ReturnType<typeof vi.fn>
+  let onKey: Mock<() => void>
 
   beforeEach(() => {
     hook = createFakeHook()

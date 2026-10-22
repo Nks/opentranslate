@@ -32,7 +32,7 @@ const trayInstances: TrayInstance[] = []
 
 vi.mock('electron', () => {
   return {
-    Tray: vi.fn().mockImplementation((image: unknown): TrayInstance => {
+    Tray: vi.fn().mockImplementation(function createTrayInstance(image: unknown): TrayInstance {
       trayConstructorMock(image)
       const instance: TrayInstance = {
         setToolTip: vi.fn(),
