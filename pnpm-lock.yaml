@@ -11,45 +11,12 @@ importers:
 
   .:
     dependencies:
-      '@iconify-json/fluent':
-        specifier: ^1.2.60
-        version: 1.2.60
-      '@nuxt/fonts':
-        specifier: ^1.0.1
-        version: 1.0.1(@nuxt/schema@4.6.2)(cac@7.1.0)(confbox@0.3.1)(db0@0.3.4(better-sqlite3@13.0.3))(dotenv@17.4.2)(esbuild@0.28.2)(giget@3.2.0)(ioredis@5.11.1)(jiti@2.7.0)(lightningcss@1.33.0)(magic-string@1.4.3)(mlly@1.8.2)(postcss@8.5.31)(rolldown@1.2.15)(rollup@4.64.12)(srvx@1.0.6)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
-      '@pinia/nuxt':
-        specifier: ^1.0.3
-        version: 1.0.3(@nuxt/schema@4.6.2)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.2.0)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(pinia@4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3)))(rolldown@1.2.15)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.15)(rollup@4.64.12)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
-      '@vue/devtools-api':
-        specifier: ^8.2.1
-        version: 8.2.1
-      '@vueuse/core':
-        specifier: ^15.0.0
-        version: 15.0.0(vue@3.5.44(typescript@6.0.3))
-      '@vueuse/nuxt':
-        specifier: ^15.0.0
-        version: 15.0.0(c51089381b100aff72af58af7a85b27c)
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3
-      google-auth-library:
-        specifier: ^11.3.1
-        version: 11.3.1
-      pinia:
-        specifier: ^4.1.0
-        version: 4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3))
-      tailwindcss:
-        specifier: ^4.3.3
-        version: 4.3.3
       uiohook-napi:
         specifier: ^1.5.5
         version: 1.5.5
-      vue:
-        specifier: ^3.5.44
-        version: 3.5.44(typescript@6.0.3)
-      zod:
-        specifier: ^4.6.7
-        version: 4.6.7
     devDependencies:
       '@electron/rebuild':
         specifier: ^4.2.1
@@ -57,12 +24,21 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.13.0(jiti@2.7.0))
+      '@iconify-json/fluent':
+        specifier: ^1.2.60
+        version: 1.2.60
+      '@nuxt/fonts':
+        specifier: ^1.0.1
+        version: 1.0.1(@nuxt/schema@4.6.2)(cac@7.1.0)(confbox@0.3.1)(db0@0.3.4(better-sqlite3@13.0.3))(dotenv@17.4.2)(esbuild@0.28.2)(giget@3.2.0)(ioredis@5.11.1)(jiti@2.7.0)(lightningcss@1.33.0)(magic-string@1.4.3)(mlly@1.8.2)(postcss@8.5.31)(rolldown@1.2.15)(rollup@4.64.12)(srvx@1.0.6)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
       '@nuxt/test-utils':
         specifier: ^4.3.4
         version: 4.3.4(3440a7bc0d0258c44472ceb5758067f8)
       '@nuxt/ui':
         specifier: ^4.12.0
         version: 4.12.0(519c5e1146c4ed05bf57e8aa19a917fb)
+      '@pinia/nuxt':
+        specifier: ^1.0.3
+        version: 1.0.3(@nuxt/schema@4.6.2)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.2.0)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(pinia@4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3)))(rolldown@1.2.15)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.15)(rollup@4.64.12)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
       '@playwright/test':
         specifier: ^1.64.1
         version: 1.64.1
@@ -87,9 +63,18 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^5.0.5
         version: 5.0.5(vitest@5.0.5)
+      '@vue/devtools-api':
+        specifier: ^8.2.1
+        version: 8.2.1
       '@vue/test-utils':
         specifier: ^2.5.1
         version: 2.5.1(@vue/compiler-dom@3.5.44)(@vue/server-renderer@3.5.44)(vue@3.5.44(typescript@6.0.3))
+      '@vueuse/core':
+        specifier: ^15.0.0
+        version: 15.0.0(vue@3.5.44(typescript@6.0.3))
+      '@vueuse/nuxt':
+        specifier: ^15.0.0
+        version: 15.0.0(c51089381b100aff72af58af7a85b27c)
       electron:
         specifier: ^45.0.0
         version: 45.0.0
@@ -120,6 +105,9 @@ importers:
       eslint-plugin-vue:
         specifier: ^10.11.1
         version: 10.11.1(@stylistic/eslint-plugin@5.10.0(eslint@10.13.0(jiti@2.7.0)))(@typescript-eslint/parser@8.72.0(eslint@10.13.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.13.0(jiti@2.7.0))(vue-eslint-parser@10.4.1(eslint@10.13.0(jiti@2.7.0)))
+      google-auth-library:
+        specifier: ^11.3.1
+        version: 11.3.1
       happy-dom:
         specifier: ^21.0.4
         version: 21.0.4
@@ -129,6 +117,12 @@ importers:
       nuxt:
         specifier: ^4.6.2
         version: 4.6.2(@babel/plugin-syntax-jsx@7.29.7(@babel/core@7.29.7))(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7))(@oxc-project/types@0.155.0)(@parcel/watcher@2.5.6)(@types/node@24.19.2)(@vue/compiler-sfc@3.5.44)(acorn@8.19.0)(better-sqlite3@13.0.3)(confbox@0.3.1)(db0@0.3.4(better-sqlite3@13.0.3))(dotenv@17.4.2)(encoding@0.1.13)(esbuild@0.28.2)(eslint@10.13.0(jiti@2.7.0))(giget@3.2.0)(ioredis@5.11.1)(lightningcss@1.33.0)(mlly@1.8.2)(optionator@0.9.4)(pinia@4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3)))(rolldown@1.2.15)(rollup-plugin-visualizer@7.1.1(rolldown@1.2.15)(rollup@4.64.12))(rollup@4.64.12)(srvx@1.0.6)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1)
+      pinia:
+        specifier: ^4.1.0
+        version: 4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3))
+      tailwindcss:
+        specifier: ^4.3.3
+        version: 4.3.3
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -141,6 +135,9 @@ importers:
       vitest:
         specifier: ^5.0.5
         version: 5.0.5(@types/node@24.19.2)(@vitest/coverage-v8@5.0.5)(happy-dom@21.0.4)(msw@3.0.3(@types/node@24.19.2)(graphql@16.14.0)(typescript@6.0.3)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+      vue:
+        specifier: ^3.5.44
+        version: 3.5.44(typescript@6.0.3)
       vue-eslint-parser:
         specifier: ^10.4.1
         version: 10.4.1(eslint@10.13.0(jiti@2.7.0))
@@ -150,6 +147,9 @@ importers:
       yaml:
         specifier: ^2.9.1
         version: 2.9.1
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
 
 packages:
 
