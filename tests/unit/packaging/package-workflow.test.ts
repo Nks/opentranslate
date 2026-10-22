@@ -99,7 +99,8 @@ describe('package.yml', () => {
       type: 'boolean',
       default: true,
     }))
-    expect(packageStep('Setup Node.js').with?.cache).toBe("${{ inputs.cache-dependencies && 'pnpm' || '' }}")
+    expect(packageStep('Setup workspace').uses).toBe('./.github/actions/setup-workspace')
+    expect(packageStep('Setup workspace').with?.cache).toBe('${{ inputs.cache-dependencies }}')
   })
 
   it('builds exactly the supported platform-arch targets', () => {
