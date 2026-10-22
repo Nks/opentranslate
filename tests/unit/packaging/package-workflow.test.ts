@@ -178,8 +178,9 @@ describe('package.yml', () => {
 describe('ci.yml', () => {
   const ci: Workflow = loadWorkflow('ci.yml')
 
-  it('runs on push to feature branches', () => {
-    expect(ci.on.push?.branches).toContain('feature/**')
+  it('runs once per PR: pushes only to the long-lived branches, PRs into them', () => {
+    expect(ci.on.push?.branches).toEqual(['master', 'develop'])
+    expect(ci.on.pull_request?.branches).toEqual(['master', 'develop'])
   })
 
   it('runs the shared checks, then packages every target', () => {
