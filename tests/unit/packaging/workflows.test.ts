@@ -229,6 +229,8 @@ describe('security-scan.yml', () => {
 describe('dependabot.yml', () => {
   interface DependabotUpdate {
     'package-ecosystem': string
+    directory?: string
+    directories?: string[]
     cooldown?: { 'default-days'?: number }
   }
 
@@ -247,5 +249,14 @@ describe('dependabot.yml', () => {
     )
 
     expect(update?.cooldown?.['default-days']).toBe(7)
+  })
+
+  it('updates actions pinned inside the composite actions, not only the workflows', () => {
+    const actions: DependabotUpdate | undefined = config.updates.find(
+      (candidate: DependabotUpdate): boolean => candidate['package-ecosystem'] === 'github-actions',
+    )
+
+    expect(actions?.directories).toEqual(['/', '/.github/actions/*'])
+    expect(actions?.directory).toBeUndefined()
   })
 })
