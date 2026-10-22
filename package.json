@@ -94,7 +94,7 @@
       "uiohook-napi"
     ],
     "overrides": {
-      "devalue": ">=5.8.1"
+      "@nuxt/ui>@nuxt/fonts": "^1.0.1"
     }
   }
 }
