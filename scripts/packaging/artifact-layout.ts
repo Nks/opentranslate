@@ -5,7 +5,7 @@ import type {
   PackageArch,
   PackagePlatform,
   PackageTarget,
-} from '@scripts/packaging/targets'
+} from './targets.ts'
 
 export interface AppIdentity {
   packageName: string

@@ -1,6 +1,6 @@
 import type {
   NativeTarget,
-} from '@scripts/packaging/targets'
+} from './targets.ts'
 
 export interface NativeBinaryExpectation {
   label: string
@@ -62,8 +62,16 @@ export function isForeignPrebuild(segments: readonly string[], target: NativeTar
   const platformArch: string = platformArchEntry.endsWith(NATIVE_EXTENSION)
     ? platformArchEntry.slice(0, -NATIVE_EXTENSION.length)
     : platformArchEntry
+  const separatorIndex: number = platformArch.indexOf('-')
 
-  return platformArch !== prebuildDirName(target)
+  if (separatorIndex === -1) {
+    return false
+  }
+
+  const platform: string = platformArch.slice(0, separatorIndex)
+  const arches: string[] = platformArch.slice(separatorIndex + 1).split('+')
+
+  return platform !== target.nodePlatform || !arches.includes(target.arch)
 }
 
 export function packageRootSegments(segments: readonly string[]): string[] | null {

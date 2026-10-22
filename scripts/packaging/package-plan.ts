@@ -1,7 +1,7 @@
 import type {
   PackageArch,
   PackageRequest,
-} from '@scripts/packaging/targets'
+} from './targets.ts'
 
 const BUILD_COMMANDS: readonly string[] = ['pnpm run build:electron', 'pnpm run build:renderer']
 

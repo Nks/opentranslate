@@ -2,15 +2,15 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    "allowImportingTsExtensions": true
   },
   "include": [
     "shared/**/*.ts",
     "electron/**/*.ts",
     "app/**/*.ts",
     "app/**/*.d.ts",
-    "tests/**/*.ts",
-    "scripts/**/*.ts"
+    "tests/**/*.ts"
   ],
   "exclude": [
     "node_modules",

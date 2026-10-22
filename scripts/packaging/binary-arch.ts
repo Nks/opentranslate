@@ -2,7 +2,7 @@ import type {
   PackageArch,
   PackagePlatform,
   PackageTarget,
-} from '@scripts/packaging/targets'
+} from './targets.ts'
 
 export type BinaryFormat = 'mach-o' | 'mach-o-universal' | 'pe' | 'elf'
 export type KnownArch = 'x64' | 'arm64' | 'ia32' | 'arm'

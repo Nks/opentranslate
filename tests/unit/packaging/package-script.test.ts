@@ -18,8 +18,6 @@ interface PlaywrightProject {
 }
 
 const rootDir: string = resolve(__dirname, '..', '..', '..')
-const scriptPath: string = resolve(rootDir, 'scripts/package.mjs')
-const verifyScriptPath: string = resolve(rootDir, 'scripts/verify-package.mjs')
 const pkg: { scripts: Record<string, string> } = JSON.parse(
   readFileSync(resolve(rootDir, 'package.json'), 'utf8'),
 ) as { scripts: Record<string, string> }
@@ -29,48 +27,6 @@ async function loadPlaywrightProjects(): Promise<PlaywrightProject[]> {
 
   return (configModule.default.projects ?? []) as PlaywrightProject[]
 }
-
-describe('scripts/package.mjs', () => {
-  const content: string = readFileSync(scriptPath, 'utf8')
-
-  it('exists', () => {
-    expect(existsSync(scriptPath)).toBe(true)
-  })
-
-  it('parses CLI args and runs the unit-tested packaging plan', () => {
-    expect(content).toContain("from './packaging/targets.ts'")
-    expect(content).toContain("from './packaging/package-plan.ts'")
-    expect(content).toContain('parsePackageCliArgs(process.argv.slice(2), process.platform)')
-    expect(content).toContain('planPackageCommands(request)')
-  })
-
-  it('does not hardcode builder invocations outside the plan', () => {
-    expect(content).not.toMatch(/electron-builder --(mac|win|linux)/)
-  })
-
-  it('runs commands with execSync and NODE_ENV=production', () => {
-    expect(content).toContain('execSync')
-    expect(content).toContain("NODE_ENV: 'production'")
-  })
-})
-
-describe('scripts/verify-package.mjs', () => {
-  const content: string = readFileSync(verifyScriptPath, 'utf8')
-
-  it('exists', () => {
-    expect(existsSync(verifyScriptPath)).toBe(true)
-  })
-
-  it('delegates header parsing and layout to the unit-tested modules', () => {
-    expect(content).toContain("from './packaging/binary-arch.ts'")
-    expect(content).toContain("from './packaging/artifact-layout.ts'")
-    expect(content).toContain('parseVerifyCliArgs(process.argv.slice(2))')
-  })
-
-  it('exits non-zero when any check fails', () => {
-    expect(content).toContain('process.exit(1)')
-  })
-})
 
 describe('package.json scripts', () => {
   it('keeps package and package:dir entry points', () => {

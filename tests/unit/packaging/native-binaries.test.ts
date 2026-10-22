@@ -80,6 +80,16 @@ describe('isForeignPrebuild', () => {
     expect(isForeignPrebuild(segments, LINUX_X64)).toBe(true)
   })
 
+  it.each([
+    [MAC_X64, false],
+    [MAC_ARM64, false],
+    [LINUX_X64, true],
+  ])('splits node-gyp-build combined arch dirs (darwin-x64+arm64) for %o', (target: NativeTarget, foreign: boolean) => {
+    const segments: string[] = ['node_modules', 'addon', 'prebuilds', 'darwin-x64+arm64', 'addon.node']
+
+    expect(isForeignPrebuild(segments, target)).toBe(foreign)
+  })
+
   it('keeps compiled build outputs, which node-gyp-build loads before prebuilds', () => {
     const segments: string[] = ['node_modules', 'uiohook-napi', 'build', 'Release', 'uiohook_napi.node']
 
