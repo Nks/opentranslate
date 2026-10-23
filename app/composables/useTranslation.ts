@@ -23,9 +23,8 @@ export function useTranslation() {
   const providersStore = useProvidersStore()
   const settingsStore = useSettingsStore()
   const handleError = useHandleError()
-  const {
-    persist: persistSelection, restore: restoreSelection,
-  } = useSelectionPersistence()
+  const { persist: persistSelection }: ReturnType<typeof useSelectionPersistence> =
+    useSelectionPersistence()
 
   async function executeTranslate(): Promise<void> {
     if (!providersStore.activeProviderId) {
@@ -217,6 +216,5 @@ export function useTranslation() {
     clearInput,
     switchProvider,
     persistSelection,
-    restoreSelection,
   }
 }
