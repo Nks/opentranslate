@@ -133,11 +133,16 @@ describe('electron-builder.yml', () => {
     expect(files).toContain(pattern)
   })
 
-  it('mac identity is null (unsigned local builds)', () => {
-    const config = loadConfig()
-    const mac = config.mac as Record<string, unknown>
+  it('ad-hoc signs the whole mac bundle without hardened runtime or notarization', () => {
+    const config: Record<string, unknown> = loadConfig()
+    const mac: Record<string, unknown> = config.mac as Record<string, unknown>
+    const dmg: Record<string, unknown> = config.dmg as Record<string, unknown>
 
-    expect(mac.identity).toBeNull()
+    expect(mac.identity).toBe('-')
+    expect(mac.sign).toBeUndefined()
+    expect(mac.hardenedRuntime).toBe(false)
+    expect(mac.notarize).toBe(false)
+    expect(dmg.sign).toBe(false)
   })
 
   it('win targets include nsis and zip', () => {

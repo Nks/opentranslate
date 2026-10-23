@@ -12,6 +12,10 @@ import {
   type VerifyFileSystem,
 } from '@scripts/packaging/verify-checks'
 import type {
+  CodeSignatureResult,
+  CodeSignatureVerifier,
+} from '@scripts/packaging/code-signature'
+import type {
   PackageTarget,
 } from '@scripts/packaging/targets'
 
@@ -25,11 +29,17 @@ const MAC_ARM64: PackageTarget = {
 const ROOT: string = join(sep, 'repo')
 const RESOURCES: string = join(ROOT, 'release', 'mac-arm64', 'App.app', 'Contents', 'Resources')
 const UNPACKED: string = join(RESOURCES, 'app.asar.unpacked')
+const BUNDLE: string = join(ROOT, 'release', 'mac-arm64', 'App.app')
 const LOCATIONS: PackageLocations = {
   displayRoot: ROOT,
   installerPaths: [join(ROOT, 'release', 'app-mac-arm64.dmg')],
-  executablePath: join(ROOT, 'release', 'mac-arm64', 'App.app', 'Contents', 'MacOS', 'App'),
+  executablePath: join(BUNDLE, 'Contents', 'MacOS', 'App'),
   resourcesDir: RESOURCES,
+  codeSignedBundlePath: BUNDLE,
+}
+const SEALED: CodeSignatureResult = {
+  valid: true,
+  detail: 'sealed (codesign --verify --deep --strict)',
 }
 
 type FakeFiles = Record<string, Uint8Array | string>
@@ -85,8 +95,22 @@ function fakeFileSystem(files: FakeFiles): VerifyFileSystem {
   }
 }
 
-function check(files: FakeFiles): CheckResult[] {
-  return runPackageChecks(MAC_ARM64, LOCATIONS, fakeFileSystem(files))
+function signatureVerifier(
+  result: CodeSignatureResult,
+  checkedPaths: string[] = [],
+): CodeSignatureVerifier {
+  return (bundlePath: string): CodeSignatureResult => {
+    checkedPaths.push(bundlePath)
+
+    return result
+  }
+}
+
+function check(files: FakeFiles, signature: CodeSignatureResult = SEALED): CheckResult[] {
+  return runPackageChecks(MAC_ARM64, LOCATIONS, {
+    fileSystem: fakeFileSystem(files),
+    verifyCodeSignature: signatureVerifier(signature),
+  })
 }
 
 function messages(results: CheckResult[], status: CheckResult['status']): string[] {
@@ -103,6 +127,7 @@ describe('runPackageChecks', () => {
     expect(messages(results, 'pass')).toEqual([
       `installer: ${join('release', 'app-mac-arm64.dmg')}`,
       'executable: mach-o arm64',
+      'code signature: sealed (codesign --verify --deep --strict)',
       `app.asar: ${join('release', 'mac-arm64', 'App.app', 'Contents', 'Resources', 'app.asar')}`,
       'better-sqlite3 prebuild: mach-o arm64',
       'uiohook-napi prebuild: mach-o arm64',
@@ -124,6 +149,42 @@ describe('runPackageChecks', () => {
     })
 
     expect(messages(results, 'fail')).toEqual(['executable: expected mac arm64, found mach-o x64'])
+  })
+
+  it('fails a mac bundle whose code signature does not seal its resources', () => {
+    const results: CheckResult[] = check(completeMacArm64Package(), {
+      valid: false,
+      detail: `${BUNDLE}: code has no resources but signature indicates they must be present`,
+    })
+
+    expect(messages(results, 'fail')).toEqual([
+      `code signature: ${BUNDLE}: code has no resources but signature indicates they must be present`,
+    ])
+  })
+
+  it('verifies the code signature of the .app bundle, not the inner executable', () => {
+    const checkedPaths: string[] = []
+
+    runPackageChecks(MAC_ARM64, LOCATIONS, {
+      fileSystem: fakeFileSystem(completeMacArm64Package()),
+      verifyCodeSignature: signatureVerifier(SEALED, checkedPaths),
+    })
+
+    expect(checkedPaths).toEqual([BUNDLE])
+  })
+
+  it('skips the code signature check for targets without a signed bundle', () => {
+    const checkedPaths: string[] = []
+    const results: CheckResult[] = runPackageChecks(MAC_ARM64, {
+      ...LOCATIONS,
+      codeSignedBundlePath: null,
+    }, {
+      fileSystem: fakeFileSystem(completeMacArm64Package()),
+      verifyCodeSignature: signatureVerifier(SEALED, checkedPaths),
+    })
+
+    expect(checkedPaths).toEqual([])
+    expect(results.some((result: CheckResult): boolean => result.message.startsWith('code signature'))).toBe(false)
   })
 
   it('fails when the target better-sqlite3 prebuild is missing', () => {

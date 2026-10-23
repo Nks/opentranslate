@@ -1,9 +1,10 @@
 # Installation
 
-OpenTranslate Desktop `0.1.0` ships as an **unsigned** pre-release for macOS,
-Windows, and Linux. The macOS and Windows installers must be allowed past
-Gatekeeper and SmartScreen on first launch. The Linux AppImage and `.deb`
-require no bypass.
+OpenTranslate Desktop `0.1.0` ships as a pre-release without a Developer ID
+or Authenticode certificate. The macOS app is **ad-hoc signed** (sealed but
+not notarized) and the Windows installer is **unsigned**, so both must be
+allowed past Gatekeeper and SmartScreen once, on first launch. The Linux
+AppImage and `.deb` require no bypass.
 
 Download the latest binaries from the GitHub releases page:
 
@@ -26,32 +27,38 @@ Download the latest binaries from the GitHub releases page:
 2. Drag **OpenTranslate Desktop.app** into the **Applications** folder.
 3. Eject the disk image.
 
-### Gatekeeper bypass
+### First open (Gatekeeper)
 
-Because the build is unsigned, macOS refuses to launch the app on first
-open with a message similar to *"OpenTranslate Desktop can't be opened
-because Apple cannot check it for malicious software."*
+The app is ad-hoc signed but not notarized by Apple, so the first open is
+blocked with a message similar to *"Apple could not verify "OpenTranslate
+Desktop" is free of malware…"* (older macOS: *"…can't be opened because
+Apple cannot check it for malicious software"*). Allow it once with either
+path; macOS remembers the decision.
 
-Choose one of the two paths.
+**Path A — System Settings (no Terminal):**
 
-**Path A — Terminal (one command):**
+1. Open **OpenTranslate Desktop** from `/Applications` once and dismiss the
+   warning with **Done** (or **OK**).
+2. Open **System Settings → Privacy & Security**, scroll to **Security**,
+   and click **Open Anyway** next to the OpenTranslate Desktop entry.
+3. Confirm with **Open Anyway** and your password or Touch ID.
+
+On macOS 14 and earlier, Control-clicking the app and choosing **Open**
+offers the same **Open** button directly.
+
+**Path B — Terminal (one command):**
 
 ```bash
-xattr -d com.apple.quarantine "/Applications/OpenTranslate Desktop.app"
+xattr -dr com.apple.quarantine "/Applications/OpenTranslate Desktop.app"
 ```
 
 Then launch normally from Launchpad or Spotlight.
 
-**Path B — System Settings:**
-
-1. Locate the app in `/Applications` in Finder.
-2. Right-click (or Control-click) the app and choose **Open**.
-3. macOS shows the same warning with an **Open** button — click it.
-4. If the **Open** button is missing, open **System Settings → Privacy
-   & Security**, scroll to the **Security** section, and click **Open
-   Anyway** next to the OpenTranslate Desktop entry.
-
-The first successful launch trains macOS to remember the decision.
+**"OpenTranslate Desktop is damaged and can't be opened."** That message
+means the bundle's code signature is missing or broken, not that the
+download is corrupt; it appeared on early `0.1.0` builds whose bundle was
+never sealed, and offers no **Open Anyway** button. Download the current
+release (and check its SHA-256 below). Path B also clears it.
 
 ### First-run notes
 
