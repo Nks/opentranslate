@@ -99,6 +99,43 @@ bodies, stack traces, file paths) to the renderer and into main-process logs.
 ESLint's `preserve-caught-error` is suppressed for that one line;
 `tests/unit/electron/safe-handler.test.ts` asserts the cause stays absent.
 
+### Document files (`electron/services/documents/`)
+
+- `document:translate` payloads are parsed with the strict
+  `documentTranslateRequestSchema`; language codes are restricted so they
+  are safe inside the output filename.
+- Only the path of the last selected file is accepted: the one returned by
+  `document:pick` (native dialog) or registered by `document:drop`. The drop
+  path is resolved in preload with `webUtils.getPathForFile(file)` from a
+  real `File`; the exposed bridge takes a `File`, never a path, so a hostile
+  renderer cannot make main upload arbitrary files. Main validates each
+  selection (path rules below + provider extension) before allowlisting it,
+  and validates again at translate time. The selection is bound to the
+  provider adapter active when it was made: after a provider switch (for
+  example a changed endpoint) the file must be selected again.
+- `document:reveal` takes no path: main reveals only the last output file it
+  wrote.
+- A raw UNC / `//host` path is refused before any fs call (no NTLM
+  handshake from a renderer-chosen path). Mapped drives, and symlinks whose
+  target is on a share, are accepted when the user picks or drops them. The
+  path must be absolute and resolve via `realpath` to a regular non-empty
+  file of at most 50 MiB with an extension the provider lists. It is opened
+  once (`O_NOFOLLOW` / `O_NONBLOCK` where available); the handle's dev +
+  inode must match an `lstat` of the real path (no symlink), and it is
+  checked and read through that handle, so a file swapped after validation
+  is not read.
+- `translatedFileUrl` is downloaded only from the configured endpoint's
+  `http(s)` origin, with no API key and no auth header; its body is capped at
+  100 MiB. No kernel request follows redirects (a 3xx is an error). JSON
+  bodies are capped at 1 MiB and error bodies at 64 KiB.
+- Results are written via a `wx` partial file and `rename`, with
+  Mark-of-the-Web: Windows `Zone.Identifier` on the translated file; on
+  macOS `LSFileQuarantineEnabled` makes the system add
+  `com.apple.quarantine` to every file the app creates (translated
+  documents and its own `userData` files).
+- Error messages never include file paths, file contents or the API key.
+  Provider error text is passed through, truncated to 200 characters.
+
 ---
 
 ## Content Security Policy

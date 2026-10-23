@@ -2,7 +2,7 @@ import {
   normalizeLanguage,
 } from '@shared/providers/normalize-language'
 import {
-  AppError, ErrorCategory, mapHttpStatusToCategory,
+  AppError, ErrorCategory, mapHttpStatusToCategory, truncateProviderDetail,
 } from '@shared/errors'
 import type {
   Language,
@@ -144,9 +144,9 @@ export function mapGoogleDetection(response: GoogleDetectResponse): LanguageDete
 
 export function throwGoogleHttpError(status: number, body: unknown): never {
   const category = mapGoogleSpecificCategory(status, body) ?? mapHttpStatusToCategory(status)
-  const detail = extractGoogleErrorMessage(body) ?? `http ${status}`
+  const detail: string = extractGoogleErrorMessage(body) ?? `http ${status}`
 
-  throw new AppError(category, `google: ${detail}`)
+  throw new AppError(category, `google: ${truncateProviderDetail(detail)}`)
 }
 
 function mapGoogleSpecificCategory(

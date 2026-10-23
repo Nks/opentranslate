@@ -43,6 +43,7 @@ import {
   type HistoryHandlers,
 } from '@electron/services/history/handlers'
 import { safeHandler as rawSafeHandler } from '@electron/services/ipc/safe-handler'
+import { registerDocumentChannels } from '@electron/main/document-ipc'
 import type { QuickTranslateController } from '@electron/main/quick-translate-controller'
 import type { AppSettingsApplier } from '@electron/main/app-settings-applier'
 
@@ -131,7 +132,7 @@ export function registerIpcHandlers(deps: IpcSetupDeps): IpcSetupResult {
   ))
 
   registerHistoryChannels(userDataDir, store)
-  registerDocumentChannels(orchestrator)
+  registerDocumentChannels(() => orchestrator.getAdapter())
 
   return { store }
 }
@@ -265,64 +266,5 @@ function registerHistoryChannels(userDataDir: string, store: SettingsStore): voi
   ipcMain.handle(channels['history:toggle'], safeHandler(
     (_event: unknown, input: unknown) =>
       requireHistoryHandlers()['history:toggle'](input as { enabled: boolean }),
-  ))
-}
-
-function registerDocumentChannels(
-  orchestrator: ReturnType<typeof createTranslationOrchestrator>,
-): void {
-  const safeHandler = <TArgs extends unknown[], TResult>(
-    fn: (...args: TArgs) => TResult | Promise<TResult>,
-  ): (...args: TArgs) => Promise<TResult> => rawSafeHandler(fn, false)
-
-  ipcMain.handle(channels['document:status'], safeHandler(
-    async (): Promise<{
-      supported: boolean
-      message: string
-    }> => {
-      const adapter = orchestrator.getAdapter()
-
-      if (!adapter) {
-        return {
-          supported: false,
-          message: 'No provider selected',
-        }
-      }
-
-      const supported: boolean = await adapter.supportsDocumentTranslation()
-
-      return {
-        supported,
-        message: supported
-          ? 'Document translation available'
-          : 'Document translation not supported by this provider',
-      }
-    },
-  ))
-  ipcMain.handle(channels['document:pick'], safeHandler(async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ['openFile'],
-      filters: [
-        {
-          name: 'Documents',
-          extensions: ['pdf', 'docx', 'pptx', 'xlsx', 'txt', 'html'],
-        },
-        {
-          name: 'All Files',
-          extensions: ['*'],
-        },
-      ],
-    })
-
-    if (result.canceled || result.filePaths.length === 0) {
-      return null
-    }
-
-    return { filePath: result.filePaths[0] }
-  }))
-  ipcMain.handle(channels['document:translate'], safeHandler(
-    async (_event: unknown, _input: unknown): Promise<never> => {
-      throw new Error('Document translation not yet implemented')
-    },
   ))
 }

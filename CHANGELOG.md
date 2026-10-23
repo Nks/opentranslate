@@ -11,6 +11,68 @@ SmartScreen first-open steps.
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **LibreTranslate document translation.** On deployments that enable file
+  translation, the Documents page lists the server's supported formats
+  (`.txt`, `.docx`, `.pdf`, … as reported by `/frontend/settings`), uploads
+  the picked file and saves the result unmodified next to it as
+  `<name>.<target>.translated<ext>`. Files the deployment does not support
+  are rejected before upload with a message listing the supported formats.
+  Files are capped at 50 MiB up and 100 MiB down; the picker filters by the
+  server's formats.
+- **Rebuilt Documents page.** It now has the provider selector and the
+  source (with Auto Detect) and target language selectors from the main
+  window, a capability panel listing the server's formats, real
+  drag-and-drop anywhere on the page next to the **Choose file** button, a
+  progress state while translating, **Show in folder** and **Copy path** for
+  the result, and an error panel with the error category and copyable
+  details. Switching provider re-checks document support.
+
+### Fixed
+
+- **Documents page failed with "Document translation not yet implemented".**
+  The capability check reported LibreTranslate documents as available while
+  the translate action was a stub; the action is now wired end to end.
+- **Errors from the main process showed the generic "Something went wrong"
+  text.** The preload `[channel]` prefix stopped the error formatter from
+  reading the error category; the Documents page and the translator now
+  show the categorized message (for example "This file type is not
+  supported for translation. Supported formats: …").
+
+### Changed
+
+- **Provider requests no longer follow HTTP redirects.** A redirecting
+  endpoint (for example `http://` → `https://`) now fails with "endpoint
+  answered with a redirect"; enter the final URL in Settings. This keeps the
+  LibreTranslate API key from being re-sent to another host on a 307/308.
+- An unreachable endpoint, TLS or authentication problem on the Documents
+  page now shows that error instead of "not supported".
+
+### Security
+
+- The translated file is downloaded only from the configured LibreTranslate
+  `http(s)` origin, without the API key.
+- Provider responses are size-limited: JSON 1 MiB, error bodies 64 KiB,
+  downloads 100 MiB; server error text is shortened to 200 characters.
+- Translated files carry Mark-of-the-Web (Windows `Zone.Identifier`), so
+  Office/Explorer treat them as downloaded. On macOS the app is now
+  quarantine-enabled: every file it creates (translated documents and its
+  own settings/history files) gets `com.apple.quarantine`.
+- A selected document is opened once and checked and read through the same
+  handle; it can only be translated with the provider that was active when
+  it was picked or dropped.
+- Only the file picked in the native dialog or dropped on the page can be
+  translated (the dropped file's path is resolved in preload, never sent by
+  the page); network (UNC) paths, non-regular files and oversized files are
+  refused, and the result is written atomically without following a
+  symlink at the output path. **Show in folder** reveals only the file the
+  app just wrote.
+
+---
+
 ## [0.1.1] — 2026-10-23
 
 ### Fixed

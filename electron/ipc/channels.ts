@@ -24,6 +24,21 @@ import type {
 import type {
   SourceLanguageSelection,
 } from '@shared/types/translation'
+import type {
+  DocumentDropRequestShape,
+  DocumentPickResponseShape,
+  DocumentStatusResponseShape,
+  DocumentTranslateRequestShape,
+  DocumentTranslateResponseShape,
+} from '@electron/ipc/document-shapes'
+
+export type {
+  DocumentDropRequestShape,
+  DocumentPickResponseShape,
+  DocumentStatusResponseShape,
+  DocumentTranslateRequestShape,
+  DocumentTranslateResponseShape,
+}
 
 /**
  * IPC channel registry — single source of truth for main ↔ renderer messaging.
@@ -59,8 +74,10 @@ export const channels = {
   'history:clear': 'history:clear',
   'history:toggle': 'history:toggle',
   'document:pick': 'document:pick',
+  'document:drop': 'document:drop',
   'document:translate': 'document:translate',
   'document:status': 'document:status',
+  'document:reveal': 'document:reveal',
 } as const
 
 export type ChannelName = keyof typeof channels
@@ -242,6 +259,10 @@ export interface ChannelContract {
     request: void
     response: DocumentPickResponseShape | null
   }
+  'document:drop': {
+    request: DocumentDropRequestShape
+    response: DocumentPickResponseShape
+  }
   'document:translate': {
     request: DocumentTranslateRequestShape
     response: DocumentTranslateResponseShape | null
@@ -250,27 +271,10 @@ export interface ChannelContract {
     request: void
     response: DocumentStatusResponseShape
   }
-}
-
-export interface DocumentPickResponseShape {
-  filePath: string
-}
-
-export interface DocumentTranslateRequestShape {
-  filePath: string
-  sourceLanguage: SourceLanguageSelection
-  targetLanguage: string
-}
-
-export interface DocumentTranslateResponseShape {
-  outputPath: string
-  provider: string
-}
-
-export interface DocumentStatusResponseShape {
-  supported: boolean
-  formats?: string[]
-  message?: string
+  'document:reveal': {
+    request: void
+    response: void
+  }
 }
 
 export interface HistoryAddRequestShape {

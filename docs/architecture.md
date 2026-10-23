@@ -217,7 +217,7 @@ Later phases extend this registry:
 | 5 | `translation:translate`, `translation:cancel`, `translation:detect` |
 | 7 | `history:add`, `history:list`, `history:search`, `history:delete`, `history:clear`, `history:toggle` |
 | 8 | `quick-translate:open`, `quick-translate:close`, `quick-translate:translate` (overlay window) |
-| 9 | `document:pick`, `document:translate`, `document:save` |
+| 9 | `document:pick`, `document:drop`, `document:translate`, `document:status`, `document:reveal` |
 
 ---
 
@@ -427,7 +427,10 @@ Three mapping seams — still one per provider plus the shared error mapper:
      `targets` drives `supportsSource` / `supportsTarget`)
    - `/detect` response `[{language, confidence}]` → `LanguageDetectionResult`
    - `/translate` response `{translatedText}` → `TranslationOutput`
-   - `/translate_file` response `{translatedFileUrl}` (capability-gated)
+   - `/frontend/settings` `supportedFilesFormat` → normalized `.ext` list
+     (`mapLibreFileFormats`)
+   - `/translate_file` response `{translatedFileUrl}` → download URL
+     (`mapLibreFileTranslation`, capability-gated; see §8.7.3)
    - HTTP status + body `error` string → `ErrorCategory` via
      `mapLibreTranslateError(err)` which throws `AppError`.
 
@@ -471,8 +474,8 @@ configuration alone:
   endpoint responds 200 to a dry probe.
 - **LibreTranslate:** text + detect + list-languages are available iff
   `/languages` returns 200. Document translation (`documentTranslation:
-  true`) only when `/frontend/settings` or a HEAD probe of `/translate_file`
-  indicates support — many public and self-hosted deployments disable it.
+  true`) only when `/frontend/settings` lists at least one
+  `supportedFilesFormat` — many public and self-hosted deployments disable it.
 
 The Settings UI renders gated features only when
 `isFeatureAvailable(feature, readiness, appEnabled)` returns true, where
@@ -781,7 +784,8 @@ Compact card showing:
 ## 8.7 Document Translation (Phase 9)
 
 The `document-translation` bounded context owns the capability-gated
-file-in/file-out pipeline. All file I/O runs in the main process.
+file-in/file-out pipeline. All file I/O runs in the main process
+(`electron/services/documents/`); adapters only see a file name and bytes.
 
 ### 8.7.1 Capability gating
 
@@ -790,29 +794,134 @@ Document translation is enabled **only** when
 The Documents page always renders but translation actions are disabled with
 a clear message when the active provider does not support documents.
 
-- **Google:** requires `edition === 'advanced'` + `location` set. V3
-  document endpoint deferred — for Phase 9 the gate reports correctly but
-  the actual HTTP call is a stub that throws "not yet implemented".
-- **LibreTranslate:** `/frontend/settings` probe at runtime.
+- **Google:** reports unsupported (`supportsDocumentTranslation()` is
+  `false`); the v3 Advanced document endpoint is deferred and the adapter
+  has no `translateDocument`.
+- **LibreTranslate:** `GET /frontend/settings` at runtime. Supported only
+  when `filesTranslation` is not `false` and `supportedFilesFormat` lists
+  at least one extension. Formats are normalized to lowercase `.ext`
+  (`shared/documents/formats.ts`) and differ per deployment, so no format
+  (PDF included) is ever assumed.
+
+The shared contract carries two optional methods, implemented together:
+`getSupportedDocumentFormats(): Promise<string[]>` and
+`translateDocument({ fileName, content, sourceLanguage, targetLanguage })`
+→ `{ content, provider }` (`content` is `DocumentBytes`, a non-shared
+`Uint8Array`).
 
 ### 8.7.2 File handling
 
-1. User picks a file via native dialog (`dialog.showOpenDialog`) or
-   drag-and-drop (renderer sends the path via IPC).
-2. Main process validates file extension against provider-supported formats.
-3. Main process calls `adapter.translateDocument({ sourcePath, ... })`.
-4. Translated file saved as `<name>.<target-lang>.translated<ext>`
-   (e.g., `report.es.translated.pdf`).
-5. Provider-returned bytes are saved without modification.
+1. The user selects one file, either way:
+   - `document:pick` opens `dialog.showOpenDialog` filtered by the
+     provider's formats (plus *All Files*);
+   - a drop anywhere on the Documents page hands the `File` to preload
+     `documents.selectDroppedFile(file)`, which resolves its path with
+     `webUtils.getPathForFile` and sends `document:drop`. The renderer
+     never sends a raw path; a `File` without a disk path (dragged text,
+     browser item) resolves to `''` and is refused.
+   Main runs the step 3 checks (`service.inspect`) on either selection and
+   only then records it as the single allowlisted path, bound to the
+   provider adapter captured before the check (a switch during the check
+   refuses the selection); it returns the `fileName` and
+   `extension` it resolved, which the renderer displays and gates on. A
+   rejected file leaves the previous selection in place. A provider switch
+   creates a new adapter, so the selection no longer matches and the file
+   must be selected again (the page clears it too).
+2. `document:translate` validates the payload with
+   `documentTranslateRequestSchema` (strict object; language codes match
+   `^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8}){0,3}$`, so they are safe inside the
+   output filename) and refuses any `filePath` other than the last selected
+   one. LibreTranslate accepts `source=auto` for files, so Auto Detect stays
+   available on the Documents page.
+3. The service first fetches the provider formats, then `source-file.ts`
+   (at selection and again at translate) rejects network (UNC / `//host`)
+   paths before any fs call, requires an absolute path, resolves it with
+   `realpath` and opens it **once** (`O_RDONLY | O_NOFOLLOW | O_NONBLOCK`
+   where defined; plain read-only on Windows). The handle's `stat()`
+   dev + inode must equal an `lstat()` of the real path, which must not be a
+   symlink (this also covers Windows, where `O_NOFOLLOW` does not exist).
+   `isFile` and the size limit (`MAX_DOCUMENT_UPLOAD_BYTES`, 50 MiB) come
+   from that same handle, so a FIFO, device or symlink swapped in after the
+   check is never read. The extension must be in the provider formats;
+   otherwise `unsupported_document_type` lists the supported formats. Only
+   the raw path string is screened for UNC / `//host`: mapped drives and
+   symlinks the user picks are accepted, because the path comes only from
+   the user's pick or drop.
+4. The service reads at most 50 MiB + 1 byte from that same handle and
+   calls `adapter.translateDocument`.
+5. The returned bytes are saved unmodified as
+   `<name>.<target-lang>.translated<ext>` next to the real path
+   (e.g. `report.es.translated.pdf`): written to a `wx`-created
+   `*.partial` file, then `rename`d over the target, so a symlink at the
+   output path is replaced, never written through, and a failed write
+   leaves no partial file. The output carries Mark-of-the-Web: on Windows a
+   `:Zone.Identifier` stream (`ZoneId=3`) is written on the partial file
+   before the rename (skipped with a log line on volumes without streams);
+   on macOS `LSFileQuarantineEnabled` in the app's `Info.plist` makes the
+   system add `com.apple.quarantine` to every file the app creates
+   (translated documents, and also its own `userData` files, where the flag
+   is harmless).
+6. Every failure reaches the renderer as an `AppError` category; anything
+   unexpected becomes `internal_app_error`.
+7. `document:reveal` takes no payload: main calls `shell.showItemInFolder`
+   on the last `outputPath` it wrote itself.
 
-### 8.7.3 Phase 9 IPC channels
+### 8.7.3 LibreTranslate transport
 
-- `document:pick` — request: `void`, response: `{ filePath: string } | null`
-  (native open dialog in main)
+- `POST /translate_file` — multipart `file`, `source` (`auto` or code),
+  `target`, plus `api_key` when the vault holds one.
+- Every kernel request uses `redirect: 'manual'`; a 3xx becomes
+  `endpoint_unreachable` ("redirects are not followed"), so no request body
+  with `api_key` is ever re-sent to another host.
+- The response's `translatedFileUrl` is fetched through the HTTP kernel's
+  `download()` only when its origin equals the configured endpoint's
+  origin (scheme, host and port). Otherwise → `invalid_provider_response`
+  without any request. The download sends no `api_key` and no auth header,
+  and its body is capped at `MAX_DOCUMENT_DOWNLOAD_BYTES` (100 MiB) by
+  `Content-Length` and by a streaming byte counter. The URL must be
+  `http(s)` with the endpoint's own protocol (`blob:` and similar are
+  refused).
+- Every other response body is bounded too (`response-body.ts`): JSON
+  success bodies at 1 MiB, error bodies at 64 KiB (larger ones are dropped
+  before parsing), and provider error text is truncated to 200 characters
+  in error messages.
+- Upload and download use the same kernel `fetch`, so `allowSelfSignedTls`
+  applies through the one shared `undici.Agent`. Both use
+  `max(requestTimeoutMs, DOCUMENT_REQUEST_TIMEOUT_MS)` (5 min).
+- HTTP errors go through `throwLibreHttpError`; `400 … file format not
+  supported` and `403 Files translation are disabled …` map to
+  `unsupported_document_type`.
+- `document:status` asks the adapter for its formats directly, so an
+  unreachable endpoint, TLS or auth failure reaches the page as that
+  category instead of "not supported". The `/frontend/settings` probe is
+  used only for `getCapabilities()`.
+
+### 8.7.4 IPC channels
+
+- `document:pick` — request: `void`, response:
+  `{ filePath, fileName, extension } | null` (native open dialog in main)
+- `document:drop` — request: `{ filePath }` sent only by the preload
+  `selectDroppedFile(file)` bridge, response: `{ filePath, fileName, extension }`
 - `document:translate` — request: `{ filePath, sourceLanguage, targetLanguage }`,
-  response: `{ outputPath: string } | null`
+  response: `{ outputPath: string, provider: string }`
 - `document:status` — request: `void`, response:
   `{ supported: boolean, formats?: string[], message?: string }`
+  (`formats` lists the provider's normalized extensions)
+- `document:reveal` — request: `void`, response: `void` (reveals the last
+  translated file main produced)
+
+### 8.7.5 Documents page
+
+`app/pages/documents.vue` orchestrates; `useDocumentTranslation` coordinates
+IPC and state; components render: `DocumentsHeader` (reuses
+`ProviderSelector` and `LanguageSelector` with the shared providers-store
+catalog), `DocumentCapability` (status + format badges), `DocumentDropZone`
+(highlight + *Choose file*), `DocumentTranslateAction` (button, progress,
+blocked reason), `DocumentResult` (*Show in folder*, *Copy path*) and
+`DocumentErrorPanel` (category, message, details). The whole page is the
+drop target (`useDropZone`, default prevented), so a stray drop never
+navigates the window. A provider switch re-runs `document:status`; the
+shared `switchProvider` reconciles invalid language picks.
 
 ---
 

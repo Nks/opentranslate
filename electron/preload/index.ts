@@ -1,5 +1,5 @@
 import {
-  contextBridge, ipcRenderer,
+  contextBridge, ipcRenderer, webUtils,
 } from 'electron'
 import {
   channels,
@@ -127,6 +127,16 @@ const api = {
       invoke('document:translate', input),
     status: (): Promise<DocumentStatusResponseShape> =>
       invoke('document:status'),
+    selectDroppedFile: async (file: File): Promise<DocumentPickResponseShape | null> => {
+      const filePath: string = webUtils.getPathForFile(file)
+
+      if (filePath.length === 0) {
+        return null
+      }
+
+      return invoke('document:drop', { filePath })
+    },
+    reveal: (): Promise<void> => invoke('document:reveal'),
   },
   quickTranslate: {
     openFull: (): Promise<void> =>

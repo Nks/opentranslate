@@ -1,6 +1,7 @@
 import {
   describe, expect, it,
 } from 'vitest'
+import { fakeJsonResponse } from '@tests/unit/electron/support/fake-response'
 import {
   createGoogleAdapter,
 } from '@electron/providers/google/adapter'
@@ -64,13 +65,7 @@ function makeFakeFetch(
       status, body,
     } = handler(call)
 
-    return {
-      ok: status >= 200 && status < 300,
-      status,
-      statusText: `test ${status}`,
-      json: async () => body,
-      text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
-    } as unknown as Response
+    return fakeJsonResponse(status, body)
   }
 
   return {

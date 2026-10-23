@@ -2,6 +2,8 @@ import {
   createLibreHttpClient, type FetchLike,
 } from '@electron/providers/libretranslate/http-client'
 import type {
+  DocumentTranslationInput,
+  DocumentTranslationOutput,
   TranslationProvider,
 } from '@shared/providers/contract'
 import type {
@@ -56,6 +58,15 @@ export function createLibreTranslateAdapter(deps: LibreAdapterDeps): Translation
     return client.probeDocumentSupport()
   }
 
+  async function translateDocument(
+    document: DocumentTranslationInput,
+  ): Promise<DocumentTranslationOutput> {
+    return {
+      content: await client.translateFile(document),
+      provider: PROVIDER_ID,
+    }
+  }
+
   async function getCapabilities(): Promise<ProviderCapabilities> {
     const docs = await client.probeDocumentSupport()
 
@@ -74,6 +85,8 @@ export function createLibreTranslateAdapter(deps: LibreAdapterDeps): Translation
     detectLanguage: (text) => client.detect(text),
     translateText: (input) => client.translate(input),
     supportsDocumentTranslation,
+    getSupportedDocumentFormats: () => client.fetchDocumentFormats(),
+    translateDocument,
     getCapabilities,
   }
 }

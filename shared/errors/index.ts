@@ -5,5 +5,5 @@ export {
   AppError, toErrorCategory,
 } from './mapper'
 export {
-  mapHttpStatusToCategory,
+  mapHttpStatusToCategory, truncateProviderDetail,
 } from './http-mapper'

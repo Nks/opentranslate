@@ -33,6 +33,8 @@ mac:
     - target: dmg
   category: public.app-category.productivity
   identity: '-'
+  extendInfo:
+    LSFileQuarantineEnabled: true
   hardenedRuntime: false
   gatekeeperAssess: false
   notarize: false

@@ -18,7 +18,7 @@ _Created: 2026-04-16. Last priority audit: 2026-04-28._
 |---|---|
 | **P0** | B-010 |
 | **P1** | B-017, B-040, B-043, B-047, B-049, B-051 |
-| **P2** | B-002, B-009, B-011, B-012, B-013, B-018, B-019, B-021, B-022, B-032, B-039, B-041, B-044 |
+| **P2** | B-002, B-009, B-011, B-012, B-013, B-018, B-019, B-021, B-032, B-039, B-041, B-044, B-067 |
 | **P3** | B-005, B-014, B-020, B-023, B-024, B-025, B-029, B-030, B-031, B-036, B-045, B-046, B-048, B-050 |
 | **DEFERRED** | B-035 |
 
@@ -137,12 +137,37 @@ Required behaviour:
 ## Documents
 
 ### B-022: Source and target language selectors on Documents page
-**Priority:** P2
+**Priority:** P2 — closed in `feature/libretranslate-documents` (provider
+selector, source with Auto Detect and target selectors from the shared
+catalog, drag-and-drop, Show in folder).
 
 The Documents page must have source language and target language
 selectors (same as the main translate page). User should be able to
 pick source language (or Auto Detect) and target language before
 uploading a document for translation.
+
+### B-067: Cancel an in-flight document translation
+**Priority:** P2
+
+`document:translate` runs up to `max(requestTimeoutMs, 5 min)` per
+request with no way to stop it (threat model T-D-06). Add a
+`document:cancel` channel wired to an `AbortController` in the document
+service, pass the signal to the LibreTranslate upload and download, and a
+Cancel button on the Documents page.
+
+### B-068: Drag-and-drop on the Documents page
+**Priority:** P3 — closed in `feature/libretranslate-documents`.
+
+The whole Documents page is a drop target. Preload
+`documents.selectDroppedFile(file)` resolves the path with
+`webUtils.getPathForFile(file)` (in-memory Files resolve to `''` and are
+refused) and sends `document:drop`; main validates the file like a pick
+before allowlisting it. The renderer never sends a path.
+
+### B-069: E2E coverage for the Documents flow
+**Priority:** P3 — closed in `feature/libretranslate-documents`
+(`tests/e2e/packaged-documents.e2e.ts`: capability gating, unsupported
+format, translate, Show in folder against the LibreTranslate emulator).
 
 ---
 

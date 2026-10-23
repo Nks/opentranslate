@@ -1,17 +1,18 @@
 import {
-  _electron as electron, test, expect,
-  type ElectronApplication,
+  test, expect,
   type Page,
 } from '@playwright/test'
 import {
-  existsSync, mkdtempSync, realpathSync, rmSync,
+  existsSync, realpathSync,
 } from 'node:fs'
-import {
-  tmpdir,
-} from 'node:os'
 import {
   join,
 } from 'node:path'
+import {
+  packagedAppPath,
+  withPackagedApp,
+  type PackagedSession,
+} from './support/packaged-session'
 
 interface HistoryEntryShape {
   id: string
@@ -43,51 +44,7 @@ interface PackagedRuntime {
   userData: string
 }
 
-interface PackagedSession {
-  app: ElectronApplication
-  userDataDir: string
-}
-
-const packagedAppPath: string = process.env.OPENTRANSLATE_PACKAGED_APP ?? ''
-const OS_KEYRING_ISOLATION_ARGS: readonly string[] = ['--use-mock-keychain', '--password-store=basic']
-
-if (packagedAppPath === '' && process.env.CI) {
-  throw new Error('OPENTRANSLATE_PACKAGED_APP must point at the packaged executable when CI is set')
-}
-
 test.skip(packagedAppPath === '', 'Set OPENTRANSLATE_PACKAGED_APP to a packaged executable to run this smoke test')
-
-function removeUserDataDir(userDataDir: string): void {
-  rmSync(userDataDir, {
-    recursive: true,
-    force: true,
-    maxRetries: 5,
-    retryDelay: 200,
-  })
-}
-
-async function withPackagedApp(run: (session: PackagedSession) => Promise<void>): Promise<void> {
-  const userDataDir: string = realpathSync(mkdtempSync(join(tmpdir(), 'opentranslate-packaged-')))
-  let app: ElectronApplication | null = null
-
-  try {
-    app = await electron.launch({
-      executablePath: packagedAppPath,
-      args: [`--user-data-dir=${userDataDir}`, ...OS_KEYRING_ISOLATION_ARGS],
-      timeout: 60_000,
-    })
-    await run({
-      app,
-      userDataDir,
-    })
-  } finally {
-    try {
-      await app?.close()
-    } finally {
-      removeUserDataDir(userDataDir)
-    }
-  }
-}
 
 test('packaged app runs isolated, renders the SPA and round-trips history via better-sqlite3', async () => {
   await withPackagedApp(async ({

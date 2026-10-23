@@ -1,5 +1,5 @@
 import {
-  Agent,
+  Agent, FormData,
 } from 'undici'
 import {
   createProviderHttp,
@@ -8,13 +8,24 @@ import {
 } from '@electron/services/http/provider-http'
 import {
   mapLibreDetection,
+  mapLibreFileFormats,
+  mapLibreFileTranslation,
   mapLibreLanguages,
   mapLibreTranslation,
   throwLibreHttpError,
+  toLibreSourceCode,
   type LibreNativeDetection,
   type LibreNativeLanguage,
   type LibreNativeTranslation,
 } from '@electron/providers/libretranslate/mapper'
+import {
+  DOCUMENT_REQUEST_TIMEOUT_MS,
+  MAX_DOCUMENT_DOWNLOAD_BYTES,
+} from '@shared/documents/limits'
+import type {
+  DocumentBytes,
+  DocumentTranslationInput,
+} from '@shared/providers/contract'
 import type {
   LibreTranslateProviderSettings,
 } from '@shared/types/provider-settings'
@@ -43,6 +54,12 @@ export interface LibreHttpClient {
   detect: (text: string) => Promise<LanguageDetectionResult>
   translate: (input: TranslationInput) => Promise<TranslationOutput>
   probeDocumentSupport: () => Promise<boolean>
+  fetchDocumentFormats: () => Promise<string[]>
+  translateFile: (input: DocumentTranslationInput) => Promise<DocumentBytes>
+}
+
+interface FormFieldSink {
+  set(name: string, value: string): void
 }
 
 // Used only when the user opts into `allowSelfSignedTls` for a self-hosted LibreTranslate.
@@ -77,7 +94,12 @@ export function createLibreHttpClient(input: LibreHttpClientInput): LibreHttpCli
       : {}),
   })
 
-  async function withApiKey(params: URLSearchParams): Promise<URLSearchParams> {
+  const documentTimeoutMs: number = Math.max(
+    input.settings.requestTimeoutMs,
+    DOCUMENT_REQUEST_TIMEOUT_MS,
+  )
+
+  async function withApiKey<TFields extends FormFieldSink>(params: TFields): Promise<TFields> {
     const apiKey = await input.getSecret('apiKey')
 
     if (apiKey !== null && apiKey.length > 0) {
@@ -112,7 +134,7 @@ export function createLibreHttpClient(input: LibreHttpClientInput): LibreHttpCli
   async function translate(reqInput: TranslationInput): Promise<TranslationOutput> {
     const params = new URLSearchParams({
       q: reqInput.text,
-      source: reqInput.source.mode === 'auto' ? 'auto' : reqInput.source.code,
+      source: toLibreSourceCode(reqInput.source),
       target: reqInput.targetLanguage,
       format: reqInput.format ?? 'text',
     })
@@ -126,20 +148,44 @@ export function createLibreHttpClient(input: LibreHttpClientInput): LibreHttpCli
     return mapLibreTranslation(native)
   }
 
+  async function fetchDocumentFormats(): Promise<string[]> {
+    const native: unknown = await http.executeOrNull<unknown>({
+      path: '/frontend/settings',
+      method: 'GET',
+    })
+
+    return native === null ? [] : mapLibreFileFormats(native)
+  }
+
   async function probeDocumentSupport(): Promise<boolean> {
     try {
-      const settings = await http.execute<{
-        supportedFilesFormat?: readonly string[]
-      }>({
-        path: '/frontend/settings',
-        method: 'GET',
-      })
+      const formats: string[] = await fetchDocumentFormats()
 
-      return Array.isArray(settings.supportedFilesFormat) &&
-        settings.supportedFilesFormat.length > 0
+      return formats.length > 0
     } catch {
       return false
     }
+  }
+
+  async function translateFile(document: DocumentTranslationInput): Promise<DocumentBytes> {
+    const form: FormData = new FormData()
+    form.set('file', new Blob([document.content]), document.fileName)
+    form.set('source', toLibreSourceCode(document.sourceLanguage))
+    form.set('target', document.targetLanguage)
+    await withApiKey(form)
+
+    const native: unknown = await http.execute<unknown>({
+      path: '/translate_file',
+      method: 'POST',
+      body: form,
+      timeoutMs: documentTimeoutMs,
+    })
+
+    return http.download({
+      url: mapLibreFileTranslation(native),
+      maxBytes: MAX_DOCUMENT_DOWNLOAD_BYTES,
+      timeoutMs: documentTimeoutMs,
+    })
   }
 
   return {
@@ -147,5 +193,7 @@ export function createLibreHttpClient(input: LibreHttpClientInput): LibreHttpCli
     detect,
     translate,
     probeDocumentSupport,
+    fetchDocumentFormats,
+    translateFile,
   }
 }

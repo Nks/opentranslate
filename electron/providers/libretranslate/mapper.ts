@@ -2,13 +2,17 @@ import {
   normalizeLanguage,
 } from '@shared/providers/normalize-language'
 import {
-  AppError, ErrorCategory, mapHttpStatusToCategory,
+  normalizeDocumentFormats,
+} from '@shared/documents/formats'
+import {
+  AppError, ErrorCategory, mapHttpStatusToCategory, truncateProviderDetail, type ErrorCategoryId,
 } from '@shared/errors'
 import type {
   Language,
 } from '@shared/types/language'
 import type {
   LanguageDetectionResult,
+  SourceLanguageSelection,
   TranslationOutput,
 } from '@shared/types/translation'
 import type {
@@ -34,7 +38,18 @@ export interface LibreNativeTranslation {
   }
 }
 
+interface LibreNativeFrontendSettings {
+  filesTranslation?: unknown
+  supportedFilesFormat?: unknown
+}
+
 const PROVIDER: ProviderId = 'libretranslate'
+const DOCUMENT_REJECTION_STATUSES: ReadonlySet<number> = new Set([400, 403])
+const DOCUMENT_REJECTION_RE: RegExp = /file format not supported|files translation are disabled/i
+
+export function toLibreSourceCode(selection: SourceLanguageSelection): string {
+  return selection.mode === 'auto' ? 'auto' : selection.code
+}
 
 export function mapLibreLanguages(native: readonly LibreNativeLanguage[]): Language[] {
   if (!Array.isArray(native)) {
@@ -103,11 +118,54 @@ export function mapLibreTranslation(native: LibreNativeTranslation): Translation
   return output
 }
 
-export function throwLibreHttpError(status: number, body: unknown): never {
-  const category = mapHttpStatusToCategory(status)
-  const detail = extractErrorDetail(body)
+export function mapLibreFileFormats(native: unknown): string[] {
+  if (native === null || typeof native !== 'object') {
+    throw new AppError(
+      ErrorCategory.InvalidProviderResponse,
+      'libretranslate: /frontend/settings response must be an object',
+    )
+  }
 
-  throw new AppError(category, `libretranslate: http ${status} — ${detail}`)
+  const settings: LibreNativeFrontendSettings = native as LibreNativeFrontendSettings
+
+  if (settings.filesTranslation === false || !Array.isArray(settings.supportedFilesFormat)) {
+    return []
+  }
+
+  return normalizeDocumentFormats(settings.supportedFilesFormat)
+}
+
+export function mapLibreFileTranslation(native: unknown): string {
+  const url: unknown = native !== null && typeof native === 'object'
+    ? (native as { translatedFileUrl?: unknown }).translatedFileUrl
+    : undefined
+
+  if (typeof url !== 'string' || url.length === 0) {
+    throw new AppError(
+      ErrorCategory.InvalidProviderResponse,
+      'libretranslate: /translate_file response missing translatedFileUrl',
+    )
+  }
+
+  return url
+}
+
+export function throwLibreHttpError(status: number, body: unknown): never {
+  const detail: string = extractErrorDetail(body)
+
+  throw new AppError(
+    resolveLibreCategory(status, detail),
+    `libretranslate: http ${status} — ${truncateProviderDetail(detail)}`,
+  )
+}
+
+function resolveLibreCategory(status: number, detail: string): ErrorCategoryId {
+  const isDocumentRejection: boolean = DOCUMENT_REJECTION_STATUSES.has(status) &&
+    DOCUMENT_REJECTION_RE.test(detail)
+
+  return isDocumentRejection
+    ? ErrorCategory.UnsupportedDocumentType
+    : mapHttpStatusToCategory(status)
 }
 
 function extractErrorDetail(body: unknown): string {

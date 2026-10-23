@@ -29,7 +29,7 @@ Providers: **Google Cloud Translation**, **LibreTranslate**. No third provider u
 ```
 electron/   main/ preload/ providers/ services/ ipc/channels.ts (IPC source of truth)
 shared/     types/ errors/ schemas/ providers/ translation/ shortcuts/ capability-gate.ts index.ts
-app/        pages/ components/ composables/ stores/ assets/css/    (Nuxt SPA, srcDir: app/)
+app/        pages/ components/ composables/ stores/ types/ assets/css/    (Nuxt SPA, srcDir: app/)
 tests/      unit/ integration/ e2e/ setup/
 scripts/    dev.mjs build-electron.mjs package.mjs
 docs/       opentranslate-desktop-spec.md (SoT #2)  opentranslate-desktop-prd.md (SoT #3)
@@ -51,7 +51,7 @@ electron-builder.yml  nuxt.config.ts  package.json
 | `translation:translate/cancel/detect`         | renderer → main | text + detection flows                         |
 | `language:list`                               | renderer → main | provider-discovered language catalog           |
 | `history:add/list/search/delete/clear/toggle` | renderer → main | local sqlite history                           |
-| `document:pick/translate/status`              | renderer → main | document workflow (capability-gated)           |
+| `document:pick/drop/translate/status/reveal`  | renderer → main | document workflow (capability-gated)           |
 
 Renderer calls providers only through channels. No fetch to translation APIs from Vue. Renderer imports from `electron/*` only via `import type` of IPC contract shapes.
 

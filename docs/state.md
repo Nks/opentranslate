@@ -1,17 +1,19 @@
 # Project State — OpenTranslate Desktop
 
-_Last updated: 2026-10-23 (v0.1.1 release — macOS ad-hoc signing fix on `release/0.1.1`)_
+_Last updated: 2026-10-23 (LibreTranslate document translation on `feature/libretranslate-documents`)_
 
 ---
 
 ## Active context
 
-- **Current phase:** v0.1.1 release. `v0.1.0` was tagged and built as a
+- **Current branch (this iteration):** `feature/libretranslate-documents`
+  (from `develop` at `d5e3206`) → PR into `develop`. See "In flight".
+- **Previous phase:** v0.1.1 release. `v0.1.0` was tagged and built as a
   draft pre-release, but its macOS DMGs are unsealed (Gatekeeper: "damaged");
   the user chose to leave the `v0.1.0` tag and draft untouched and cut
   `v0.1.1` with the ad-hoc signing fix (PR #66). No Developer ID: macOS
   stays ad-hoc signed, not notarized.
-- **Current branch:** `release/0.1.1` (from `develop` at `6c7a0e3`) →
+- **Release branch:** `release/0.1.1` (from `develop` at `6c7a0e3`) →
   PR into `master`, tag `v0.1.1`, draft pre-release, back-merge PR
   `master` → `develop`.
 - **Parent branch:** `develop`
@@ -64,7 +66,9 @@ _Last updated: 2026-10-23 (v0.1.1 release — macOS ad-hoc signing fix on `relea
     combined-arch prebuild dirs; `scripts/tsconfig.json`
     (`erasableSyntaxOnly`, `verbatimModuleSyntax`); packaged smoke fails
     in CI without an app and never leaks its temp profile.
-- **Deferred (see `docs/backlog.md`):** B-056 boundaries lint has no
+- **Deferred (see `docs/backlog.md`):** B-067 cancel document
+  translation; B-G-07 writable-root allowlist (`docs/threat-model.md`);
+  B-056 boundaries lint has no
   import resolver (5 known violations); B-057 navigation / window-open /
   permission guards + Electron fuses; B-058 Electron 45 after its
   cooldown (async `safeStorage` before Electron 46); B-066 drop the
@@ -95,6 +99,19 @@ _Last updated: 2026-10-23 (v0.1.1 release — macOS ad-hoc signing fix on `relea
   Electron 44.9.3, not 45.0.0.
 
 ## Green-state verification
+
+_`feature/libretranslate-documents`, 2026-10-23:_
+
+- `pnpm lint` — clean
+- `pnpm typecheck` — clean
+- `pnpm test` — **1097 passed + 1 Windows-only skip across 115 files**
+  (integration: documents via `registerIpcHandlers` against a local
+  LibreTranslate emulator, split into translation and selection suites over
+  `tests/support/document-ipc-harness.ts`)
+- `pnpm test:e2e` — 1/1 (electron-dev, macOS arm64)
+- `pnpm test:e2e:packaged` — 3/3 on a local mac arm64 `package:dir` build,
+  including `packaged-documents.e2e.ts` (capability gating, unsupported
+  format, translate, Show in folder)
 
 _`feature/multi-arch-builds`, 2026-10-22, after `rm -rf node_modules && pnpm install --frozen-lockfile`:_
 
@@ -127,19 +144,49 @@ _`feature/multi-arch-builds`, 2026-10-22, after `rm -rf node_modules && pnpm ins
 
 ## In flight (this PR)
 
-- **B-010** — History not writing (P0).
-  - `electron/services/history/handlers.ts`: type `history:add` honestly
-    as `async (input) => Promise<HistoryEntry | null>`; drop the
-    `as unknown as HistoryEntry | null` cast.
-  - `electron/main/ipc-setup.ts`: replace silent `?? null` fallback for
-    every history channel with `requireHistoryHandlers()` that throws a
-    clear actionable message when better-sqlite3 init failed (most
-    likely native-ABI mismatch). Renderer's `useHandleError` toasts the
-    error instead of the user seeing empty history.
-  - `tests/unit/electron/history-handlers.test.ts`: 4 specs cover the
-    round-trip with a real settings + history store, the
-    `historyEnabled = false` short-circuit, the Promise-instance
-    assertion, and the fresh-store default-on smoke.
+- **LibreTranslate document translation** (`feature/libretranslate-documents`
+  → `develop`). Fixes the Documents page error "Document translation not yet
+  implemented": the capability reported LibreTranslate documents as
+  available while `document:translate` was a stub.
+  - Contract: optional `getSupportedDocumentFormats()` +
+    `translateDocument({ fileName, content, … }) → { content, provider }`
+    (bytes in, bytes out; the service owns all file I/O).
+  - `electron/services/documents/`: `handlers.ts` (zod payload, pick
+    binding, format-filtered dialog), `service.ts` (status + orchestration,
+    normalizes every failure), `source-file.ts` (no UNC, absolute,
+    `realpath`, regular non-empty file, 50 MiB, extension vs provider
+    formats), `output-file.ts` (`wx` partial + `rename`).
+  - HTTP kernel: multipart bodies, per-request `redirect` / `timeoutMs`,
+    invalid JSON → `invalid_provider_response`, same-origin `download()`
+    with a 100 MiB `Content-Length` + streaming cap (`bounded-body.ts`).
+  - LibreTranslate: `/frontend/settings` formats, `POST /translate_file`,
+    same-origin `translatedFileUrl` download, 400/403 document rejections →
+    `unsupported_document_type`.
+  - Renderer: `useDocumentTranslation` composable; errors go through
+    `formatErrorMessage`, which now strips the preload `[channel]` prefix
+    (all main-process errors previously showed the generic copy).
+  - Documents page rebuilt to spec §10.4 (closes B-022): `DocumentsHeader`
+    (reuses `ProviderSelector` + `LanguageSelector`), `DocumentCapability`,
+    `DocumentDropZone`, `DocumentTranslateAction`, `DocumentResult`,
+    `DocumentErrorPanel`. Page-wide `useDropZone`; preload
+    `documents.selectDroppedFile(file)` resolves the path with
+    `webUtils.getPathForFile` and sends `document:drop`; `document:reveal`
+    shows main's last output via `shell.showItemInFolder`. `wrapApi` passes
+    `File`/`Blob` arguments through. `index.vue` provider loading and
+    language-pair handling moved into `useProviderCatalog` /
+    `useLanguagePair` for reuse. `@tests/*` alias added (tsconfig + vitest)
+    so e2e and integration share `tests/support/libre-emulator.ts`.
+  - Live smoke (LibreTranslate 1.9.6, en↔ru): `.txt`, `.pdf`, `.html`
+    translated and saved; `.bin` rejected with the supported-formats list.
+  - Review/audit fix round: bounded JSON/error bodies + 200-char provider
+    detail, `redirect: 'manual'` kernel default (3xx → error), `http(s)`
+    same-protocol download check, single-open TOCTOU-safe source reads
+    (formats first, `O_NOFOLLOW`/`O_NONBLOCK`), selection bound to the
+    active adapter, Mark-of-the-Web (Windows ADS, mac
+    `LSFileQuarantineEnabled`), format list Set + 64 cap, status errors
+    propagate, `ProviderLanguageControls` shared by `TopBar` /
+    `DocumentsHeader`, `useProviderSession`, `document-shapes.ts`, `@tests/*`
+    import ban for production code.
 
 ## Architecture snapshot
 

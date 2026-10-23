@@ -4,6 +4,7 @@ import {
 } from 'vitest'
 import { mount } from '@vue/test-utils'
 import TopBar from '@app/components/TopBar.vue'
+import ProviderLanguageControls from '@app/components/ProviderLanguageControls.vue'
 import type { ProviderDescriptorDto } from '@shared/providers/descriptor'
 import type { Language } from '@shared/types/language'
 import type { SourceLanguageSelection } from '@shared/types/translation'
@@ -63,7 +64,10 @@ describe('TopBar swap button', () => {
   it('is disabled when the source is auto-detect', () => {
     const wrapper = mount(TopBar, {
       props: makeProps({ mode: 'auto' }),
-      global: { stubs },
+      global: {
+        stubs,
+        components: { ProviderLanguageControls },
+      },
     })
 
     expect(wrapper.find('[data-testid="swap"]').attributes('disabled')).toBeDefined()
@@ -75,7 +79,10 @@ describe('TopBar swap button', () => {
         mode: 'explicit',
         code: 'en',
       }),
-      global: { stubs },
+      global: {
+        stubs,
+        components: { ProviderLanguageControls },
+      },
     })
     const button = wrapper.find('[data-testid="swap"]')
 

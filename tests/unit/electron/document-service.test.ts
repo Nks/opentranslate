@@ -1,13 +1,29 @@
 import {
-  describe, expect, it,
+  afterEach, beforeEach, describe, expect, it, vi, type Mock,
 } from 'vitest'
 import {
-  buildOutputFilename, createDocumentService,
+  mkdtemp, readdir, readFile, realpath, rm, writeFile,
+} from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import {
+  buildOutputFilename,
+  createDocumentService,
+  type DocumentService,
+  type DocumentStatus,
+  type DocumentTranslateResult,
 } from '@electron/services/documents/service'
 import {
   AppError, ErrorCategory,
 } from '@shared/errors'
-import type { TranslationProvider } from '@shared/providers/contract'
+import type {
+  DocumentTranslationInput, DocumentTranslationOutput, TranslationProvider,
+} from '@shared/providers/contract'
+import {
+  PROVIDER_BYTES_OUTPUT,
+  documentAdapter,
+  type TranslateDocumentFn,
+} from './support/document-adapter'
 
 /** Normalize path separators so tests pass on Windows (backslash) and Unix (forward slash). */
 function normalizePath(filePath: string): string {
@@ -33,7 +49,7 @@ describe('buildOutputFilename', () => {
 
 describe('document service', () => {
   it('throws when no adapter is set', async () => {
-    const service = createDocumentService({ getAdapter: () => null })
+    const service: DocumentService = createDocumentService({ getAdapter: () => null })
 
     try {
       await service.translate({
@@ -67,7 +83,7 @@ describe('document service', () => {
       }),
     }
 
-    const service = createDocumentService({ getAdapter: () => adapter })
+    const service: DocumentService = createDocumentService({ getAdapter: () => adapter })
 
     try {
       await service.translate({
@@ -81,9 +97,158 @@ describe('document service', () => {
     }
   })
 
-  it('isSupported returns false when no adapter', async () => {
-    const service = createDocumentService({ getAdapter: () => null })
+  it('status reports unsupported when no adapter', async () => {
+    const service: DocumentService = createDocumentService({ getAdapter: () => null })
 
-    expect(await service.isSupported()).toBe(false)
+    expect((await service.status()).supported).toBe(false)
+  })
+})
+
+describe('document service status', () => {
+  it('reports the provider formats when documents are supported', async () => {
+    const service: DocumentService = createDocumentService({ getAdapter: () => documentAdapter() })
+    const status: DocumentStatus = await service.status()
+
+    expect(status.supported).toBe(true)
+    expect(status.formats).toEqual(['.txt', '.pdf'])
+    expect(status.message).toBe('Document translation available')
+  })
+
+  it('surfaces a formats lookup failure instead of claiming documents are unsupported', async () => {
+    const adapter: TranslationProvider = documentAdapter({
+      formatsError: new AppError(ErrorCategory.EndpointUnreachable, 'libretranslate: network error — ECONNREFUSED'),
+    })
+    const probe: Mock<() => Promise<boolean>> = vi.fn<() => Promise<boolean>>(async () => true)
+    adapter.supportsDocumentTranslation = probe
+    const service: DocumentService = createDocumentService({ getAdapter: () => adapter })
+
+    await expect(service.status())
+      .rejects.toMatchObject({ category: ErrorCategory.EndpointUnreachable })
+    expect(probe).not.toHaveBeenCalled()
+  })
+
+  it('reports unsupported when the provider lists no formats', async () => {
+    const service: DocumentService = createDocumentService({
+      getAdapter: () => documentAdapter({ formats: [] }),
+    })
+
+    expect((await service.status()).supported).toBe(false)
+  })
+})
+
+describe('document service translate', () => {
+  let dir: string
+
+  beforeEach(async () => {
+    dir = await realpath(await mkdtemp(join(tmpdir(), 'ot-doc-svc-')))
+  })
+
+  afterEach(async () => {
+    await rm(dir, {
+      recursive: true,
+      force: true,
+    })
+  })
+
+  it('uploads the validated file and saves the provider bytes next to it', async () => {
+    const sourcePath: string = join(dir, 'report.txt')
+    await writeFile(sourcePath, 'hello')
+    const translateDocument: Mock<TranslateDocumentFn> = vi.fn<TranslateDocumentFn>(
+      async () => PROVIDER_BYTES_OUTPUT,
+    )
+    const adapter: TranslationProvider = documentAdapter({ translateDocument })
+    const service: DocumentService = createDocumentService({ getAdapter: () => adapter })
+
+    const result: DocumentTranslateResult = await service.translate({
+      filePath: sourcePath,
+      sourceLanguage: { mode: 'auto' },
+      targetLanguage: 'ru',
+    })
+
+    const sent: DocumentTranslationInput | undefined = translateDocument.mock.calls[0]?.[0]
+    expect(sent?.fileName).toBe('report.txt')
+    expect(Buffer.from(sent?.content ?? []).toString('utf8')).toBe('hello')
+    expect(sent?.targetLanguage).toBe('ru')
+    expect(result).toEqual({
+      outputPath: join(dir, 'report.ru.translated.txt'),
+      provider: 'libretranslate',
+    })
+    expect(Array.from(await readFile(result.outputPath))).toEqual([0x54, 0x00, 0xff])
+  })
+
+  it('rejects an extension the provider does not list before uploading', async () => {
+    const sourcePath: string = join(dir, 'report.pdf')
+    await writeFile(sourcePath, 'pdf')
+    const translateDocument: Mock<TranslateDocumentFn> = vi.fn<TranslateDocumentFn>()
+    const service: DocumentService = createDocumentService({
+      getAdapter: () => documentAdapter({
+        formats: ['.txt', '.docx'],
+        translateDocument,
+      }),
+    })
+
+    await expect(service.translate({
+      filePath: sourcePath,
+      sourceLanguage: { mode: 'auto' },
+      targetLanguage: 'ru',
+    })).rejects.toMatchObject({
+      category: ErrorCategory.UnsupportedDocumentType,
+      message: expect.stringContaining('Supported formats: .txt, .docx'),
+    })
+    expect(translateDocument).not.toHaveBeenCalled()
+  })
+
+  it('rejects when the provider reports no formats', async () => {
+    const sourcePath: string = join(dir, 'report.txt')
+    await writeFile(sourcePath, 'x')
+    const service: DocumentService = createDocumentService({
+      getAdapter: () => documentAdapter({ formats: [] }),
+    })
+
+    await expect(service.translate({
+      filePath: sourcePath,
+      sourceLanguage: { mode: 'auto' },
+      targetLanguage: 'ru',
+    })).rejects.toMatchObject({ category: ErrorCategory.UnsupportedDocumentType })
+  })
+
+  it('passes normalized provider errors through and writes nothing', async () => {
+    const sourcePath: string = join(dir, 'report.txt')
+    await writeFile(sourcePath, 'x')
+    const service: DocumentService = createDocumentService({
+      getAdapter: () => documentAdapter({
+        translateDocument: async (): Promise<DocumentTranslationOutput> => {
+          throw new AppError(ErrorCategory.RateLimited, 'libretranslate: http 429 — slow down')
+        },
+      }),
+    })
+
+    await expect(service.translate({
+      filePath: sourcePath,
+      sourceLanguage: { mode: 'auto' },
+      targetLanguage: 'ru',
+    })).rejects.toMatchObject({ category: ErrorCategory.RateLimited })
+    expect(await readdir(dir)).toEqual(['report.txt'])
+  })
+
+  it('normalizes an unexpected raw error into InternalAppError', async () => {
+    const sourcePath: string = join(dir, 'report.txt')
+    await writeFile(sourcePath, 'x')
+    const service: DocumentService = createDocumentService({
+      getAdapter: () => documentAdapter({
+        translateDocument: async (): Promise<DocumentTranslationOutput> => {
+          throw new TypeError('boom')
+        },
+      }),
+    })
+
+    const promise: Promise<DocumentTranslateResult> = service.translate({
+      filePath: sourcePath,
+      sourceLanguage: { mode: 'auto' },
+      targetLanguage: 'ru',
+    })
+
+    await expect(promise).rejects.toBeInstanceOf(AppError)
+    await expect(promise).rejects.toMatchObject({ category: ErrorCategory.InternalAppError })
   })
 })

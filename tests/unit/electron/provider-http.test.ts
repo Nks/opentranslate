@@ -1,6 +1,7 @@
 import {
   describe, expect, it,
 } from 'vitest'
+import { fakeJsonResponse } from '@tests/unit/electron/support/fake-response'
 import {
   createProviderHttp,
   composeAbortSignal,
@@ -12,13 +13,7 @@ import {
 } from '@shared/errors'
 
 function fakeResponse(status: number, body: unknown): Response {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    statusText: `test ${status}`,
-    json: async () => body,
-    text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
-  } as unknown as Response
+  return fakeJsonResponse(status, body)
 }
 
 describe('createProviderHttp', () => {
@@ -174,15 +169,10 @@ describe('createProviderHttp', () => {
   })
 
   it('falls back to text body when JSON parsing fails on error response', async () => {
-    const fetchImpl: FetchLike = async () => ({
-      ok: false,
+    const fetchImpl: FetchLike = async () => new Response('Internal Server Error', {
       status: 500,
       statusText: 'Error',
-      json: async () => {
-        throw new Error('not json')
-      },
-      text: async () => 'Internal Server Error',
-    } as unknown as Response)
+    })
     let capturedBody: unknown = null
     const errorMapper = (_status: number, body: unknown): never => {
       capturedBody = body
