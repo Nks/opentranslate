@@ -3,16 +3,13 @@ import {
   computed, onMounted, ref,
 } from 'vue'
 import { useTranslationStore } from '@app/stores/translation'
-import {
-  useProvidersStore, type RendererProviderSettings,
-} from '@app/stores/providers'
+import { useProvidersStore } from '@app/stores/providers'
 import { useTranslation } from '@app/composables/useTranslation'
 import { useProviderBootstrap } from '@app/composables/useProviderBootstrap'
+import { useProviderCatalog } from '@app/composables/useProviderCatalog'
+import { useLanguagePair } from '@app/composables/useLanguagePair'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
-import {
-  applySourceChange, applyTargetChange,
-} from '@shared/translation/language-pair'
 import type { WindowCloseResponsePayload } from '@electron/ipc/channels'
 import ConfirmCloseDialog from '@app/components/ConfirmCloseDialog.vue'
 
@@ -29,32 +26,15 @@ const {
   switchProvider,
   persistSelection,
   restoreSelection,
-  pushTargetHistory,
 } = useTranslation()
 const { ensureActiveProviderHydrated } = useProviderBootstrap()
+const { loadProviderCatalog } = useProviderCatalog()
+const {
+  changeSource, changeTarget,
+} = useLanguagePair()
 const handleError = useHandleError()
 
 const confirmCloseOpen = ref<boolean>(false)
-
-async function loadProvidersAndSettings(): Promise<void> {
-  try {
-    const [descriptors, settings] = await Promise.all([
-      api.providers.list(),
-      api.settings.get(),
-    ])
-    providersStore.descriptors = descriptors as typeof providersStore.descriptors
-
-    const nextProviderSettings: Record<string, RendererProviderSettings> = {}
-
-    for (const [id, slice] of Object.entries(settings.providers)) {
-      nextProviderSettings[id] = (slice ?? {}) as RendererProviderSettings
-    }
-
-    providersStore.providerSettings = nextProviderSettings
-  } catch (err: unknown) {
-    handleError(err)
-  }
-}
 
 function registerQuickTranslateListener(): void {
   const bridge = window as unknown as QuickTranslateBridge
@@ -98,7 +78,7 @@ async function onCloseChoice(payload: WindowCloseResponsePayload): Promise<void>
 }
 
 onMounted(async (): Promise<void> => {
-  await loadProvidersAndSettings()
+  await loadProviderCatalog()
   await restoreSelection()
   ensureActiveProviderHydrated((id: string): void => {
     void switchProvider(id)
@@ -121,33 +101,12 @@ function onSourceInput(value: string): void {
 }
 
 function onSourceLanguageChange(code: string | null): void {
-  const next = applySourceChange(
-    {
-      source: providersStore.sourceSelection,
-      target: providersStore.targetLanguage,
-    },
-    code,
-  )
-  providersStore.sourceSelection = next.source
-  providersStore.targetLanguage = next.target
-
-  persistSelection()
+  changeSource(code)
   scheduleTranslate()
 }
 
 async function onTargetLanguageChange(code: string | null): Promise<void> {
-  const next = applyTargetChange(
-    {
-      source: providersStore.sourceSelection,
-      target: providersStore.targetLanguage,
-    },
-    code,
-  )
-  providersStore.sourceSelection = next.source
-  providersStore.targetLanguage = next.target
-
-  await pushTargetHistory(next.target)
-  persistSelection()
+  await changeTarget(code)
   scheduleTranslate()
 }
 

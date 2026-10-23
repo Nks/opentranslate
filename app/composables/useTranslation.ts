@@ -5,11 +5,11 @@ import { useTranslationStore } from '@app/stores/translation'
 import { useProvidersStore } from '@app/stores/providers'
 import { useSettingsStore } from '@app/stores/settings'
 import type { Language } from '@shared/types/language'
-import { TARGET_HISTORY_MAX } from '@shared/types/settings'
 import { formatErrorMessage } from '@shared/errors/format'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
 import { useSelectionPersistence } from '@app/composables/useSelectionPersistence'
+import { useLanguagePair } from '@app/composables/useLanguagePair'
 import {
   pickFallbackTarget,
   reconcileSource,
@@ -27,6 +27,7 @@ export function useTranslation() {
   const {
     persist: persistSelection, restore: restoreSelection,
   } = useSelectionPersistence()
+  const { pushTargetHistory } = useLanguagePair()
 
   async function executeTranslate(): Promise<void> {
     if (!providersStore.activeProviderId) {
@@ -145,26 +146,6 @@ export function useTranslation() {
     translationStore.error = null
     translationStore.errorDetail = null
     cancelTranslation()
-  }
-
-  async function pushTargetHistory(code: string | null): Promise<void> {
-    if (code === null || code.length === 0) {
-      return
-    }
-
-    const previous: readonly string[] = settingsStore.app.targetHistory
-    const filtered: string[] = previous.filter(
-      (entry: string): boolean => entry !== code,
-    )
-    const next: string[] = [code, ...filtered].slice(0, TARGET_HISTORY_MAX)
-
-    settingsStore.app.targetHistory = next
-
-    try {
-      await api.settings.update({ app: { targetHistory: next } })
-    } catch (err: unknown) {
-      handleError(err)
-    }
   }
 
   function pickFirstSupportedTarget(
