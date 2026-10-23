@@ -46,7 +46,10 @@ export async function readBoundedBody(
   }
 }
 
-function concatChunks(chunks: readonly Uint8Array[], total: number): Uint8Array<ArrayBuffer> {
+export function concatChunks(
+  chunks: readonly Uint8Array[],
+  total: number,
+): Uint8Array<ArrayBuffer> {
   const bytes: Uint8Array<ArrayBuffer> = new Uint8Array(total)
   let offset: number = 0
 

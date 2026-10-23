@@ -8,6 +8,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
+  assertSameOpenedFile,
   assertSupportedExtension,
   inspectSourceDocument,
   loadSourceDocument,
@@ -231,6 +232,45 @@ describe('readAtMost', () => {
 
     expect(result.kind).toBe('complete')
     expect(result.kind === 'complete' ? Buffer.from(result.bytes).toString('utf8') : '').toBe('0123')
+  })
+})
+
+describe('assertSameOpenedFile', () => {
+  interface Identity {
+    dev: bigint
+    ino: bigint
+    isSymbolicLink: () => boolean
+  }
+
+  function identity(ino: bigint, symlink: boolean = false): Identity {
+    return {
+      dev: 7n,
+      ino,
+      isSymbolicLink: (): boolean => symlink,
+    }
+  }
+
+  it('accepts a handle whose dev and inode match the path', () => {
+    expect(() => assertSameOpenedFile(identity(42n), identity(42n))).not.toThrow()
+  })
+
+  it('refuses a path that is now a symlink', () => {
+    expect(() => assertSameOpenedFile(identity(42n), identity(42n, true))).toThrow(
+      expect.objectContaining({ category: ErrorCategory.InternalAppError }),
+    )
+  })
+
+  it('refuses a handle that is not the file at the path any more', () => {
+    expect(() => assertSameOpenedFile(identity(42n), identity(43n))).toThrow(
+      expect.objectContaining({ message: expect.stringContaining('changed') }),
+    )
+  })
+
+  it('refuses a file on another device', () => {
+    expect(() => assertSameOpenedFile(identity(42n), {
+      ...identity(42n),
+      dev: 8n,
+    })).toThrow(expect.objectContaining({ category: ErrorCategory.InternalAppError }))
   })
 })
 

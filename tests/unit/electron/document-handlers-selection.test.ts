@@ -1,5 +1,5 @@
 import {
-  describe, expect, it,
+  describe, expect, it, vi,
 } from 'vitest'
 import type { DocumentSelection } from '@electron/services/documents/handlers'
 import type { DocumentService } from '@electron/services/documents/service'
@@ -60,6 +60,30 @@ describe('document handlers — selection', () => {
       message: expect.stringContaining('provider changed'),
     })
     expect(service.translate).not.toHaveBeenCalled()
+  })
+
+  it('refuses a selection whose provider changed while main was checking the file', async () => {
+    let activeAdapter: TranslationProvider = ACTIVE_ADAPTER
+    const service: DocumentService = fakeService()
+    const inspectFile: DocumentService['inspect'] = service.inspect
+    vi.mocked(service.inspect).mockImplementationOnce(async (filePath: string) => {
+      activeAdapter = { id: 'libretranslate' } as TranslationProvider
+
+      return inspectFile(filePath)
+    })
+    const fixture: HandlerFixture = buildHandlers({
+      service,
+      showOpenDialog: fakeDialog(['/docs/report.txt']),
+      getAdapter: (): TranslationProvider => activeAdapter,
+    })
+
+    await expect(fixture.handlers['document:pick']()).rejects.toMatchObject({
+      category: ErrorCategory.InternalAppError,
+      message: expect.stringContaining('provider changed'),
+    })
+    await expect(fixture.handlers['document:translate'](PICKED_REQUEST)).rejects.toMatchObject({
+      message: expect.stringContaining('not selected through the document picker'),
+    })
   })
 
   it('refuses a drop registered before the provider changed', async () => {

@@ -88,11 +88,24 @@ export function createDocumentHandlers(deps: DocumentHandlerDeps): DocumentHandl
   let selection: AllowlistedSelection | null = null
   let lastOutputPath: string | null = null
 
+  function providerChanged(channel: string, moment: string): AppError {
+    return new AppError(
+      ErrorCategory.InternalAppError,
+      `${channel}: the provider changed ${moment} — Select the file again.`,
+    )
+  }
+
   async function select(filePath: string): Promise<DocumentSelection> {
+    const adapter: TranslationProvider | null = deps.getAdapter()
     const document: SourceDocument = await deps.service.inspect(filePath)
+
+    if (deps.getAdapter() !== adapter) {
+      throw providerChanged('document:select', 'while the file was being checked')
+    }
+
     selection = {
       filePath,
-      adapter: deps.getAdapter(),
+      adapter,
     }
 
     return {
@@ -111,10 +124,7 @@ export function createDocumentHandlers(deps: DocumentHandlerDeps): DocumentHandl
     }
 
     if (selection.adapter !== deps.getAdapter()) {
-      throw new AppError(
-        ErrorCategory.InternalAppError,
-        'document:translate: the provider changed since the file was selected — Select the file again.',
-      )
+      throw providerChanged('document:translate', 'since the file was selected')
     }
   }
 

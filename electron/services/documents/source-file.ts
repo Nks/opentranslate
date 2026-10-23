@@ -1,8 +1,9 @@
-import { constants } from 'node:fs'
 import {
-  open, realpath, type FileHandle, type FileReadResult,
+  constants, type BigIntStats,
+} from 'node:fs'
+import {
+  lstat, open, realpath, type FileHandle, type FileReadResult,
 } from 'node:fs/promises'
-import type { Stats } from 'node:fs'
 import {
   basename, extname, isAbsolute,
 } from 'node:path'
@@ -18,6 +19,7 @@ import {
 import type {
   DocumentBytes,
 } from '@shared/providers/contract'
+import { concatChunks } from '@electron/services/http/bounded-body'
 
 export interface SourceDocument {
   path: string
@@ -37,6 +39,10 @@ export type BoundedRead = {
 } | {
   kind: 'too-large'
 }
+
+export type FileIdentity = Pick<BigIntStats, 'dev' | 'ino'>
+
+export type PathIdentity = FileIdentity & Pick<BigIntStats, 'isSymbolicLink'>
 
 interface OpenedSourceDocument {
   document: SourceDocument
@@ -79,7 +85,20 @@ function assertLocalAbsolutePath(filePath: string): void {
   }
 }
 
-function assertRegularFile(stats: Stats): void {
+export function assertSameOpenedFile(opened: FileIdentity, atPath: PathIdentity): void {
+  const isSameFile: boolean = !atPath.isSymbolicLink() &&
+    opened.dev === atPath.dev &&
+    opened.ino === atPath.ino
+
+  if (!isSameFile) {
+    throw new AppError(
+      ErrorCategory.InternalAppError,
+      'document: file changed while it was being opened — Pick the file again.',
+    )
+  }
+}
+
+function assertRegularFile(stats: BigIntStats): void {
   if (!stats.isFile()) {
     throw new AppError(
       ErrorCategory.UnsupportedDocumentType,
@@ -87,14 +106,14 @@ function assertRegularFile(stats: Stats): void {
     )
   }
 
-  if (stats.size === 0) {
+  if (stats.size === 0n) {
     throw new AppError(
       ErrorCategory.UnsupportedDocumentType,
       'document: file is empty — Pick a non-empty document.',
     )
   }
 
-  if (stats.size > MAX_DOCUMENT_UPLOAD_BYTES) {
+  if (stats.size > BigInt(MAX_DOCUMENT_UPLOAD_BYTES)) {
     throw tooLarge()
   }
 }
@@ -113,7 +132,8 @@ async function openSourceDocument(filePath: string): Promise<OpenedSourceDocumen
   }
 
   try {
-    const stats: Stats = await handle.stat()
+    const stats: BigIntStats = await handle.stat({ bigint: true })
+    assertSameOpenedFile(stats, await lstat(realPath, { bigint: true }))
     assertRegularFile(stats)
 
     return {
@@ -122,7 +142,7 @@ async function openSourceDocument(filePath: string): Promise<OpenedSourceDocumen
         path: realPath,
         fileName: basename(realPath),
         extension: normalizeDocumentExtension(extname(realPath)) ?? '',
-        sizeBytes: stats.size,
+        sizeBytes: Number(stats.size),
       },
     }
   } catch (err: unknown) {
@@ -162,17 +182,9 @@ export async function readAtMost(handle: FileHandle, maxBytes: number): Promise<
     )
 
     if (bytesRead === 0) {
-      const bytes: DocumentBytes = new Uint8Array(total)
-      let offset: number = 0
-
-      for (const part of chunks) {
-        bytes.set(part, offset)
-        offset += part.byteLength
-      }
-
       return {
         kind: 'complete',
-        bytes,
+        bytes: concatChunks(chunks, total),
       }
     }
 
