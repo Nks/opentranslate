@@ -11,6 +11,21 @@ instructions.
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **macOS: "OpenTranslate Desktop is damaged and can't be opened."** The
+  app bundle is now ad-hoc signed, so its code signature seals
+  `Info.plist` and every resource. A downloaded (quarantined) app now gets
+  macOS's regular first-open prompt for apps that are not notarized, with
+  **Open Anyway** in System Settings → Privacy & Security, instead of being
+  reported as damaged. Packaging fails if `codesign --verify --deep
+  --strict` rejects the bundle. First-open steps for macOS and Windows are
+  in [`docs/install.md`](docs/install.md).
+
+---
+
 ## [0.1.0] — 2026-05-18
 
 ### Highlights

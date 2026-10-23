@@ -108,6 +108,9 @@ dir and the artifact name patterns from `electron-builder.yml`. Then it checks:
 - Every expected installer exists and is non-empty.
 - The main executable exists and its binary header matches the target, so
   an x64 Electron inside the mac-arm64 app fails.
+- On mac, `codesign --verify --deep --strict` accepts the `.app` bundle
+  (code signature seals its resources;
+  `scripts/packaging/code-signature.ts`).
 - `app.asar` exists.
 - The `better-sqlite3` and `uiohook-napi` prebuilds for the target
   platform-arch are present in `app.asar.unpacked` and match the target,
@@ -272,8 +275,16 @@ Review the draft on the GitHub releases page, then publish it.
 
 ## Code Signing
 
-Signing is disabled (`identity: null`, unsigned NSIS). The `0.1.0`
-pre-release ships unsigned mac and Windows binaries. See
+macOS bundles are **ad-hoc signed** (`mac.identity: '-'`; in
+electron-builder 26 `mac.sign` is a custom-sign hook, the v27
+`mac.sign.identity` key does not exist yet), with `hardenedRuntime: false`,
+`notarize: false` and an unsigned DMG (`dmg.sign: false`). Ad-hoc signing
+seals `Info.plist` and every resource, so a quarantined download gets the
+regular "cannot verify" prompt with **Open Anyway** instead of "damaged" (an
+unsealed bundle with only the linker's ad-hoc executable signature fails
+`codesign --verify --deep --strict` with "code has no resources but
+signature indicates they must be present"). `verify-package` runs that
+`codesign` check on every mac target. Windows NSIS stays unsigned. See
 [install.md](install.md) for the Gatekeeper/SmartScreen bypass and
 checksum verification, and [apple-signing.md](apple-signing.md) for the
 future signing path. For Windows, set `WIN_CSC_LINK` and
@@ -291,10 +302,14 @@ variant first. This is not done yet.
 
 ## Troubleshooting
 
-### macOS Gatekeeper blocks unsigned app
+### macOS Gatekeeper blocks the app, or says it is "damaged"
 
-`xattr -d com.apple.quarantine "/Applications/OpenTranslate Desktop.app"`,
-or right-click the app → Open → Open (first launch only).
+The ad-hoc signed app is not notarized: open it once, then **System
+Settings → Privacy & Security → Open Anyway**, or run
+`xattr -dr com.apple.quarantine "/Applications/OpenTranslate Desktop.app"`
+(see [install.md](install.md#first-open-gatekeeper)). "Damaged" means the
+bundle is not sealed; `verify-package` fails such a build on its
+`code signature` check.
 
 ### `verify-package` reports an arch mismatch
 
