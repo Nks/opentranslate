@@ -60,6 +60,8 @@ jobs:
         uses: ./.github/actions/linux-electron-deps
 
       - name: Build + package
+        env:
+          CSC_FOR_PULL_REQUEST: 'true'
         run: node scripts/package.mjs --arch="${TARGET_ARCH}"
 
       - name: Verify package

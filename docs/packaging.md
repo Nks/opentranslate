@@ -284,7 +284,12 @@ regular "cannot verify" prompt with **Open Anyway** instead of "damaged" (an
 unsealed bundle with only the linker's ad-hoc executable signature fails
 `codesign --verify --deep --strict` with "code has no resources but
 signature indicates they must be present"). `verify-package` runs that
-`codesign` check on every mac target. Windows NSIS stays unsigned. See
+`codesign` check on every mac target. electron-builder skips signing on
+pull-request builds, so `package.yml` sets `CSC_FOR_PULL_REQUEST=true`
+and PR artifacts get the same ad-hoc seal as releases. No signing
+certificate secrets exist; revisit that flag when Developer ID signing
+lands (B-032), since same-repo PRs would then sign with the real
+certificate. Windows NSIS stays unsigned. See
 [install.md](install.md) for the Gatekeeper/SmartScreen bypass and
 checksum verification, and [apple-signing.md](apple-signing.md) for the
 future signing path. For Windows, set `WIN_CSC_LINK` and
