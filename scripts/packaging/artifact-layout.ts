@@ -127,13 +127,25 @@ export function unpackedAppDirName(target: PackageTarget): string {
   return `${target.platform}${archSuffix}${unpackedSuffix}`
 }
 
+function macAppBundlePath(identity: AppIdentity, unpackedDir: string): string {
+  return join(unpackedDir, `${identity.productName}.app`)
+}
+
+export function codeSignedBundlePath(
+  target: PackageTarget,
+  identity: AppIdentity,
+  unpackedDir: string,
+): string | null {
+  return target.platform === 'mac' ? macAppBundlePath(identity, unpackedDir) : null
+}
+
 export function appResourcesDir(
   target: PackageTarget,
   identity: AppIdentity,
   unpackedDir: string,
 ): string {
   if (target.platform === 'mac') {
-    return join(unpackedDir, `${identity.productName}.app`, 'Contents', 'Resources')
+    return join(macAppBundlePath(identity, unpackedDir), 'Contents', 'Resources')
   }
 
   return join(unpackedDir, 'resources')
@@ -145,7 +157,7 @@ export function packagedExecutablePath(
   unpackedDir: string,
 ): string {
   if (target.platform === 'mac') {
-    return join(unpackedDir, `${identity.productName}.app`, 'Contents', 'MacOS', identity.productName)
+    return join(macAppBundlePath(identity, unpackedDir), 'Contents', 'MacOS', identity.productName)
   }
 
   if (target.platform === 'win') {

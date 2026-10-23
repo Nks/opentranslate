@@ -1,9 +1,10 @@
 # Installation
 
-OpenTranslate Desktop `0.1.0` ships as an **unsigned** pre-release for macOS,
-Windows, and Linux. The macOS and Windows installers must be allowed past
-Gatekeeper and SmartScreen on first launch. The Linux AppImage and `.deb`
-require no bypass.
+OpenTranslate Desktop `0.1.1` ships as a pre-release without a Developer ID
+or Authenticode certificate. The macOS app is **ad-hoc signed** (sealed but
+not notarized) and the Windows installer is **unsigned**, so both must be
+allowed past Gatekeeper and SmartScreen once, on first launch. The Linux
+AppImage and `.deb` require no bypass.
 
 Download the latest binaries from the GitHub releases page:
 
@@ -17,8 +18,8 @@ Download the latest binaries from the GitHub releases page:
 
 | Architecture | File |
 |---|---|
-| Apple Silicon (M-series) | `opentranslate-desktop-0.1.0-mac-arm64.dmg` |
-| Intel | `opentranslate-desktop-0.1.0-mac-x64.dmg` |
+| Apple Silicon (M-series) | `opentranslate-desktop-0.1.1-mac-arm64.dmg` |
+| Intel | `opentranslate-desktop-0.1.1-mac-x64.dmg` |
 
 ### Install
 
@@ -26,32 +27,38 @@ Download the latest binaries from the GitHub releases page:
 2. Drag **OpenTranslate Desktop.app** into the **Applications** folder.
 3. Eject the disk image.
 
-### Gatekeeper bypass
+### First open (Gatekeeper)
 
-Because the build is unsigned, macOS refuses to launch the app on first
-open with a message similar to *"OpenTranslate Desktop can't be opened
-because Apple cannot check it for malicious software."*
+The app is ad-hoc signed but not notarized by Apple, so the first open is
+blocked with a message similar to *"Apple could not verify "OpenTranslate
+Desktop" is free of malware…"* (older macOS: *"…can't be opened because
+Apple cannot check it for malicious software"*). Allow it once with either
+path; macOS remembers the decision.
 
-Choose one of the two paths.
+**Path A — System Settings (no Terminal):**
 
-**Path A — Terminal (one command):**
+1. Open **OpenTranslate Desktop** from `/Applications` once and dismiss the
+   warning with **Done** (or **OK**).
+2. Open **System Settings → Privacy & Security**, scroll to **Security**,
+   and click **Open Anyway** next to the OpenTranslate Desktop entry.
+3. Confirm with **Open Anyway** and your password or Touch ID.
+
+On macOS 14 and earlier, Control-clicking the app and choosing **Open**
+offers the same **Open** button directly.
+
+**Path B — Terminal (one command):**
 
 ```bash
-xattr -d com.apple.quarantine "/Applications/OpenTranslate Desktop.app"
+xattr -dr com.apple.quarantine "/Applications/OpenTranslate Desktop.app"
 ```
 
 Then launch normally from Launchpad or Spotlight.
 
-**Path B — System Settings:**
-
-1. Locate the app in `/Applications` in Finder.
-2. Right-click (or Control-click) the app and choose **Open**.
-3. macOS shows the same warning with an **Open** button — click it.
-4. If the **Open** button is missing, open **System Settings → Privacy
-   & Security**, scroll to the **Security** section, and click **Open
-   Anyway** next to the OpenTranslate Desktop entry.
-
-The first successful launch trains macOS to remember the decision.
+**"OpenTranslate Desktop is damaged and can't be opened."** That message
+means the bundle's code signature is missing or broken, not that the
+download is corrupt; it appeared on early `0.1.0` builds whose bundle was
+never sealed, and offers no **Open Anyway** button. Download the current
+release (and check its SHA-256 below). Path B also clears it.
 
 ### First-run notes
 
@@ -68,12 +75,12 @@ The first successful launch trains macOS to remember the decision.
 
 | Format | File |
 |---|---|
-| Installer | `opentranslate-desktop-0.1.0-win-x64-setup.exe` |
-| Portable zip | `opentranslate-desktop-0.1.0-win-x64.zip` |
+| Installer | `opentranslate-desktop-0.1.1-win-x64-setup.exe` |
+| Portable zip | `opentranslate-desktop-0.1.1-win-x64.zip` |
 
 ### Install (recommended — NSIS installer)
 
-1. Run `opentranslate-desktop-0.1.0-win-x64-setup.exe`.
+1. Run `opentranslate-desktop-0.1.1-win-x64-setup.exe`.
 2. **SmartScreen** blocks the unsigned installer with a blue prompt:
    *"Windows protected your PC."* Click **More info** → **Run anyway**.
 3. Follow the installer; choose an installation directory or accept the
@@ -81,7 +88,7 @@ The first successful launch trains macOS to remember the decision.
 
 ### Install (portable — no installer)
 
-1. Extract `opentranslate-desktop-0.1.0-win-x64.zip` to a directory you own
+1. Extract `opentranslate-desktop-0.1.1-win-x64.zip` to a directory you own
    (e.g. `%LOCALAPPDATA%\OpenTranslate Desktop\`).
 2. Launch `OpenTranslate Desktop.exe`. SmartScreen may prompt the same
    way as for the installer; click **More info** → **Run anyway**.
@@ -101,14 +108,14 @@ The first successful launch trains macOS to remember the decision.
 
 | Format | File |
 |---|---|
-| AppImage | `opentranslate-desktop-0.1.0-linux-x86_64.AppImage` |
-| Debian / Ubuntu | `opentranslate-desktop-0.1.0-linux-amd64.deb` |
+| AppImage | `opentranslate-desktop-0.1.1-linux-x86_64.AppImage` |
+| Debian / Ubuntu | `opentranslate-desktop-0.1.1-linux-amd64.deb` |
 
 ### Install — AppImage
 
 ```bash
-chmod +x opentranslate-desktop-0.1.0-linux-x86_64.AppImage
-./opentranslate-desktop-0.1.0-linux-x86_64.AppImage
+chmod +x opentranslate-desktop-0.1.1-linux-x86_64.AppImage
+./opentranslate-desktop-0.1.1-linux-x86_64.AppImage
 ```
 
 To integrate the AppImage with your desktop (icon + menu entry), install
@@ -118,7 +125,7 @@ open the AppImage once; it will offer to register the app.
 ### Install — Debian / Ubuntu
 
 ```bash
-sudo dpkg -i opentranslate-desktop-0.1.0-linux-amd64.deb
+sudo dpkg -i opentranslate-desktop-0.1.1-linux-amd64.deb
 sudo apt-get install -f
 ```
 
@@ -134,7 +141,7 @@ application menu or run `opentranslate-desktop` from a terminal.
   supported out of the box.
 - Quick-translate global shortcuts work under X11 directly. Under
   Wayland the implementation depends on portal availability and is
-  best-effort for `0.1.0`.
+  best-effort for `0.1.1`.
 
 ---
 
@@ -156,7 +163,7 @@ works the same on Linux).
 ### Windows (PowerShell)
 
 ```powershell
-$file     = "opentranslate-desktop-0.1.0-win-x64-setup.exe"
+$file     = "opentranslate-desktop-0.1.1-win-x64-setup.exe"
 $expected = (Select-String -Path SHA256SUMS.txt -Pattern ([regex]::Escape($file))).Line.Split(" ")[0]
 $actual   = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
 if ($expected -eq $actual) { "OK" } else { "MISMATCH" }
@@ -172,7 +179,7 @@ attestation from the release workflow. With the
 [GitHub CLI](https://cli.github.com/) installed:
 
 ```bash
-gh attestation verify opentranslate-desktop-0.1.0-mac-arm64.dmg --repo Nks/opentranslate
+gh attestation verify opentranslate-desktop-0.1.1-mac-arm64.dmg --repo Nks/opentranslate
 ```
 
 A passing check proves the file was built by this repository's release
@@ -203,7 +210,7 @@ $env:OPENTRANSLATE_DEVTOOLS=1; & "$env:LOCALAPPDATA\Programs\OpenTranslate Deskt
 **Linux**
 
 ```bash
-OPENTRANSLATE_DEVTOOLS=1 ./opentranslate-desktop-0.1.0-linux-x86_64.AppImage
+OPENTRANSLATE_DEVTOOLS=1 ./opentranslate-desktop-0.1.1-linux-x86_64.AppImage
 ```
 
 Without the variable, DevTools and their keyboard shortcuts stay

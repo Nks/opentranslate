@@ -32,7 +32,7 @@ mac:
   target:
     - target: dmg
   category: public.app-category.productivity
-  identity: null
+  identity: '-'
   hardenedRuntime: false
   gatekeeperAssess: false
   notarize: false

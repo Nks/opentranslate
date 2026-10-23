@@ -16,6 +16,7 @@ import {
 import {
   appResourcesDir,
   artifactArchName,
+  codeSignedBundlePath,
   installerFileNames,
   packagedExecutablePath,
   readBuilderLayout,
@@ -141,6 +142,14 @@ describe('unpacked app layout', () => {
     [LINUX_X64, 'linux-unpacked'],
   ])('names the %o unpacked dir %s', (target: PackageTarget, expected: string) => {
     expect(unpackedAppDirName(target)).toBe(expected)
+  })
+
+  it.each([
+    [MAC_ARM64, join('out', 'mac-arm64', 'OpenTranslate Desktop.app')],
+    [WIN_X64, null],
+    [LINUX_X64, null],
+  ])('names the code-signed bundle of %o', (target: PackageTarget, expected: string | null) => {
+    expect(codeSignedBundlePath(target, identity, join('out', unpackedAppDirName(target)))).toBe(expected)
   })
 
   it('locates the mac executable and resources inside the .app bundle', () => {

@@ -21,6 +21,7 @@ interface WorkflowStep {
   if?: string
   uses?: string
   run?: string
+  env?: Record<string, string>
   with?: Record<string, unknown>
 }
 
@@ -154,6 +155,10 @@ describe('package.yml', () => {
     expect(packageStep('Build + package').run).toBe('node scripts/package.mjs --arch="${TARGET_ARCH}"')
     expect(packageStep('Verify package').run)
       .toBe('node scripts/verify-package.mjs --platform "${TARGET_PLATFORM}" --arch "${TARGET_ARCH}"')
+  })
+
+  it('ad-hoc signs mac bundles on pull requests too, so verify-package checks the real seal', () => {
+    expect(packageStep('Build + package').env?.CSC_FOR_PULL_REQUEST).toBe('true')
   })
 
   it('gives each package job 45 minutes', () => {
