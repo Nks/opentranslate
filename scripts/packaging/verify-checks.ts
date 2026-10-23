@@ -11,6 +11,10 @@ import {
   detectBinaryArch,
   type ArchAssessment,
 } from './binary-arch.ts'
+import type {
+  CodeSignatureResult,
+  CodeSignatureVerifier,
+} from './code-signature.ts'
 import {
   isForeignPlatformPackage,
   isForeignPrebuild,
@@ -41,6 +45,12 @@ export interface PackageLocations {
   installerPaths: readonly string[]
   executablePath: string
   resourcesDir: string
+  codeSignedBundlePath: string | null
+}
+
+export interface VerifyEnvironment {
+  fileSystem: VerifyFileSystem
+  verifyCodeSignature: CodeSignatureVerifier
 }
 
 interface CheckScope {
@@ -92,6 +102,15 @@ function checkBinary(scope: CheckScope, label: string, path: string): CheckResul
       status: 'fail',
       message: `${label}: ${errorMessage(err)}`,
     }
+  }
+}
+
+function checkCodeSignature(bundlePath: string, verify: CodeSignatureVerifier): CheckResult {
+  const result: CodeSignatureResult = verify(bundlePath)
+
+  return {
+    status: result.valid ? 'pass' : 'fail',
+    message: `code signature: ${result.detail}`,
   }
 }
 
@@ -158,26 +177,31 @@ function loadableExtraBinaries(
 }
 
 /**
- * Checks one packaged target: installers, the executable's arch, app.asar,
- * the required per-target native prebuilds and every other loadable `.node`.
+ * Checks one packaged target: installers, the executable's arch, the mac
+ * bundle's code-signature seal, app.asar, the required per-target native
+ * prebuilds and every other loadable `.node`.
  */
 export function runPackageChecks(
   target: PackageTarget,
   locations: PackageLocations,
-  fileSystem: VerifyFileSystem,
+  environment: VerifyEnvironment,
 ): CheckResult[] {
   const scope: CheckScope = {
     target,
     nativeTarget: toNativeTarget(target),
     locations,
-    fileSystem,
+    fileSystem: environment.fileSystem,
     unpackedRoot: join(locations.resourcesDir, 'app.asar.unpacked'),
   }
   const required: NativeBinaryExpectation[] = nativeBinaryExpectations(scope.nativeTarget)
+  const signatureChecks: CheckResult[] = locations.codeSignedBundlePath === null
+    ? []
+    : [checkCodeSignature(locations.codeSignedBundlePath, environment.verifyCodeSignature)]
 
   return [
     ...locations.installerPaths.map((path: string): CheckResult => checkFile(scope, 'installer', path)),
     checkBinary(scope, 'executable', locations.executablePath),
+    ...signatureChecks,
     checkFile(scope, 'app.asar', join(locations.resourcesDir, 'app.asar')),
     ...required.map((expectation: NativeBinaryExpectation): CheckResult =>
       checkBinary(scope, expectation.label, join(scope.unpackedRoot, ...expectation.segments))),

@@ -11,6 +11,9 @@
  *   node scripts/verify-package.mjs --platform win --arch x64 --print installers
  */
 import {
+  spawnSync,
+} from 'node:child_process'
+import {
   closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync,
 } from 'node:fs'
 import {
@@ -30,12 +33,16 @@ import {
 } from './packaging/binary-arch.ts'
 import {
   appResourcesDir,
+  codeSignedBundlePath,
   installerFileNames,
   packagedExecutablePath,
   readBuilderLayout,
   resolveOutputDir,
   unpackedAppDirName,
 } from './packaging/artifact-layout.ts'
+import {
+  verifyCodeSignature,
+} from './packaging/code-signature.ts'
 import {
   failedChecks,
   runPackageChecks,
@@ -67,6 +74,7 @@ function loadContext(target) {
         .map((name) => join(releaseDir, name)),
       executablePath: packagedExecutablePath(target, identity, unpackedDir),
       resourcesDir: appResourcesDir(target, identity, unpackedDir),
+      codeSignedBundlePath: codeSignedBundlePath(target, identity, unpackedDir),
     },
   }
 }
@@ -81,6 +89,18 @@ function readHeader(filePath) {
     return buffer.subarray(0, bytesRead)
   } finally {
     closeSync(descriptor)
+  }
+}
+
+function runCommand(command, args) {
+  const result = spawnSync(command, args, {
+    encoding: 'utf8',
+  })
+
+  return {
+    status: result.status,
+    stderr: result.stderr ?? '',
+    ...(result.error === undefined ? {} : { error: result.error }),
   }
 }
 
@@ -116,7 +136,10 @@ function main() {
   }
 
   const label = `${request.target.platform}-${request.target.arch}`
-  const results = runPackageChecks(request.target, context.locations, nodeFileSystem)
+  const results = runPackageChecks(request.target, context.locations, {
+    fileSystem: nodeFileSystem,
+    verifyCodeSignature: (bundlePath) => verifyCodeSignature(bundlePath, runCommand),
+  })
   const failures = failedChecks(results)
 
   console.log(`verify-package ${label} (${context.identity.packageName} ${context.identity.version})`)
