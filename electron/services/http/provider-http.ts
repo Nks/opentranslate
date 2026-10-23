@@ -10,6 +10,9 @@ import {
 import {
   readBoundedBody, type BoundedBody,
 } from '@electron/services/http/bounded-body'
+import {
+  readErrorBody, readJsonBody,
+} from '@electron/services/http/response-body'
 
 /**
  * Main-process HTTP kernel shared by every provider adapter.
@@ -43,14 +46,13 @@ export interface ExecuteRequest {
   body?: URLSearchParams | FormData
   extraHeaders?: Record<string, string>
   accept?: string
-  redirect?: 'follow' | 'manual'
   timeoutMs?: number
 }
 
 /**
  * Binary download of a provider-returned URL. The URL must share the
- * kernel's `baseUrl` origin; redirects are never followed and no
- * `authHeader` is attached.
+ * kernel's `baseUrl` origin and no `authHeader` is attached. Like every
+ * kernel request, redirects are never followed.
  */
 export interface DownloadRequest {
   url: string
@@ -89,14 +91,23 @@ export function stripTrailingSlash(url: string): string {
   return url.endsWith('/') ? url.slice(0, -1) : url
 }
 
+const HTTP_PROTOCOLS: ReadonlySet<string> = new Set(['http:', 'https:'])
+
 export function isSameOrigin(candidate: string, baseUrl: string): boolean {
   if (!URL.canParse(candidate) || !URL.canParse(baseUrl)) {
     return false
   }
 
-  const candidateOrigin: string = new URL(candidate).origin
+  const target: URL = new URL(candidate)
+  const base: URL = new URL(baseUrl)
+  const isHttpTarget: boolean = HTTP_PROTOCOLS.has(target.protocol) &&
+    target.protocol === base.protocol
 
-  return candidateOrigin !== 'null' && candidateOrigin === new URL(baseUrl).origin
+  return isHttpTarget && target.origin === base.origin
+}
+
+function isRedirect(response: Response): boolean {
+  return response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)
 }
 
 export function createProviderHttp(config: ProviderHttpConfig): ProviderHttp {
@@ -122,19 +133,20 @@ export function createProviderHttp(config: ProviderHttpConfig): ProviderHttp {
   }
 
   async function rejectResponse(response: Response): Promise<never> {
-    let body: unknown
+    if (isRedirect(response)) {
+      await response.body?.cancel()
 
-    try {
-      body = await response.json()
-    } catch {
-      body = await response.text().catch(() => null)
+      throw new AppError(
+        ErrorCategory.EndpointUnreachable,
+        `${config.providerId}: endpoint answered with a redirect (HTTP ${response.status}) — Redirects are not followed; use the final URL as the endpoint in Settings.`,
+      )
     }
 
-    return config.errorMapper(response.status, body)
+    return config.errorMapper(response.status, await readErrorBody(response))
   }
 
   async function execute<T>(req: ExecuteRequest): Promise<T> {
-    const url = `${config.baseUrl}${req.path}`
+    const url: string = `${config.baseUrl}${req.path}`
     const headers: Record<string, string> = {
       Accept: req.accept ?? 'application/json',
       ...(req.extraHeaders ?? {}),
@@ -143,12 +155,8 @@ export function createProviderHttp(config: ProviderHttpConfig): ProviderHttp {
     const init: UndiciRequestInit = {
       method: req.method,
       headers,
+      redirect: 'manual',
       signal: composeAbortSignal(config.abortSignal, req.timeoutMs ?? config.timeoutMs),
-      ...(req.redirect
-        ? {
-            redirect: req.redirect,
-          }
-        : {}),
     }
 
     if (req.body instanceof URLSearchParams) {
@@ -164,15 +172,7 @@ export function createProviderHttp(config: ProviderHttpConfig): ProviderHttp {
       await rejectResponse(response)
     }
 
-    try {
-      return await response.json() as T
-    } catch (err: unknown) {
-      throw new AppError(
-        ErrorCategory.InvalidProviderResponse,
-        `${config.providerId}: response body is not valid JSON`,
-        err,
-      )
-    }
+    return readJsonBody<T>(response, config.providerId)
   }
 
   function tooLarge(maxBytes: number): AppError {

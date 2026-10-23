@@ -178,7 +178,6 @@ export function createLibreHttpClient(input: LibreHttpClientInput): LibreHttpCli
       path: '/translate_file',
       method: 'POST',
       body: form,
-      redirect: 'manual',
       timeoutMs: documentTimeoutMs,
     })
 

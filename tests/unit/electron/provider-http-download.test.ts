@@ -17,7 +17,7 @@ import {
   AppError, ErrorCategory,
 } from '@shared/errors'
 
-const BASE_URL = 'https://libre.test/api'
+const BASE_URL: string = 'https://libre.test/api'
 
 interface RecordedCall {
   url: string
@@ -28,10 +28,12 @@ function errorMapper(status: number, body: unknown): never {
   throw new AppError(ErrorCategory.InvalidProviderResponse, `mapped ${status}: ${String(body)}`)
 }
 
-function recordingFetch(respond: () => Response): {
+interface RecordingFetch {
   fetchImpl: FetchLike
   calls: RecordedCall[]
-} {
+}
+
+function recordingFetch(respond: () => Response): RecordingFetch {
   const calls: RecordedCall[] = []
   const fetchImpl: FetchLike = async (input: string | URL, init?: UndiciRequestInit) => {
     calls.push({
@@ -96,17 +98,16 @@ describe('provider http execute — multipart + hardening', () => {
       path: '/translate_file',
       method: 'POST',
       body: form,
-      redirect: 'manual',
     })
 
-    const headers = calls[0]?.init?.headers as Record<string, string>
+    const headers: Record<string, string> = calls[0]?.init?.headers as Record<string, string>
     expect(calls[0]?.init?.body).toBe(form)
     expect(headers['Content-Type']).toBeUndefined()
     expect(calls[0]?.init?.redirect).toBe('manual')
   })
 
   it('maps a malformed JSON success body to InvalidProviderResponse', async () => {
-    const { fetchImpl } = recordingFetch(() => new Response('<html>', { status: 200 }))
+    const { fetchImpl }: RecordingFetch = recordingFetch(() => new Response('<html>', { status: 200 }))
 
     await expectCategory(
       buildHttp(fetchImpl).execute({
@@ -128,7 +129,7 @@ describe('provider http download', () => {
       maxBytes: 10,
     })
 
-    const headers = calls[0]?.init?.headers as Record<string, string>
+    const headers: Record<string, string> = calls[0]?.init?.headers as Record<string, string>
     expect(Array.from(bytes)).toEqual([1, 2, 3])
     expect(calls[0]?.url).toBe('https://libre.test/download_file/abc.report.pdf')
     expect(calls[0]?.init?.method).toBe('GET')
@@ -159,8 +160,8 @@ describe('provider http download', () => {
     expect(calls).toHaveLength(0)
   })
 
-  it('does not follow a redirect and routes it through the error mapper', async () => {
-    const { fetchImpl } = recordingFetch(() => new Response(null, {
+  it('does not follow a redirect and reports it as a normalized error', async () => {
+    const { fetchImpl }: RecordingFetch = recordingFetch(() => new Response(null, {
       status: 302,
       headers: { Location: 'https://evil.test/steal' },
     }))
@@ -169,16 +170,18 @@ describe('provider http download', () => {
         url: 'https://libre.test/download_file/x',
         maxBytes: 10,
       }),
-      ErrorCategory.InvalidProviderResponse,
+      ErrorCategory.EndpointUnreachable,
     )
 
-    expect(err.message).toContain('mapped 302')
+    expect(err.message).toContain('HTTP 302')
   })
 
   it('rejects a declared Content-Length above the cap', async () => {
-    const { fetchImpl } = recordingFetch(() => new Response(streamOf([new Uint8Array(4)]), {
-      headers: { 'Content-Length': '4096' },
-    }))
+    const declaredTooLarge: () => Response = (): Response => new Response(
+      streamOf([new Uint8Array(4)]),
+      { headers: { 'Content-Length': '4096' } },
+    )
+    const { fetchImpl }: RecordingFetch = recordingFetch(declaredTooLarge)
     const err: AppError = await expectCategory(
       buildHttp(fetchImpl).download({
         url: 'https://libre.test/download_file/x',
@@ -191,7 +194,7 @@ describe('provider http download', () => {
   })
 
   it('stops reading a streamed body once it exceeds the cap', async () => {
-    const { fetchImpl } = recordingFetch(() => new Response(streamOf([
+    const { fetchImpl }: RecordingFetch = recordingFetch(() => new Response(streamOf([
       new Uint8Array(6),
       new Uint8Array(6),
     ])))
@@ -225,7 +228,7 @@ describe('provider http download', () => {
         controller.error(new Error('socket hang up'))
       },
     })
-    const { fetchImpl } = recordingFetch(() => new Response(failing))
+    const { fetchImpl }: RecordingFetch = recordingFetch(() => new Response(failing))
 
     await expectCategory(
       buildHttp(fetchImpl).download({

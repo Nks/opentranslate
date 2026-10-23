@@ -247,7 +247,7 @@ describe('document translation through the IPC handler layer', () => {
       filePath,
       sourceLanguage: { mode: 'auto' },
       targetLanguage: 'ru',
-    })).rejects.toThrow(/^\[invalid_provider_response\] /)
+    })).rejects.toThrow(/^\[endpoint_unreachable\] .*redirect \(HTTP 302\)/)
     expect(attacker.requests).toHaveLength(0)
   })
 
