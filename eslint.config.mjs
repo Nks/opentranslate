@@ -9,6 +9,9 @@ import securityNode from 'eslint-plugin-security-node'
 import boundaries from 'eslint-plugin-boundaries'
 import sonarjs from 'eslint-plugin-sonarjs'
 import vue from 'eslint-plugin-vue'
+import {
+  RELATIVE_PARENT_IMPORTS, productionImportRestrictions,
+} from './scripts/eslint/restricted-imports.mjs'
 
 const nodeGlobals = {
   process: 'readonly',
@@ -271,17 +274,13 @@ export default [
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
-            {
-              group: ['../*', '../**/*'],
-              message:
-                'Use @shared, @electron, or @app path aliases instead of relative parent (../) imports.',
-            },
-          ],
+          patterns: [RELATIVE_PARENT_IMPORTS],
         },
       ],
     },
   },
+
+  productionImportRestrictions,
 
   // Anti-trojan-source: catches bidi / zero-width unicode attacks globally
   {
