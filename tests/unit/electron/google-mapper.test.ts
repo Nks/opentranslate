@@ -114,6 +114,19 @@ describe('mapGoogleDetection', () => {
 })
 
 describe('throwGoogleHttpError', () => {
+  it('truncates an oversized provider message', () => {
+    let message: string = ''
+
+    try {
+      throwGoogleHttpError(500, { error: { message: 'z'.repeat(10_000) } })
+    } catch (err: unknown) {
+      message = (err as AppError).message
+    }
+
+    expect(message.length).toBeLessThan(220)
+    expect(message.endsWith('…')).toBe(true)
+  })
+
   it('maps INVALID_ARGUMENT with language message to unsupported_language', () => {
     try {
       throwGoogleHttpError(400, {
