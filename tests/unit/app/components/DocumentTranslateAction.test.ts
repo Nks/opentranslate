@@ -2,7 +2,9 @@
 import {
   describe, expect, it,
 } from 'vitest'
-import { mount } from '@vue/test-utils'
+import {
+  mount, type DOMWrapper, type VueWrapper,
+} from '@vue/test-utils'
 import DocumentTranslateAction from '@app/components/DocumentTranslateAction.vue'
 import { documentStubs } from './support/nuxt-ui-stubs'
 
@@ -14,7 +16,7 @@ interface ActionProps {
   blockedReason: string | null
 }
 
-function mountAction(props: Partial<ActionProps> = {}) {
+function mountAction(props: Partial<ActionProps> = {}): VueWrapper {
   return mount(DocumentTranslateAction, {
     props: {
       canTranslate: true,
@@ -30,8 +32,8 @@ function mountAction(props: Partial<ActionProps> = {}) {
 
 describe('DocumentTranslateAction', () => {
   it('names the target language and emits translate', async () => {
-    const wrapper = mountAction()
-    const button = wrapper.find('button[aria-label="Translate document"]')
+    const wrapper: VueWrapper = mountAction()
+    const button: DOMWrapper<Element> = wrapper.find('button[aria-label="Translate document"]')
 
     expect(button.text()).toBe('Translate to Russian')
     await button.trigger('click')
@@ -40,7 +42,7 @@ describe('DocumentTranslateAction', () => {
   })
 
   it('shows progress and disables the button while translating', () => {
-    const wrapper = mountAction({
+    const wrapper: VueWrapper = mountAction({
       canTranslate: false,
       translating: true,
     })
@@ -51,7 +53,7 @@ describe('DocumentTranslateAction', () => {
   })
 
   it('explains why translation is blocked', () => {
-    const wrapper = mountAction({
+    const wrapper: VueWrapper = mountAction({
       canTranslate: false,
       blockedReason: 'Select a target language.',
       targetLabel: null,

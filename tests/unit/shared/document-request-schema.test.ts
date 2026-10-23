@@ -1,10 +1,14 @@
 import {
   describe, expect, it,
 } from 'vitest'
+import type { ZodSafeParseResult } from 'zod'
 import {
   documentDropRequestSchema,
   documentTranslateRequestSchema,
+  type DocumentTranslateRequest,
 } from '@shared/schemas/document-request'
+
+type TranslateParse = ZodSafeParseResult<DocumentTranslateRequest>
 
 const VALID_REQUEST: Record<string, unknown> = {
   filePath: '/Users/me/report.pdf',
@@ -18,7 +22,7 @@ describe('documentTranslateRequestSchema', () => {
   })
 
   it('accepts an explicit source with a region subtag', () => {
-    const result = documentTranslateRequestSchema.safeParse({
+    const result: TranslateParse = documentTranslateRequestSchema.safeParse({
       ...VALID_REQUEST,
       sourceLanguage: {
         mode: 'explicit',
@@ -33,7 +37,7 @@ describe('documentTranslateRequestSchema', () => {
   it.each(['', '../ru', 'ru/..', 'r u', 'ru.translated', 'x'.repeat(40)])(
     'rejects target language %j that could escape the output filename',
     (targetLanguage: string) => {
-      const result = documentTranslateRequestSchema.safeParse({
+      const result: TranslateParse = documentTranslateRequestSchema.safeParse({
         ...VALID_REQUEST,
         targetLanguage,
       })
@@ -43,7 +47,7 @@ describe('documentTranslateRequestSchema', () => {
   )
 
   it('rejects an explicit source code with path characters', () => {
-    const result = documentTranslateRequestSchema.safeParse({
+    const result: TranslateParse = documentTranslateRequestSchema.safeParse({
       ...VALID_REQUEST,
       sourceLanguage: {
         mode: 'explicit',

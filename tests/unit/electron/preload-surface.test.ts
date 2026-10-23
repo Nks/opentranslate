@@ -32,7 +32,7 @@ describe('preload surface contract', () => {
   })
 
   it('resolves dropped files in preload and never accepts a raw path from the renderer', async () => {
-    const source = await readFile(preloadSource, 'utf8')
+    const source: string = await readFile(preloadSource, 'utf8')
     const dropInvocations: RegExpMatchArray[] = [...source.matchAll(/invoke\('document:drop'/g)]
 
     expect(source).toContain('webUtils.getPathForFile(file)')
@@ -41,7 +41,7 @@ describe('preload surface contract', () => {
   })
 
   it('reveals the translated document without sending any path', async () => {
-    const source = await readFile(preloadSource, 'utf8')
+    const source: string = await readFile(preloadSource, 'utf8')
 
     expect(source).toContain("invoke('document:reveal')")
     expect(source).not.toMatch(/invoke\('document:reveal',/)

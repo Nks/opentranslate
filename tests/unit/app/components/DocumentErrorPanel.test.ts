@@ -1,13 +1,17 @@
 // @vitest-environment happy-dom
 import {
-  describe, expect, it, vi,
+  describe, expect, it, vi, type Mock,
 } from 'vitest'
-import { mount } from '@vue/test-utils'
+import {
+  mount, type VueWrapper,
+} from '@vue/test-utils'
 import DocumentErrorPanel from '@app/components/DocumentErrorPanel.vue'
 import { ErrorCategory } from '@shared/errors'
+import type { FormattedError } from '@shared/errors/format'
 import { documentStubs } from './support/nuxt-ui-stubs'
 
-const copyMock = vi.fn<(value: string) => Promise<void>>(async () => undefined)
+type CopyFn = (value: string) => Promise<void>
+const copyMock: Mock<CopyFn> = vi.fn<CopyFn>(async () => undefined)
 
 vi.mock('@vueuse/core', () => ({
   useClipboard: () => ({
@@ -16,7 +20,7 @@ vi.mock('@vueuse/core', () => ({
   }),
 }))
 
-const ERROR = {
+const ERROR: FormattedError = {
   short: 'This file type is not supported for translation. Supported formats: .txt',
   detail: '[unsupported_document_type] AppError: document: unsupported file type ".pdf" — Supported formats: .txt',
   category: ErrorCategory.UnsupportedDocumentType,
@@ -24,7 +28,7 @@ const ERROR = {
 
 describe('DocumentErrorPanel', () => {
   it('shows the normalized message and category', () => {
-    const wrapper = mount(DocumentErrorPanel, {
+    const wrapper: VueWrapper = mount(DocumentErrorPanel, {
       props: { error: ERROR },
       global: { stubs: documentStubs },
     })
@@ -36,7 +40,7 @@ describe('DocumentErrorPanel', () => {
   })
 
   it('reveals and copies the details on demand', async () => {
-    const wrapper = mount(DocumentErrorPanel, {
+    const wrapper: VueWrapper = mount(DocumentErrorPanel, {
       props: { error: ERROR },
       global: { stubs: documentStubs },
     })
@@ -49,7 +53,7 @@ describe('DocumentErrorPanel', () => {
   })
 
   it('emits dismiss', async () => {
-    const wrapper = mount(DocumentErrorPanel, {
+    const wrapper: VueWrapper = mount(DocumentErrorPanel, {
       props: { error: ERROR },
       global: { stubs: documentStubs },
     })

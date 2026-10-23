@@ -2,13 +2,15 @@
 import {
   describe, expect, it,
 } from 'vitest'
-import { mount } from '@vue/test-utils'
+import {
+  mount, type VueWrapper,
+} from '@vue/test-utils'
 import DocumentCapability from '@app/components/DocumentCapability.vue'
 import { documentStubs } from './support/nuxt-ui-stubs'
 
 describe('DocumentCapability', () => {
   it('lists the provider formats when documents are supported', () => {
-    const wrapper = mount(DocumentCapability, {
+    const wrapper: VueWrapper = mount(DocumentCapability, {
       props: {
         checking: false,
         supported: true,
@@ -25,7 +27,7 @@ describe('DocumentCapability', () => {
   })
 
   it('shows the reason and no formats when unsupported', () => {
-    const wrapper = mount(DocumentCapability, {
+    const wrapper: VueWrapper = mount(DocumentCapability, {
       props: {
         checking: false,
         supported: false,
@@ -41,7 +43,7 @@ describe('DocumentCapability', () => {
   })
 
   it('shows a spinner while checking', () => {
-    const wrapper = mount(DocumentCapability, {
+    const wrapper: VueWrapper = mount(DocumentCapability, {
       props: {
         checking: true,
         supported: false,

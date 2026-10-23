@@ -2,7 +2,9 @@
 import {
   describe, expect, it,
 } from 'vitest'
-import { mount } from '@vue/test-utils'
+import {
+  mount, type VueWrapper,
+} from '@vue/test-utils'
 import DocumentDropZone from '@app/components/DocumentDropZone.vue'
 import { documentStubs } from './support/nuxt-ui-stubs'
 
@@ -12,7 +14,7 @@ interface ZoneProps {
   fileName: string
 }
 
-function mountZone(props: Partial<ZoneProps> = {}) {
+function mountZone(props: Partial<ZoneProps> = {}): VueWrapper {
   return mount(DocumentDropZone, {
     props: {
       disabled: false,
@@ -26,7 +28,7 @@ function mountZone(props: Partial<ZoneProps> = {}) {
 
 describe('DocumentDropZone', () => {
   it('invites a drop and offers an explicit picker', async () => {
-    const wrapper = mountZone()
+    const wrapper: VueWrapper = mountZone()
 
     expect(wrapper.text()).toContain('Drop a document here')
     await wrapper.find('button[aria-label="Choose file"]').trigger('click')
@@ -35,7 +37,7 @@ describe('DocumentDropZone', () => {
   })
 
   it('shows the selected file name', () => {
-    const wrapper = mountZone({ fileName: 'report.pdf' })
+    const wrapper: VueWrapper = mountZone({ fileName: 'report.pdf' })
 
     expect(wrapper.find('[aria-label="Selected document"]').text()).toBe('report.pdf')
     expect(wrapper.text()).toContain('Choose another file')
@@ -46,7 +48,7 @@ describe('DocumentDropZone', () => {
   })
 
   it('disables the picker when documents are unavailable', () => {
-    const wrapper = mountZone({ disabled: true })
+    const wrapper: VueWrapper = mountZone({ disabled: true })
 
     expect(wrapper.find('button').attributes('disabled')).toBeDefined()
     expect(wrapper.attributes('aria-disabled')).toBe('true')

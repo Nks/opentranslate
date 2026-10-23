@@ -7,6 +7,7 @@ import {
   stripIpcWrapper,
   extractProviderHint,
   isKnownCategory,
+  type FormattedError,
 } from '@shared/errors/format'
 import { ErrorCategory } from '@shared/types/errors'
 
@@ -44,10 +45,10 @@ describe('formatErrorMessage', () => {
   })
 
   it('strips the preload [channel] prefix in front of the IPC wrapper', () => {
-    const err = new Error(
+    const err: Error = new Error(
       "[document:translate] Error invoking remote method 'document:translate': Error: [unsupported_document_type] AppError: document: unsupported file type \".pdf\" — Supported formats: .txt, .docx",
     )
-    const formatted = formatErrorMessage(err)
+    const formatted: FormattedError = formatErrorMessage(err)
 
     expect(formatted.category).toBe(ErrorCategory.UnsupportedDocumentType)
     expect(formatted.detail).toBe(

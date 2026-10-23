@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import {
-  afterEach, describe, expect, it, vi,
+  afterEach, describe, expect, it, vi, type Mock,
 } from 'vitest'
 import type * as UseApiModule from '@app/composables/useApi'
 
@@ -17,8 +17,9 @@ describe('useApi argument serialization', () => {
   })
 
   it('strips reactive wrappers by JSON round-tripping plain arguments', async () => {
-    const translate = vi.fn<(input: unknown) => Promise<null>>(async () => null)
-    const { useApi } = await loadUseApi({ translation: { translate } })
+    type TranslateFn = (input: unknown) => Promise<null>
+    const translate: Mock<TranslateFn> = vi.fn<TranslateFn>(async () => null)
+    const { useApi }: typeof UseApiModule = await loadUseApi({ translation: { translate } })
     const input: Record<string, unknown> = {
       text: 'hi',
       skipped: undefined,
@@ -32,8 +33,9 @@ describe('useApi argument serialization', () => {
   })
 
   it('passes File objects through untouched so preload can resolve their path', async () => {
-    const selectDroppedFile = vi.fn<(file: File) => Promise<null>>(async () => null)
-    const { useApi } = await loadUseApi({ documents: { selectDroppedFile } })
+    type SelectFn = (file: File) => Promise<null>
+    const selectDroppedFile: Mock<SelectFn> = vi.fn<SelectFn>(async () => null)
+    const { useApi }: typeof UseApiModule = await loadUseApi({ documents: { selectDroppedFile } })
     const file: File = new File(['data'], 'notes.txt')
 
     await useApi().documents.selectDroppedFile(file)

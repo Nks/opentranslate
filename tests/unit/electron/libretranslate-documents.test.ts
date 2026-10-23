@@ -31,7 +31,7 @@ const SETTINGS: LibreTranslateProviderSettings = {
   allowSelfSignedTls: false,
 }
 
-const API_KEY = 'SENSITIVE-FIXTURE-6f1c2a7e-0d41-4b8e'
+const API_KEY: string = 'SENSITIVE-FIXTURE-6f1c2a7e-0d41-4b8e'
 const TRANSLATED_BYTES: Uint8Array<ArrayBuffer> = new Uint8Array([
   0x25, 0x50, 0x44, 0x46, 0x00, 0xff,
 ])
@@ -50,10 +50,14 @@ interface Call {
 
 type Route = (call: Call) => Response
 
-function routedFetch(route: Route): {
+interface RoutedFetch {
   fetchImpl: FetchLike
   calls: Call[]
-} {
+}
+
+type UploadedFile = Blob & { name: string }
+
+function routedFetch(route: Route): RoutedFetch {
   const calls: Call[] = []
   const fetchImpl: FetchLike = async (input: string | URL, init?: UndiciRequestInit) => {
     const call: Call = {
@@ -126,7 +130,7 @@ function formOf(call: Call | undefined): FormData {
 
 describe('LibreTranslate document formats', () => {
   it('reports the normalized supportedFilesFormat list', async () => {
-    const { fetchImpl } = routedFetch(libreRoutes({
+    const { fetchImpl }: RoutedFetch = routedFetch(libreRoutes({
       settings: () => Response.json({
         filesTranslation: true,
         supportedFilesFormat: ['.TXT', 'pdf'],
@@ -137,7 +141,7 @@ describe('LibreTranslate document formats', () => {
   })
 
   it('surfaces a failing /frontend/settings as a normalized error', async () => {
-    const { fetchImpl } = routedFetch(libreRoutes({
+    const { fetchImpl }: RoutedFetch = routedFetch(libreRoutes({
       settings: () => new Response('down', { status: 503 }),
     }))
 
@@ -148,7 +152,7 @@ describe('LibreTranslate document formats', () => {
   })
 
   it('treats files translation disabled as unsupported', async () => {
-    const { fetchImpl } = routedFetch(libreRoutes({
+    const { fetchImpl }: RoutedFetch = routedFetch(libreRoutes({
       settings: () => Response.json({
         filesTranslation: false,
         supportedFilesFormat: [],
@@ -166,7 +170,7 @@ describe('LibreTranslate translateDocument', () => {
     } = routedFetch(libreRoutes({}))
     const output: DocumentTranslationOutput = await translate(buildAdapter(fetchImpl))
     const upload: Call | undefined = calls.find((call: Call) => call.url.endsWith('/translate_file'))
-    const file = formOf(upload).get('file') as Blob & { name: string }
+    const file: UploadedFile = formOf(upload).get('file') as UploadedFile
 
     expect(upload?.url).toBe('https://libre.test/translate_file')
     expect(upload?.init?.method).toBe('POST')
@@ -246,7 +250,7 @@ describe('LibreTranslate translateDocument', () => {
   })
 
   it('rejects an upload response without translatedFileUrl', async () => {
-    const { fetchImpl } = routedFetch(libreRoutes({
+    const { fetchImpl }: RoutedFetch = routedFetch(libreRoutes({
       upload: () => Response.json({ ok: true }),
     }))
 
@@ -254,7 +258,7 @@ describe('LibreTranslate translateDocument', () => {
   })
 
   it('rejects a download larger than the document download cap', async () => {
-    const { fetchImpl } = routedFetch(libreRoutes({
+    const { fetchImpl }: RoutedFetch = routedFetch(libreRoutes({
       download: () => new Response(new Uint8Array(1), {
         headers: { 'Content-Length': String(MAX_DOCUMENT_DOWNLOAD_BYTES + 1) },
       }),
@@ -270,7 +274,7 @@ describe('LibreTranslate translateDocument', () => {
     [429, 'Too many requests', ErrorCategory.RateLimited],
     [500, 'boom', ErrorCategory.EndpointUnreachable],
   ])('maps upload http %i "%s" to %s', async (status: number, error: string, category: string) => {
-    const { fetchImpl } = routedFetch(libreRoutes({
+    const { fetchImpl }: RoutedFetch = routedFetch(libreRoutes({
       upload: () => Response.json({ error }, { status }),
     }))
 

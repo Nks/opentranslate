@@ -1,12 +1,15 @@
 // @vitest-environment happy-dom
 import {
-  describe, expect, it, vi,
+  describe, expect, it, vi, type Mock,
 } from 'vitest'
-import { mount } from '@vue/test-utils'
+import {
+  mount, type VueWrapper,
+} from '@vue/test-utils'
 import DocumentResult from '@app/components/DocumentResult.vue'
 import { documentStubs } from './support/nuxt-ui-stubs'
 
-const copyMock = vi.fn<(value: string) => Promise<void>>(async () => undefined)
+type CopyFn = (value: string) => Promise<void>
+const copyMock: Mock<CopyFn> = vi.fn<CopyFn>(async () => undefined)
 
 vi.mock('@vueuse/core', () => ({
   useClipboard: () => ({
@@ -17,7 +20,7 @@ vi.mock('@vueuse/core', () => ({
 
 describe('DocumentResult', () => {
   it('shows the saved path, reveals through an event and copies the path', async () => {
-    const wrapper = mount(DocumentResult, {
+    const wrapper: VueWrapper = mount(DocumentResult, {
       props: { outputPath: '/docs/notes.ru.translated.txt' },
       global: { stubs: documentStubs },
     })
