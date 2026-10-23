@@ -25,7 +25,23 @@ const FRIENDLY_BY_CATEGORY: Record<ErrorCategoryId, string> = {
     'Something went wrong. See details for the underlying error.',
 }
 
-const IPC_WRAPPER_RE = /^Error invoking remote method ['"][^'"]+['"]:\s*(?:Error:\s*)?/
+const LABEL_BY_CATEGORY: Record<ErrorCategoryId, string> = {
+  [ErrorCategory.NetworkUnavailable]: 'Network unavailable',
+  [ErrorCategory.EndpointUnreachable]: 'Endpoint unreachable',
+  [ErrorCategory.TlsError]: 'TLS certificate error',
+  [ErrorCategory.AuthenticationFailure]: 'Authentication failed',
+  [ErrorCategory.UnsupportedLanguage]: 'Unsupported language',
+  [ErrorCategory.UnsupportedDocumentType]: 'Unsupported document type',
+  [ErrorCategory.QuotaExceeded]: 'Quota exceeded',
+  [ErrorCategory.RateLimited]: 'Rate limited',
+  [ErrorCategory.InvalidProviderResponse]: 'Invalid provider response',
+  [ErrorCategory.InternalAppError]: 'Internal app error',
+}
+
+const UNKNOWN_CATEGORY_LABEL: string = 'Unknown error'
+
+const IPC_WRAPPER_RE: RegExp =
+  /^(?:\[[a-z-]+:[a-z-]+\]\s+)?Error invoking remote method ['"][^'"]+['"]:\s*(?:Error:\s*)?/
 const CATEGORY_PREFIX_RE = /^\[([a-z_]+)\]\s*/
 const APPERROR_PREFIX_RE = /^AppError:\s*/
 const HINT_RE = /\s—\s+(.+)$/
@@ -54,6 +70,10 @@ export function extractProviderHint(message: string): string | null {
   }
 
   return match[1].trim()
+}
+
+export function formatErrorCategory(category: ErrorCategoryId | 'unknown'): string {
+  return category === 'unknown' ? UNKNOWN_CATEGORY_LABEL : LABEL_BY_CATEGORY[category]
 }
 
 export function formatErrorMessage(err: unknown): FormattedError {

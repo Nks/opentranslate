@@ -2,6 +2,7 @@ import {
   describe, expect, it,
 } from 'vitest'
 import {
+  formatErrorCategory,
   formatErrorMessage,
   stripIpcWrapper,
   extractProviderHint,
@@ -40,6 +41,19 @@ describe('formatErrorMessage', () => {
 
     expect(formatted.short).toContain('Visit https://portal.libretranslate.com')
     expect(formatted.short).toMatch(/unexpected response/i)
+  })
+
+  it('strips the preload [channel] prefix in front of the IPC wrapper', () => {
+    const err = new Error(
+      "[document:translate] Error invoking remote method 'document:translate': Error: [unsupported_document_type] AppError: document: unsupported file type \".pdf\" — Supported formats: .txt, .docx",
+    )
+    const formatted = formatErrorMessage(err)
+
+    expect(formatted.category).toBe(ErrorCategory.UnsupportedDocumentType)
+    expect(formatted.detail).toBe(
+      '[unsupported_document_type] AppError: document: unsupported file type ".pdf" — Supported formats: .txt, .docx',
+    )
+    expect(formatted.short).toContain('Supported formats: .txt, .docx')
   })
 
   it('falls back to the internal_app_error friendly copy when category is unknown', () => {
@@ -101,5 +115,21 @@ describe('isKnownCategory', () => {
   it('rejects unknown ids', () => {
     expect(isKnownCategory('not_a_category')).toBe(false)
     expect(isKnownCategory('')).toBe(false)
+  })
+})
+
+describe('formatErrorCategory', () => {
+  it('labels every defined ErrorCategory', () => {
+    for (const value of Object.values(ErrorCategory)) {
+      expect(formatErrorCategory(value).length).toBeGreaterThan(3)
+    }
+  })
+
+  it('labels the document type category', () => {
+    expect(formatErrorCategory(ErrorCategory.UnsupportedDocumentType)).toBe('Unsupported document type')
+  })
+
+  it('labels an unknown category', () => {
+    expect(formatErrorCategory('unknown')).toBe('Unknown error')
   })
 })
