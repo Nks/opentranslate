@@ -11,6 +11,51 @@ SmartScreen first-open steps.
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **LibreTranslate document translation.** On deployments that enable file
+  translation, the Documents page lists the server's supported formats
+  (`.txt`, `.docx`, `.pdf`, … as reported by `/frontend/settings`), uploads
+  the picked file and saves the result unmodified next to it as
+  `<name>.<target>.translated<ext>`. Files the deployment does not support
+  are rejected before upload with a message listing the supported formats.
+  Files are capped at 50 MiB up and 100 MiB down; the picker filters by the
+  server's formats.
+- **Rebuilt Documents page.** It now has the provider selector and the
+  source (with Auto Detect) and target language selectors from the main
+  window, a capability panel listing the server's formats, real
+  drag-and-drop anywhere on the page next to the **Choose file** button, a
+  progress state while translating, **Show in folder** and **Copy path** for
+  the result, and an error panel with the error category and copyable
+  details. Switching provider re-checks document support.
+
+### Fixed
+
+- **Documents page failed with "Document translation not yet implemented".**
+  The capability check reported LibreTranslate documents as available while
+  the translate action was a stub; the action is now wired end to end.
+- **Errors from the main process showed the generic "Something went wrong"
+  text.** The preload `[channel]` prefix stopped the error formatter from
+  reading the error category; the Documents page and the translator now
+  show the categorized message (for example "This file type is not
+  supported for translation. Supported formats: …").
+
+### Security
+
+- The translated file is downloaded only from the configured LibreTranslate
+  origin, without the API key and without following redirects; uploads do
+  not follow redirects either.
+- Only the file picked in the native dialog or dropped on the page can be
+  translated (the dropped file's path is resolved in preload, never sent by
+  the page); network (UNC) paths, non-regular files and oversized files are
+  refused, and the result is written atomically without following a
+  symlink at the output path. **Show in folder** reveals only the file the
+  app just wrote.
+
+---
+
 ## [0.1.1] — 2026-10-23
 
 ### Fixed

@@ -99,6 +99,28 @@ bodies, stack traces, file paths) to the renderer and into main-process logs.
 ESLint's `preserve-caught-error` is suppressed for that one line;
 `tests/unit/electron/safe-handler.test.ts` asserts the cause stays absent.
 
+### Document files (`electron/services/documents/`)
+
+- `document:translate` payloads are parsed with the strict
+  `documentTranslateRequestSchema`; language codes are restricted so they
+  are safe inside the output filename.
+- Only the path of the last selected file is accepted: the one returned by
+  `document:pick` (native dialog) or registered by `document:drop`. The drop
+  path is resolved in preload with `webUtils.getPathForFile(file)` from a
+  real `File`; the exposed bridge takes a `File`, never a path, so a hostile
+  renderer cannot make main upload arbitrary files. Main validates each
+  selection (path rules below + provider extension) before allowlisting it,
+  and validates again at translate time.
+- `document:reveal` takes no path: main reveals only the last output file it
+  wrote.
+- The path must be local (UNC / `//host` rejected before any fs call),
+  absolute, resolve via `realpath` to a regular non-empty file of at most
+  50 MiB, and carry an extension the provider lists.
+- `translatedFileUrl` is downloaded only from the configured endpoint's
+  origin, with no API key, no auth header and no redirects, capped at
+  100 MiB. Results are written via a `wx` partial file and `rename`.
+- Error messages never include file paths, file contents or the API key.
+
 ---
 
 ## Content Security Policy

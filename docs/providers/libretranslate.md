@@ -58,6 +58,42 @@ file translation. The UI reflects the actual capability.
 
 ---
 
+## Document Translation
+
+When `/frontend/settings` reports `filesTranslation` with a non-empty
+`supportedFilesFormat` (for example `.txt`, `.odt`, `.docx`, `.pdf`), the
+Documents page is enabled and lists those formats. The app never assumes a
+format: a file whose extension the deployment does not list is rejected
+before upload with `unsupported_document_type` and the supported formats.
+
+Flow (all in the main process):
+
+1. Pick a file with the native dialog (filtered by the deployment's
+   formats). Only the picked file can be translated.
+2. The file must be local (no network / UNC paths), a regular non-empty
+   file, at most **50 MiB**.
+3. `POST /translate_file` (multipart `file`, `source`, `target`, and
+   `api_key` when configured). Redirects are not followed.
+4. The returned `translatedFileUrl` is downloaded only if it is on the
+   **same origin** as the configured endpoint (scheme, host, port). The
+   download carries no API key, follows no redirects and is capped at
+   **100 MiB**.
+5. The bytes are saved unmodified next to the source as
+   `<name>.<target>.translated<ext>`; an existing translation with that
+   name is replaced.
+
+Uploads and downloads time out after `max(requestTimeoutMs, 5 min)`.
+There is no cancel button yet.
+
+> **Reverse proxies:** LibreTranslate builds `translatedFileUrl` from the
+> request it received. If a TLS-terminating proxy makes it answer with
+> `http://…` while the endpoint is `https://…`, or with an internal host
+> name, the origin check refuses the download
+> (`invalid_provider_response`). Configure the proxy to forward
+> `X-Forwarded-Proto` / `Host` so the URL matches the public endpoint.
+
+---
+
 ## API Endpoints Used
 
 | Endpoint | Purpose |
@@ -92,7 +128,10 @@ LibreTranslate errors are mapped to shared error categories:
 | 403 Forbidden | `AuthenticationFailed` |
 | 429 Too Many Requests | `RateLimited` |
 | 400 with language error | `UnsupportedLanguage` |
-| 500+ | `InvalidProviderResponse` |
+| 400 `file format not supported` | `UnsupportedDocumentType` |
+| 403 `Files translation are disabled …` | `UnsupportedDocumentType` |
+| `translatedFileUrl` on another origin, download too large | `InvalidProviderResponse` |
+| 500+ | `EndpointUnreachable` |
 | TLS/certificate error | `TlsCertificateError` |
 
 ---

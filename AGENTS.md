@@ -51,7 +51,7 @@ electron-builder.yml  nuxt.config.ts  package.json
 | `translation:translate/cancel/detect`         | renderer → main | text + detection flows                         |
 | `language:list`                               | renderer → main | provider-discovered language catalog           |
 | `history:add/list/search/delete/clear/toggle` | renderer → main | local sqlite history                           |
-| `document:pick/translate/status`              | renderer → main | document workflow (capability-gated)           |
+| `document:pick/drop/translate/status/reveal`  | renderer → main | document workflow (capability-gated)           |
 
 Renderer calls providers only through channels. No fetch to translation APIs from Vue. Renderer imports from `electron/*` only via `import type` of IPC contract shapes.
 

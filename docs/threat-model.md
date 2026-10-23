@@ -76,7 +76,7 @@ Stable IDs: `T-S-NN` Spoofing, `T-T-NN` Tampering, `T-R-NN` Repudiation,
 | T-T-02 | On-disk tamper of `userData/history.db` to inject misleading entries | `better-sqlite3` opens any sqlite file; schema is `CREATE IF NOT EXISTS`; rows trusted as written | None at app level — history is treated as user data; integrity relies on OS file permissions |
 | T-T-03 | Hostile renderer script injects a non-schema-valid `settings:update` payload, e.g. negative timeout, prototype pollution | `mergeProvidersWithRegistry` rejects via Zod (`store.ts:67-107`); merge uses spread on plain objects only; app shell `settingsFileSchema.shape.app.safeParse` enforces shape on save | `mergeSettings` spread of `patch.app` (`store.ts:132`) is not protected against `__proto__`/`constructor` keys reaching Zod parser — Zod strips unknown keys, but a strict prototype-pollution test should be added |
 | T-T-04 | Malicious provider response with embedded HTML/script for `format: 'html'` translations is rendered in renderer | Default `format: 'text'`; Vue interpolation `{{ }}` escapes; Nuxt UI textareas treat output as text | HTML format flag exists in shared types — if any future UI path uses `v-html` on translated text, XSS path opens |
-| T-T-05 | Document service writes translated file outside intended directory via crafted source path (e.g. symlink, `..` traversal in basename) | Output path computed via `node:path` `dirname`/`extname`/`basename` (`documents/service.ts:37-42`); no shell exec | No symlink resolution check, no allowlist of writable roots; provider-returned bytes saved unchanged into computed path |
+| T-T-05 | Document service writes translated file outside intended directory via crafted source path (e.g. symlink, `..` traversal in basename) | `documents/source-file.ts` resolves `realpath` and requires a local, absolute, regular file; target language must match a language-code regex (`shared/schemas/document-request.ts`), so the output name cannot carry `/` or `..`; `documents/output-file.ts` writes a `wx` `*.partial` then `rename`s it, replacing (never following) a symlink at the output path | No allowlist of writable roots: the output lands next to the picked file's real path and replaces an existing `<name>.<lang>.translated<ext>` |
 | T-T-06 | History `LIKE` query injection from search box | Pattern is parameterized `@pattern` with `LIKE '%query%'` (`history/store.ts:141`); no string concat | `%` and `_` in query are interpreted as wildcards (not security, but correctness — escape would improve UX) |
 | T-T-07 | Tamper of `secrets.json` cipher to swap one provider's key into another's slot | `safeStorage` encrypts per-string; swap is detectable only when adapter call fails auth | No HMAC over the file, no per-entry binding to providerId in the ciphertext |
 | T-T-08 | IPC handler reorders / mis-routes the active translation result (latest-wins violation) | Orchestrator monotonic sequence (architecture §8.3.2); stale results discarded | Not yet code-reviewed in this scope; assumed correct from contract |
@@ -105,13 +105,14 @@ Stable IDs: `T-S-NN` Spoofing, `T-T-NN` Tampering, `T-R-NN` Repudiation,
 | T-I-07 | Bearer token reused across providers | Google bearer is scoped to `cloud-translation` (`auth.ts:32`); only attached on requests to `V2_BASE` (`google/http-client.ts:60`) | Token lives in `getAccessToken()` closure; no explicit zeroization after use |
 | T-I-08 | DevTools opens in packaged build and exposes internals | `allowDevTools = !app.isPackaged` (`main-window.ts:25`); `before-input-event` blocks `Ctrl+Shift+I`, `F12`, `Alt+Cmd+I` (`devtools-blocker.ts`); `devtools-opened` event force-closes | Blocker is keyboard-only — programmatic open via menu would also fire `devtools-opened` and be closed. New main-window-spawn paths could miss the listener registration |
 | T-I-09 | Window screenshot/screen-share captures plaintext translation history while showing a sensitive entry | Out of scope for app | Could add macOS "private window" hint or `setContentProtection(true)` toggle |
+| T-I-10 | Hostile renderer points the LibreTranslate endpoint at its own host (`settings:update`) and asks main to upload an arbitrary local file (`document:translate`), or makes a provider-returned `translatedFileUrl` exfiltrate the API key / reach an internal host | `document:translate` accepts only the path returned by the last `document:pick` (native dialog) or registered by `document:drop`, whose path preload resolves from a real `File` via `webUtils.getPathForFile` (the bridge never takes a path; in-memory Files resolve to `''` and are refused); main validates every selection (UNC, realpath, regular file, size, extension) before allowlisting it; `document:reveal` reveals only main's own last output; UNC / `//host` paths are rejected before any fs call (no NTLM leak); `translatedFileUrl` is fetched only on the endpoint origin, with no API key, no auth header and `redirect: 'manual'`; the upload also uses `redirect: 'manual'` | A picked file still goes to whatever endpoint is configured; endpoint changes are not confirmed by the user (see T-T-01) |
 
 ### 3.5 Denial of Service (D)
 
 | ID | Threat | Mitigations | Residual |
 |----|--------|-------------|----------|
 | T-D-01 | Renderer floods `translation:translate` requests | Renderer debounces (`useTranslation`, architecture §8.4.3, default 350 ms); orchestrator cancels prior in-flight via `AbortController` | No server-side rate limit at IPC layer; a buggy renderer can still spin (CPU on debounce) |
-| T-D-02 | Provider returns gigabyte-size response (Libre `translate_file`) | Provider HTTP kernel respects `requestTimeoutMs`; `AbortSignal.timeout` (architecture §8.2.2) | No max-response-size cap configured |
+| T-D-02 | Provider returns gigabyte-size response (Libre `translate_file`) | Kernel `download()` rejects a `Content-Length` above `MAX_DOCUMENT_DOWNLOAD_BYTES` (100 MiB) and stops a streamed body at the same cap; uploads are capped at 50 MiB; `AbortSignal.timeout` (architecture §8.2.2) | JSON endpoints (`execute()`) and error bodies still have no size cap |
 | T-D-03 | Settings file grows unbounded (per-provider slice accumulation) | Schema-bounded shape per provider; unknown provider ids are dropped on save (`mergeProvidersWithRegistry` walks the registry, not the patch) | None at this layer |
 | T-D-04 | History fills disk | Retention modes: `last-30-days`, `last-100-entries`, unlimited (`history/store.ts:88-95`); user can clear | "Unlimited" mode is the worst case; no disk-watermark warning |
 | T-D-05 | Repeated chord fires lock up the main process reading clipboard | `setTimeout(handleChord, 100ms)` (`quick-translate-controller.ts:39,75`) — one timer per chord, no queue back-pressure | Two rapid chords overlap two `setTimeout`s; harmless today but should be coalesced |
@@ -129,7 +130,7 @@ Stable IDs: `T-S-NN` Spoofing, `T-T-NN` Tampering, `T-R-NN` Repudiation,
 | T-E-04 | Renderer is navigated to attacker URL via `window.open`, `<a target=_blank>`, or `location.href`, then preload still exposes `window.api` | No `setWindowOpenHandler({action:'deny'})`, no `will-navigate` guard registered today | Real residual — see follow-up B-G-01 |
 | T-E-05 | Main process runs with elevated rights → `child_process` from a dependency | App does not spawn child processes; native deps (`better-sqlite3`, `uiohook-napi`) are linked, not exec'd | Out-of-app supply-chain risk is the dominant remaining vector |
 | T-E-06 | uiohook-napi key observer captures all keystrokes across OS (privilege uplift compared to scoped shortcut) | macOS requires Accessibility permission gated by `ensureAccessibilityPermission`; user grants explicitly | All keystrokes are observable while running. Mitigated by chord detector consuming events without storing them, but the capability exists. Document trade-off in `docs/security.md` |
-| T-E-07 | `dialog.showOpenDialog` returns symlinked path that the user did not intend; document service follows it | `node:path` operations are lexical; no `realpath`/`symlink` resolution | Provider receives `sourcePath` as given; written-to dir is the lexical `dirname` of that path |
+| T-E-07 | `dialog.showOpenDialog` returns symlinked path that the user did not intend; document service follows it | `realpath` is resolved first; the resolved target must be a local regular file with a supported extension; the output is written next to the real path | A symlink the user picks is followed to its target by design |
 | T-E-08 | A future provider adapter spawns a child process or writes outside `userData` | `electron-providers` may import `electron-services` (per architecture §8.2.1); no lint rule prevents `node:child_process` import inside providers today | Add ESLint rule or boundary forbidding `node:child_process` and arbitrary `fs.writeFile` outside services/documents — see B-G-02 |
 
 ---
@@ -146,8 +147,8 @@ Proposed IDs only — do **not** add to `docs/backlog.md` in this task.
 | B-G-04 | Prototype-pollution unit test for `mergeSettings` with `__proto__`, `constructor`, `prototype` keys in patch | T-T-03 | S |
 | B-G-05 | Surface `ephemeral: true` from `secrets:set` response in the Settings UI as a non-dismissable warning badge (architecture §8.1.5 already mandates) | T-I-03 | S |
 | B-G-06 | Redaction policy in `safeHandler` / preload error logger — drop `err.cause`, never log `URLSearchParams` bodies, allowlist of safe `err.message` shapes | T-I-02, T-I-05 | M |
-| B-G-07 | Document service: enforce `dirname(filePath)` is inside an allowed root (user's home or explicit pick directory); refuse to write across symlinks; resolve `realpath` first | T-T-05, T-E-07 | M |
-| B-G-08 | Max-response-size guard in provider HTTP kernel (`provider-http.ts`); reject early on `Content-Length` and on streaming body overflow | T-D-02 | S |
+| B-G-07 | Document service: enforce `dirname(filePath)` is inside an allowed root (user's home or explicit pick directory). _`realpath`, pick binding and symlink-safe atomic writes landed with LibreTranslate documents; the writable-root allowlist remains._ | T-T-05, T-E-07 | M |
+| B-G-08 | Max-response-size guard in provider HTTP kernel (`provider-http.ts`); reject early on `Content-Length` and on streaming body overflow. _Done for `download()`; `execute()` JSON bodies remain._ | T-D-02 | S |
 | B-G-09 | Per-entry providerId binding inside encrypted secrets (encrypt `JSON.stringify({providerId, secret})`, verify on decrypt) | T-T-07 | S |
 | B-G-10 | Optional `setContentProtection(true)` toggle for the main window (privacy mode: hide from screen-share/screenshot) | T-I-09 | M |
 | B-G-11 | Production CSP: drop `'unsafe-inline'` on `style-src` once Nuxt UI hydration is verified compatible; explore nonce-based `script-src` for hydration | T-S-01 | L |
@@ -165,7 +166,7 @@ Proposed IDs only — do **not** add to `docs/backlog.md` in this task.
 | Security §4 | Logs redact secrets + translation content by default | `vault.ts` (no `console.*` of secrets), `preload/index.ts:63` | T-I-02 | No `safeHandler` redaction policy → B-G-06 |
 | Security §5 | Clipboard read only after explicit quick-translate invocation | `quick-translate-controller.ts:75-82` | T-S-06, T-R-06 | None — chord-gated by design |
 | Security §6 | No hidden telemetry | grep confirms no telemetry imports | — (positive invariant) | None |
-| Security §7 | Validate user input + IPC payloads at boundary with zod; sanitize file paths | `settings/store.ts:67-107,237-256` (zod), `documents/service.ts:33-42` (path) | T-T-01, T-T-03 (partial) | Path sanitization is lexical only → B-G-07; prototype-pollution test → B-G-04 |
+| Security §7 | Validate user input + IPC payloads at boundary with zod; sanitize file paths | `settings/store.ts:67-107,237-256` (zod), `schemas/document-request.ts` (zod), `documents/source-file.ts` (realpath, regular file, size, extension) | T-T-01, T-T-03 (partial), T-T-05, T-I-10 | Writable-root allowlist → B-G-07; prototype-pollution test → B-G-04 |
 | Security §8 | CSP locked in `electron/main/csp.ts`; no RCE in renderer | `csp.ts:16-22` | T-S-01, T-T-04 | Production allows `'unsafe-inline'` on script + style → B-G-11 |
 | Forbidden §9 | No direct renderer network calls to providers | `eslint-plugin-boundaries` (architecture §1, invariant 2) | T-S-02, T-S-03, T-I-06 | Enforced at lint time; no runtime guard |
 | Forbidden §10 | No persistent logging of translation content by default | History opt-in + retention; no logger writes content | T-R-01, T-I-05 | Acceptable |
@@ -179,10 +180,10 @@ Proposed IDs only — do **not** add to `docs/backlog.md` in this task.
 | Spoofing (S) | 7 |
 | Tampering (T) | 8 |
 | Repudiation (R) | 6 |
-| Information disclosure (I) | 9 |
+| Information disclosure (I) | 10 |
 | Denial of service (D) | 8 |
 | Elevation of privilege (E) | 8 |
-| **Total** | **46** |
+| **Total** | **47** |
 
 Residual gaps: 12 proposed backlog items (B-G-01 … B-G-12).
 
@@ -195,4 +196,6 @@ boundary (IPC surface change, new disk persistence, new network destination,
 new global OS capability). Any new bounded context (architecture §2) requires
 an entry per STRIDE class, even if the answer is "no new threats".
 
-Last updated: Phase 1 (`feat/p1-bundle`).
+Last updated: Phase 1 (`feat/p1-bundle`); document rows (T-T-05, T-I-10,
+T-D-02, T-E-07, B-G-07, B-G-08) refreshed for LibreTranslate document
+translation (`feature/libretranslate-documents`).
