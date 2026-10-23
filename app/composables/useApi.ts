@@ -7,6 +7,12 @@ import type { OpenTranslateApi } from '@electron/preload/index'
  */
 const RAW_PASSTHROUGH_NAMESPACES = new Set<string>(['quickTranslate', 'window'])
 
+function serializeArgument(arg: unknown): unknown {
+  const isPassThrough: boolean = arg === undefined || arg === null || arg instanceof Blob
+
+  return isPassThrough ? arg : JSON.parse(JSON.stringify(arg))
+}
+
 /**
  * Deep-wrap an API object so every function call has its arguments
  * JSON-serialized before crossing the Electron context bridge.
@@ -21,7 +27,8 @@ const RAW_PASSTHROUGH_NAMESPACES = new Set<string>(['quickTranslate', 'window'])
  *
  * Namespaces in `RAW_PASSTHROUGH_NAMESPACES` are exposed unwrapped because
  * they accept callback function arguments (event listeners) that cannot
- * survive JSON serialization.
+ * survive JSON serialization. `File` / `Blob` arguments also pass through
+ * as-is: preload needs the original object for `webUtils.getPathForFile`.
  */
 function wrapApi<T>(target: T, namespacePath: readonly string[] = []): T {
   if (target === null || typeof target !== 'object') {
@@ -36,11 +43,7 @@ function wrapApi<T>(target: T, namespacePath: readonly string[] = []): T {
 
     if (typeof value === 'function') {
       result[key] = (...args: unknown[]) => {
-        const safeArgs = args.map((arg) =>
-          arg === undefined || arg === null
-            ? arg
-            : JSON.parse(JSON.stringify(arg)),
-        )
+        const safeArgs: unknown[] = args.map(serializeArgument)
 
         return (value as (...params: unknown[]) => unknown)(...safeArgs)
       }
