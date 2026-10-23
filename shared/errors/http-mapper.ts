@@ -2,6 +2,18 @@ import {
   ErrorCategory, type ErrorCategoryId,
 } from '@shared/types/errors'
 
+const MAX_PROVIDER_DETAIL_CHARS: number = 200
+
+/**
+ * Shorten provider-supplied error text before it is put in an error message
+ * that reaches logs and the UI.
+ */
+export function truncateProviderDetail(detail: string): string {
+  return detail.length > MAX_PROVIDER_DETAIL_CHARS
+    ? `${detail.slice(0, MAX_PROVIDER_DETAIL_CHARS)}…`
+    : detail
+}
+
 /**
  * Generic HTTP status → ErrorCategory mapping used by every provider
  * mapper. Provider-specific 400 disambiguation (e.g. Google's

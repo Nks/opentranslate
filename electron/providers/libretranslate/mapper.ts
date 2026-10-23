@@ -5,7 +5,7 @@ import {
   normalizeDocumentFormats,
 } from '@shared/documents/formats'
 import {
-  AppError, ErrorCategory, mapHttpStatusToCategory, type ErrorCategoryId,
+  AppError, ErrorCategory, mapHttpStatusToCategory, truncateProviderDetail, type ErrorCategoryId,
 } from '@shared/errors'
 import type {
   Language,
@@ -151,9 +151,12 @@ export function mapLibreFileTranslation(native: unknown): string {
 }
 
 export function throwLibreHttpError(status: number, body: unknown): never {
-  const detail = extractErrorDetail(body)
+  const detail: string = extractErrorDetail(body)
 
-  throw new AppError(resolveLibreCategory(status, detail), `libretranslate: http ${status} — ${detail}`)
+  throw new AppError(
+    resolveLibreCategory(status, detail),
+    `libretranslate: http ${status} — ${truncateProviderDetail(detail)}`,
+  )
 }
 
 function resolveLibreCategory(status: number, detail: string): ErrorCategoryId {

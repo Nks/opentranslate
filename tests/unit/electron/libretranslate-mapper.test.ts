@@ -161,6 +161,22 @@ describe('throwLibreHttpError', () => {
     )
   })
 
+  it.each([
+    { error: 'x'.repeat(10_000) },
+    'y'.repeat(10_000),
+  ])('truncates an oversized server detail', (body: unknown) => {
+    let message: string = ''
+
+    try {
+      throwLibreHttpError(500, body)
+    } catch (err: unknown) {
+      message = (err as AppError).message
+    }
+
+    expect(message.length).toBeLessThan(260)
+    expect(message.endsWith('…')).toBe(true)
+  })
+
   it('keeps a 403 invalid-key response as AuthenticationFailure', () => {
     expect(() => throwLibreHttpError(403, { error: 'Invalid API key' })).toThrow(
       expect.objectContaining({ category: ErrorCategory.AuthenticationFailure }),

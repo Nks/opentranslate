@@ -1,5 +1,8 @@
 const DOCUMENT_EXTENSION_RE: RegExp = /^\.[a-z0-9]{1,16}$/
 
+/** Most document formats accepted from a provider's capability report. */
+export const MAX_DOCUMENT_FORMATS: number = 64
+
 /**
  * Normalize a file extension to the canonical `.ext` lowercase form used to
  * compare a picked file against a provider's supported document formats.
@@ -16,23 +19,25 @@ export function normalizeDocumentExtension(value: string): string | null {
 
 /**
  * Normalize a provider-reported list of document formats: drops non-string
- * and malformed entries, normalizes each extension and removes duplicates
- * while keeping the provider's order.
+ * and malformed entries, normalizes each extension, removes duplicates while
+ * keeping the provider's order, and keeps at most `MAX_DOCUMENT_FORMATS`.
  */
 export function normalizeDocumentFormats(values: readonly unknown[]): string[] {
-  const formats: string[] = []
+  const formats: Set<string> = new Set()
 
   for (const value of values) {
-    if (typeof value !== 'string') {
-      continue
+    if (formats.size >= MAX_DOCUMENT_FORMATS) {
+      break
     }
 
-    const extension: string | null = normalizeDocumentExtension(value)
+    const extension: string | null = typeof value === 'string'
+      ? normalizeDocumentExtension(value)
+      : null
 
-    if (extension !== null && !formats.includes(extension)) {
-      formats.push(extension)
+    if (extension !== null) {
+      formats.add(extension)
     }
   }
 
-  return formats
+  return [...formats]
 }
