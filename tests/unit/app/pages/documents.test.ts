@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import {
-  beforeEach, describe, expect, it, vi,
+  beforeEach, describe, expect, it, vi, type Mock,
 } from 'vitest'
+import type { Component } from 'vue'
 import {
   flushPromises, mount, type VueWrapper,
 } from '@vue/test-utils'
@@ -51,7 +52,9 @@ interface SettingsPayload {
 
 const calls: string[] = []
 
-function tracked<TResult>(name: string, result: TResult) {
+type Tracked<TResult> = Mock<() => Promise<TResult>>
+
+function tracked<TResult>(name: string, result: TResult): Tracked<TResult> {
   return vi.fn(async (): Promise<TResult> => {
     calls.push(name)
 
@@ -59,7 +62,17 @@ function tracked<TResult>(name: string, result: TResult) {
   })
 }
 
-const api = {
+interface PageApi {
+  providers: Record<'list' | 'switch', Tracked<unknown>>
+  settings: {
+    get: Tracked<SettingsPayload>
+    update: Tracked<unknown>
+  }
+  translation: Record<'translate' | 'cancel', Tracked<unknown>>
+  documents: Record<'status' | 'pick' | 'selectDroppedFile' | 'translate' | 'reveal', Tracked<unknown>>
+}
+
+const api: PageApi = {
   providers: {
     list: tracked('providers.list', [LIBRE]),
     switch: tracked('providers.switch', {
@@ -102,7 +115,11 @@ const api = {
       message: 'Document translation available',
     }),
     pick: tracked('documents.pick', null),
-    selectDroppedFile: tracked('documents.selectDroppedFile', { filePath: '/docs/dropped.txt' }),
+    selectDroppedFile: tracked('documents.selectDroppedFile', {
+      filePath: '/docs/dropped.txt',
+      fileName: 'dropped.txt',
+      extension: '.txt',
+    }),
     translate: tracked('documents.translate', null),
     reveal: tracked('documents.reveal', undefined),
   },
@@ -114,15 +131,17 @@ vi.mock('@app/composables/useApi', () => ({
 
 const { default: DocumentsPage } = await import('@app/pages/documents.vue')
 
-const passthrough = { template: '<div><slot /></div>' }
+const passthrough: Component = { template: '<div><slot /></div>' }
 
-const stubs = {
+const headerStub: Component = {
+  props: ['providers', 'activeProviderId', 'sourceSelection', 'targetLanguage'],
+  emits: ['switch', 'source-change', 'target-change'],
+  template: '<header data-testid="header" :data-active="activeProviderId" />',
+}
+
+const stubs: Record<string, Component | boolean> = {
   UApp: passthrough,
-  DocumentsHeader: {
-    props: ['providers', 'activeProviderId', 'sourceSelection', 'targetLanguage'],
-    emits: ['switch', 'source-change', 'target-change'],
-    template: '<header data-testid="header" :data-active="activeProviderId" />',
-  },
+  DocumentsHeader: headerStub,
   DocumentCapability: {
     props: ['formats', 'supported'],
     template: '<div data-testid="capability" :data-formats="formats.join(\',\')" />',
@@ -166,7 +185,7 @@ describe('documents page', () => {
   })
 
   it('reuses an already hydrated provider without switching again', async () => {
-    const store = useProvidersStore()
+    const store: ReturnType<typeof useProvidersStore> = useProvidersStore()
     store.descriptors = [LIBRE]
     store.providerSettings = { libretranslate: { enabled: true } }
     store.activeProviderId = 'libretranslate'
@@ -181,7 +200,7 @@ describe('documents page', () => {
     const wrapper: VueWrapper = await mountPage()
     calls.length = 0
 
-    wrapper.findComponent(stubs.DocumentsHeader).vm.$emit('switch', 'libretranslate')
+    wrapper.findComponent(headerStub).vm.$emit('switch', 'libretranslate')
     await flushPromises()
 
     expect(calls).toContain('providers.switch')
@@ -192,7 +211,7 @@ describe('documents page', () => {
   it('applies language picks from the header to the shared selection', async () => {
     const wrapper: VueWrapper = await mountPage()
 
-    wrapper.findComponent(stubs.DocumentsHeader).vm.$emit('source-change', 'en')
+    wrapper.findComponent(headerStub).vm.$emit('source-change', 'en')
     await flushPromises()
 
     expect(useProvidersStore().sourceSelection).toEqual({

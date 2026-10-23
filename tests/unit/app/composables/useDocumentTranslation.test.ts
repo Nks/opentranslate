@@ -14,23 +14,28 @@ import {
   mockDrop,
   mockPick,
   mockStatus,
+  selectionFor,
   mockToastAdd,
   mockTranslate,
 } from './support/document-api'
+import type * as DocumentApiSupport from './support/document-api'
+import type * as UseDocumentTranslationModule from '@app/composables/useDocumentTranslation'
 
 vi.mock('@app/composables/useApi', async () => {
-  const { documentApi } = await import('./support/document-api')
+  const { documentApi }: typeof DocumentApiSupport = await import('./support/document-api')
 
   return { useApi: () => documentApi }
 })
 
-const { useDocumentTranslation } = await import('@app/composables/useDocumentTranslation')
+const { useDocumentTranslation }: typeof UseDocumentTranslationModule = await import(
+  '@app/composables/useDocumentTranslation'
+)
 
 type DocumentTranslation = ReturnType<typeof useDocumentTranslation>
 
 async function readyWithFile(filePath: string): Promise<DocumentTranslation> {
   mockStatus.mockResolvedValue(SUPPORTED_STATUS)
-  mockPick.mockResolvedValue({ filePath })
+  mockPick.mockResolvedValue(selectionFor(filePath))
   const documents: DocumentTranslation = useDocumentTranslation()
   await documents.checkSupport()
   await documents.pickFile()
@@ -57,6 +62,18 @@ describe('useDocumentTranslation — capability', () => {
     expect(documents.checking.value).toBe(false)
   })
 
+  it('shows the normalized status error instead of a generic message', async () => {
+    mockStatus.mockRejectedValue(new Error(
+      "[document:status] Error invoking remote method 'document:status': Error: [endpoint_unreachable] AppError: libretranslate: network error — ECONNREFUSED",
+    ))
+    const documents: DocumentTranslation = useDocumentTranslation()
+
+    await documents.checkSupport()
+
+    expect(documents.supported.value).toBe(false)
+    expect(documents.statusMessage.value).toContain('Could not reach the translation provider')
+  })
+
   it('disables documents and toasts when the status check fails', async () => {
     mockStatus.mockRejectedValue(new Error('[document:status] boom'))
     const documents: DocumentTranslation = useDocumentTranslation()
@@ -67,6 +84,15 @@ describe('useDocumentTranslation — capability', () => {
     expect(documents.formats.value).toEqual([])
     expect(documents.statusMessage.value).toBe('Unable to check document support')
     expect(mockToastAdd).toHaveBeenCalledOnce()
+  })
+
+  it('drops the selected file after a provider change so it must be picked again', async () => {
+    const documents: DocumentTranslation = await readyWithFile('/docs/notes.txt')
+
+    await documents.onProviderChanged()
+
+    expect(documents.filePath.value).toBeNull()
+    expect(documents.fileName.value).toBe('')
   })
 
   it('clears the result and re-checks support after a provider change', async () => {
@@ -97,13 +123,30 @@ describe('useDocumentTranslation — file selection', () => {
     installToastStub()
   })
 
-  it('derives the file name for POSIX and Windows paths', async () => {
+  it('shows the file name main resolved, not one parsed from the path', async () => {
     const documents: DocumentTranslation = await readyWithFile('/Users/me/notes.txt')
     expect(documents.fileName.value).toBe('notes.txt')
 
-    mockPick.mockResolvedValue({ filePath: 'C:\\Users\\me\\report.odt' })
+    mockPick.mockResolvedValue({
+      filePath: 'C:\\Users\\me\\shortcut.txt',
+      fileName: 'report.odt',
+      extension: '.odt',
+    })
     await documents.pickFile()
     expect(documents.fileName.value).toBe('report.odt')
+    expect(documents.fileFormatSupported.value).toBe(true)
+  })
+
+  it('gates on the extension main resolved', async () => {
+    useProvidersStore().targetLanguage = 'ru'
+    mockStatus.mockResolvedValue(SUPPORTED_STATUS)
+    mockPick.mockResolvedValue(selectionFor('/docs/notes.txt', ''))
+    const documents: DocumentTranslation = useDocumentTranslation()
+    await documents.checkSupport()
+    await documents.pickFile()
+
+    expect(documents.canTranslate.value).toBe(false)
+    expect(documents.blockedReason.value).toContain('files without an extension')
   })
 
   it('keeps the current file when the dialog is cancelled', async () => {
@@ -117,7 +160,7 @@ describe('useDocumentTranslation — file selection', () => {
 
   it('selects a single dropped file through the preload bridge', async () => {
     mockStatus.mockResolvedValue(SUPPORTED_STATUS)
-    mockDrop.mockResolvedValue({ filePath: '/docs/dropped.txt' })
+    mockDrop.mockResolvedValue(selectionFor('/docs/dropped.txt'))
     const documents: DocumentTranslation = useDocumentTranslation()
     await documents.checkSupport()
     const file: File = new File(['x'], 'dropped.txt')

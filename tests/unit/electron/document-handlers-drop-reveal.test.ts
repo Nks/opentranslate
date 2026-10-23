@@ -1,5 +1,5 @@
 import {
-  describe, expect, it, vi,
+  describe, expect, it, vi, type Mock,
 } from 'vitest'
 import type {
   DocumentService, DocumentTranslateResult,
@@ -21,7 +21,11 @@ describe('document handlers — drop', () => {
     const fixture: HandlerFixture = buildHandlers()
 
     expect(await fixture.handlers['document:drop']({ filePath: '/docs/report.txt' }))
-      .toEqual({ filePath: '/docs/report.txt' })
+      .toEqual({
+        filePath: '/docs/report.txt',
+        fileName: 'report.txt',
+        extension: '.txt',
+      })
 
     const result: DocumentTranslateResult = await fixture.handlers['document:translate'](
       PICKED_REQUEST,
@@ -108,7 +112,7 @@ describe('document handlers — selection checks', () => {
 
 describe('document handlers — reveal', () => {
   it('reveals the last output path main produced', async () => {
-    const showItemInFolder = vi.fn<(fullPath: string) => void>()
+    const showItemInFolder: Mock<(fullPath: string) => void> = vi.fn<(fullPath: string) => void>()
     const fixture: HandlerFixture = buildHandlers({
       showOpenDialog: fakeDialog(['/docs/report.txt']),
       showItemInFolder,
@@ -122,7 +126,7 @@ describe('document handlers — reveal', () => {
   })
 
   it('refuses to reveal before any translation finished', async () => {
-    const showItemInFolder = vi.fn<(fullPath: string) => void>()
+    const showItemInFolder: Mock<(fullPath: string) => void> = vi.fn<(fullPath: string) => void>()
     const fixture: HandlerFixture = buildHandlers({ showItemInFolder })
 
     await expect(fixture.handlers['document:reveal']()).rejects.toMatchObject({
@@ -133,14 +137,16 @@ describe('document handlers — reveal', () => {
   })
 
   it('ignores any argument and never reveals a renderer-supplied path', async () => {
-    const showItemInFolder = vi.fn<(fullPath: string) => void>()
+    const showItemInFolder: Mock<(fullPath: string) => void> = vi.fn<(fullPath: string) => void>()
     const fixture: HandlerFixture = buildHandlers({
       showOpenDialog: fakeDialog(['/docs/report.txt']),
       showItemInFolder,
     })
     await fixture.handlers['document:pick']()
     await fixture.handlers['document:translate'](PICKED_REQUEST)
-    const reveal = fixture.handlers['document:reveal'] as (input?: unknown) => Promise<void>
+    const reveal: (input?: unknown) => Promise<void> = fixture.handlers['document:reveal'] as (
+      input?: unknown,
+    ) => Promise<void>
 
     await reveal({ outputPath: '/etc/passwd' })
 
@@ -149,7 +155,7 @@ describe('document handlers — reveal', () => {
 
   it('keeps the previous output when a later translation fails', async () => {
     const service: DocumentService = fakeService()
-    const showItemInFolder = vi.fn<(fullPath: string) => void>()
+    const showItemInFolder: Mock<(fullPath: string) => void> = vi.fn<(fullPath: string) => void>()
     const fixture: HandlerFixture = buildHandlers({
       service,
       showOpenDialog: fakeDialog(['/docs/report.txt']),

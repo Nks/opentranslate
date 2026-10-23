@@ -145,6 +145,14 @@ describe('electron-builder.yml', () => {
     expect(dmg.sign).toBe(false)
   })
 
+  it('quarantines files the mac app writes (translated documents carry com.apple.quarantine)', () => {
+    const config: Record<string, unknown> = loadConfig()
+    const mac: Record<string, unknown> = config.mac as Record<string, unknown>
+    const extendInfo: Record<string, unknown> = mac.extendInfo as Record<string, unknown>
+
+    expect(extendInfo.LSFileQuarantineEnabled).toBe(true)
+  })
+
   it('win targets include nsis and zip', () => {
     const config = loadConfig()
     const win = config.win as Record<string, unknown>

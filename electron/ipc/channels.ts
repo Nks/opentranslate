@@ -24,6 +24,21 @@ import type {
 import type {
   SourceLanguageSelection,
 } from '@shared/types/translation'
+import type {
+  DocumentDropRequestShape,
+  DocumentPickResponseShape,
+  DocumentStatusResponseShape,
+  DocumentTranslateRequestShape,
+  DocumentTranslateResponseShape,
+} from '@electron/ipc/document-shapes'
+
+export type {
+  DocumentDropRequestShape,
+  DocumentPickResponseShape,
+  DocumentStatusResponseShape,
+  DocumentTranslateRequestShape,
+  DocumentTranslateResponseShape,
+}
 
 /**
  * IPC channel registry — single source of truth for main ↔ renderer messaging.
@@ -260,36 +275,6 @@ export interface ChannelContract {
     request: void
     response: void
   }
-}
-
-export interface DocumentPickResponseShape {
-  filePath: string
-}
-
-/**
- * Sent only by the preload bridge, which resolves the path of a dropped
- * `File` with `webUtils.getPathForFile`. The renderer never supplies it;
- * main validates the file before allowlisting it for `document:translate`.
- */
-export interface DocumentDropRequestShape {
-  filePath: string
-}
-
-export interface DocumentTranslateRequestShape {
-  filePath: string
-  sourceLanguage: SourceLanguageSelection
-  targetLanguage: string
-}
-
-export interface DocumentTranslateResponseShape {
-  outputPath: string
-  provider: string
-}
-
-export interface DocumentStatusResponseShape {
-  supported: boolean
-  formats?: string[]
-  message?: string
 }
 
 export interface HistoryAddRequestShape {

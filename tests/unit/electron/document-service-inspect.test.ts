@@ -1,5 +1,5 @@
 import {
-  afterEach, beforeEach, describe, expect, it, vi,
+  afterEach, beforeEach, describe, expect, it, vi, type Mock,
 } from 'vitest'
 import {
   mkdtemp, realpath, rm, writeFile,
@@ -9,7 +9,10 @@ import { join } from 'node:path'
 import {
   createDocumentService, type DocumentService,
 } from '@electron/services/documents/service'
-import { ErrorCategory } from '@shared/errors'
+import {
+  AppError, ErrorCategory,
+} from '@shared/errors'
+import type { SourceDocument } from '@electron/services/documents/source-file'
 import type { TranslationProvider } from '@shared/providers/contract'
 import {
   documentAdapter,
@@ -34,14 +37,28 @@ describe('document service inspect', () => {
     return createDocumentService({ getAdapter: () => adapter })
   }
 
-  it('accepts a local regular file with a supported extension without uploading it', async () => {
+  it('returns the resolved document without uploading it', async () => {
     const filePath: string = join(dir, 'notes.txt')
     await writeFile(filePath, 'hello')
-    const translateDocument = vi.fn<TranslateDocumentFn>()
+    const translateDocument: Mock<TranslateDocumentFn> = vi.fn<TranslateDocumentFn>()
 
-    await expect(serviceFor(documentAdapter({ translateDocument })).inspect(filePath))
-      .resolves.toBeUndefined()
+    const document: SourceDocument = await serviceFor(documentAdapter({ translateDocument }))
+      .inspect(filePath)
+
+    expect(document).toMatchObject({
+      fileName: 'notes.txt',
+      extension: '.txt',
+    })
     expect(translateDocument).not.toHaveBeenCalled()
+  })
+
+  it('looks up the provider formats before touching the file', async () => {
+    const adapter: TranslationProvider = documentAdapter({
+      formatsError: new AppError(ErrorCategory.EndpointUnreachable, 'libretranslate: down'),
+    })
+
+    await expect(serviceFor(adapter).inspect(join(dir, 'missing.txt')))
+      .rejects.toMatchObject({ category: ErrorCategory.EndpointUnreachable })
   })
 
   it.each([

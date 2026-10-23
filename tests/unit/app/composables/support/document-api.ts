@@ -33,6 +33,17 @@ export const SUPPORTED_STATUS: DocumentStatusResponseShape = {
   message: 'Document translation available',
 }
 
+export function selectionFor(
+  filePath: string,
+  extension: string = `.${filePath.split('.').at(-1) ?? ''}`,
+): DocumentPickResponseShape {
+  return {
+    filePath,
+    fileName: filePath.split(/[\\/]/).at(-1) ?? filePath,
+    extension,
+  }
+}
+
 export function installToastStub(): void {
   ;(globalThis as Record<string, unknown>).useToast = () => ({ add: mockToastAdd })
 }

@@ -18,6 +18,7 @@ export function registerDocumentChannels(
     service: createDocumentService({ getAdapter }),
     showOpenDialog: (options: DocumentOpenDialogOptions) => dialog.showOpenDialog(options),
     showItemInFolder: (fullPath: string): void => shell.showItemInFolder(fullPath),
+    getAdapter,
   })
 
   ipcMain.handle(channels['document:status'], safeHandler(() => handlers['document:status']()))

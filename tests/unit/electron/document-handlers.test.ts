@@ -1,8 +1,10 @@
 import {
-  describe, expect, it, vi,
+  describe, expect, it, vi, type Mock,
 } from 'vitest'
 import type {
+  DocumentHandlers,
   DocumentOpenDialog,
+  DocumentSelection,
 } from '@electron/services/documents/handlers'
 import type {
   DocumentService, DocumentTranslateResult,
@@ -19,7 +21,7 @@ import {
 describe('document handlers — translate', () => {
   it('validates the payload and forwards the picked file to the service', async () => {
     const service: DocumentService = fakeService()
-    const handlers = buildHandlers({
+    const handlers: DocumentHandlers = buildHandlers({
       service,
       showOpenDialog: fakeDialog(['/docs/report.txt']),
     }).handlers
@@ -33,7 +35,7 @@ describe('document handlers — translate', () => {
 
   it('refuses a path that did not come from the document picker', async () => {
     const service: DocumentService = fakeService()
-    const handlers = buildHandlers({
+    const handlers: DocumentHandlers = buildHandlers({
       service,
       showOpenDialog: fakeDialog(['/docs/report.txt']),
     }).handlers
@@ -51,7 +53,7 @@ describe('document handlers — translate', () => {
 
   it('refuses any path before a file was picked', async () => {
     const service: DocumentService = fakeService()
-    const handlers = buildHandlers({
+    const handlers: DocumentHandlers = buildHandlers({
       service,
       showOpenDialog: fakeDialog([]),
     }).handlers
@@ -64,7 +66,7 @@ describe('document handlers — translate', () => {
 
   it('only trusts the most recent pick', async () => {
     const service: DocumentService = fakeService()
-    const showOpenDialog = vi.fn<DocumentOpenDialog>()
+    const showOpenDialog: Mock<DocumentOpenDialog> = vi.fn<DocumentOpenDialog>()
       .mockResolvedValueOnce({
         canceled: false,
         filePaths: ['/docs/report.txt'],
@@ -73,7 +75,7 @@ describe('document handlers — translate', () => {
         canceled: false,
         filePaths: ['/docs/other.txt'],
       })
-    const handlers = buildHandlers({
+    const handlers: DocumentHandlers = buildHandlers({
       service,
       showOpenDialog,
     }).handlers
@@ -101,7 +103,7 @@ describe('document handlers — translate', () => {
     },
   ])('rejects malformed payload %j before touching the service', async (payload: unknown) => {
     const service: DocumentService = fakeService()
-    const handlers = buildHandlers({
+    const handlers: DocumentHandlers = buildHandlers({
       service,
       showOpenDialog: fakeDialog([]),
     }).handlers
@@ -116,7 +118,7 @@ describe('document handlers — translate', () => {
 
 describe('document handlers — status', () => {
   it('returns the service status', async () => {
-    const handlers = buildHandlers({
+    const handlers: DocumentHandlers = buildHandlers({
       service: fakeService(),
       showOpenDialog: fakeDialog([]),
     }).handlers
@@ -128,14 +130,18 @@ describe('document handlers — status', () => {
 describe('document handlers — pick', () => {
   it('filters the native dialog by the provider formats', async () => {
     const showOpenDialog: DocumentOpenDialog = fakeDialog(['/docs/report.pdf'])
-    const handlers = buildHandlers({
+    const handlers: DocumentHandlers = buildHandlers({
       service: fakeService(),
       showOpenDialog,
     }).handlers
 
-    const picked = await handlers['document:pick']()
+    const picked: DocumentSelection | null = await handlers['document:pick']()
 
-    expect(picked).toEqual({ filePath: '/docs/report.pdf' })
+    expect(picked).toEqual({
+      filePath: '/docs/report.pdf',
+      fileName: 'report.pdf',
+      extension: '.txt',
+    })
     expect(showOpenDialog).toHaveBeenCalledWith({
       properties: ['openFile'],
       filters: [
@@ -153,7 +159,7 @@ describe('document handlers — pick', () => {
 
   it('offers only All Files when the provider lists no formats', async () => {
     const showOpenDialog: DocumentOpenDialog = fakeDialog(['/docs/a.bin'])
-    const handlers = buildHandlers({
+    const handlers: DocumentHandlers = buildHandlers({
       service: fakeService({
         supported: false,
         formats: [],
@@ -176,7 +182,7 @@ describe('document handlers — pick', () => {
   })
 
   it('returns null when the dialog is cancelled', async () => {
-    const handlers = buildHandlers({
+    const handlers: DocumentHandlers = buildHandlers({
       service: fakeService(),
       showOpenDialog: fakeDialog([], true),
     }).handlers

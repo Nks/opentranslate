@@ -1,8 +1,10 @@
 import {
   test, expect,
   type ElectronApplication,
+  type Locator,
   type Page,
 } from '@playwright/test'
+import { execFileSync } from 'node:child_process'
 import {
   mkdtempSync, readFileSync, realpathSync, writeFileSync,
 } from 'node:fs'
@@ -32,6 +34,19 @@ interface RevealProbe {
 }
 
 test.skip(packagedAppPath === '', 'Set OPENTRANSLATE_PACKAGED_APP to a packaged executable to run this smoke test')
+
+function expectDownloadMark(filePath: string): void {
+  if (process.platform === 'darwin') {
+    const quarantine: string = execFileSync('xattr', ['-p', 'com.apple.quarantine', filePath]).toString()
+    expect(quarantine).toMatch(/^0\d{3};/)
+
+    return
+  }
+
+  if (process.platform === 'win32') {
+    expect(readFileSync(`${filePath}:Zone.Identifier`, 'utf8')).toContain('ZoneId=3')
+  }
+}
 
 async function stubOpenDialog(app: ElectronApplication, filePath: string): Promise<void> {
   await app.evaluate(({ dialog }, pickedPath: string): void => {
@@ -109,7 +124,7 @@ test('packaged Documents page gates on provider capability and translates a pick
       })).toBeHidden({ timeout: 30_000 })
 
       await openDocuments(window)
-      const capability = window.getByRole('status', { name: 'Document capability' })
+      const capability: Locator = window.getByRole('status', { name: 'Document capability' })
       await expect(capability).toContainText('Document translation available')
       await expect(window.getByRole('list', { name: 'Supported formats' })).toContainText('.txt')
 
@@ -131,6 +146,7 @@ test('packaged Documents page gates on provider capability and translates a pick
       })
       const saved: Buffer = readFileSync(outputPath)
       expect(Array.from(saved)).toEqual(Array.from(libre.scenario.translatedBytes))
+      expectDownloadMark(outputPath)
 
       await stubShowItemInFolder(app)
       await window.getByRole('button', { name: 'Show in folder' }).click()

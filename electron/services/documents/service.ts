@@ -9,9 +9,9 @@ import {
   AppError, ErrorCategory,
 } from '@shared/errors'
 import {
-  assertSupportedExtension,
-  readSourceDocument,
-  resolveSourceDocument,
+  inspectSourceDocument,
+  loadSourceDocument,
+  type LoadedSourceDocument,
   type SourceDocument,
 } from '@electron/services/documents/source-file'
 import {
@@ -37,7 +37,7 @@ export interface DocumentStatus {
 
 export interface DocumentService {
   status: () => Promise<DocumentStatus>
-  inspect: (filePath: string) => Promise<void>
+  inspect: (filePath: string) => Promise<SourceDocument>
   translate: (input: DocumentTranslateInput) => Promise<DocumentTranslateResult>
 }
 
@@ -49,9 +49,9 @@ type DocumentProvider = TranslationProvider & Required<
   Pick<TranslationProvider, 'getSupportedDocumentFormats' | 'translateDocument'>
 >
 
-interface PreparedDocument {
+interface DocumentTarget {
   provider: DocumentProvider
-  source: SourceDocument
+  formats: string[]
 }
 
 const NO_PROVIDER_STATUS: DocumentStatus = {
@@ -102,7 +102,7 @@ function toDocumentError(err: unknown): AppError {
 export function createDocumentService(
   deps: DocumentServiceDeps,
 ): DocumentService {
-  async function status(): Promise<DocumentStatus> {
+  async function lookupStatus(): Promise<DocumentStatus> {
     const adapter: TranslationProvider | null = deps.getAdapter()
 
     if (!adapter) {
@@ -111,7 +111,7 @@ export function createDocumentService(
 
     const provider: DocumentProvider | null = asDocumentProvider(adapter)
 
-    if (!provider || !(await provider.supportsDocumentTranslation())) {
+    if (!provider) {
       return UNSUPPORTED_STATUS
     }
 
@@ -125,6 +125,14 @@ export function createDocumentService(
       supported: true,
       formats,
       message: 'Document translation available',
+    }
+  }
+
+  async function status(): Promise<DocumentStatus> {
+    try {
+      return await lookupStatus()
+    } catch (err: unknown) {
+      throw toDocumentError(err)
     }
   }
 
@@ -144,26 +152,25 @@ export function createDocumentService(
     return provider
   }
 
-  async function prepareDocument(filePath: string): Promise<PreparedDocument> {
+  async function resolveTarget(): Promise<DocumentTarget> {
     const provider: DocumentProvider = requireDocumentProvider()
-    const source: SourceDocument = await resolveSourceDocument(filePath)
     const formats: string[] = await provider.getSupportedDocumentFormats()
 
     if (formats.length === 0) {
       throw unsupportedProvider(provider)
     }
 
-    assertSupportedExtension(source, formats)
-
     return {
       provider,
-      source,
+      formats,
     }
   }
 
-  async function inspect(filePath: string): Promise<void> {
+  async function inspect(filePath: string): Promise<SourceDocument> {
     try {
-      await prepareDocument(filePath)
+      const { formats }: DocumentTarget = await resolveTarget()
+
+      return await inspectSourceDocument(filePath, formats)
     } catch (err: unknown) {
       throw toDocumentError(err)
     }
@@ -171,15 +178,16 @@ export function createDocumentService(
 
   async function runTranslation(input: DocumentTranslateInput): Promise<DocumentTranslateResult> {
     const {
-      provider, source,
-    }: PreparedDocument = await prepareDocument(input.filePath)
+      provider, formats,
+    }: DocumentTarget = await resolveTarget()
+    const source: LoadedSourceDocument = await loadSourceDocument(input.filePath, formats)
     const translated: DocumentTranslationOutput = await provider.translateDocument({
-      fileName: source.fileName,
-      content: await readSourceDocument(source),
+      fileName: source.document.fileName,
+      content: source.content,
       sourceLanguage: input.sourceLanguage,
       targetLanguage: input.targetLanguage,
     })
-    const outputPath: string = buildOutputFilename(source.path, input.targetLanguage)
+    const outputPath: string = buildOutputFilename(source.document.path, input.targetLanguage)
 
     await writeDocumentAtomically(outputPath, translated.content)
 

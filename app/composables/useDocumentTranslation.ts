@@ -8,9 +8,6 @@ import {
   formatErrorMessage, type FormattedError,
 } from '@shared/errors/format'
 import { ErrorCategory } from '@shared/errors'
-import {
-  documentBaseName, documentExtension,
-} from '@shared/documents/file-name'
 import type {
   DocumentPickResponseShape,
   DocumentStatusResponseShape,
@@ -29,13 +26,14 @@ function selectionError(message: string): FormattedError {
 }
 
 export function useDocumentTranslation() {
-  const api = useApi()
-  const handleError = useHandleError()
-  const providersStore = useProvidersStore()
+  const api: ReturnType<typeof useApi> = useApi()
+  const handleError: (err: unknown) => void = useHandleError()
+  const providersStore: ReturnType<typeof useProvidersStore> = useProvidersStore()
 
   const status = ref<DocumentStatusResponseShape | null>(null)
+  const statusError = ref<FormattedError | null>(null)
   const checking = ref<boolean>(false)
-  const filePath = ref<string | null>(null)
+  const selection = ref<DocumentPickResponseShape | null>(null)
   const outputPath = ref<string | null>(null)
   const translating = ref<boolean>(false)
   const error = ref<FormattedError | null>(null)
@@ -47,6 +45,13 @@ export function useDocumentTranslation() {
       return CHECKING_MESSAGE
     }
 
+    const isKnownStatusError: boolean = statusError.value !== null &&
+      statusError.value.category !== 'unknown'
+
+    if (isKnownStatusError) {
+      return statusError.value?.short ?? STATUS_FAILED_MESSAGE
+    }
+
     if (status.value === null) {
       return STATUS_FAILED_MESSAGE
     }
@@ -55,8 +60,9 @@ export function useDocumentTranslation() {
       ? 'Document translation available'
       : 'Document translation not supported by the active provider')
   })
-  const fileName = computed<string>(() => (filePath.value ? documentBaseName(filePath.value) : ''))
-  const fileExtension = computed<string>(() => documentExtension(fileName.value))
+  const filePath = computed<string | null>(() => selection.value?.filePath ?? null)
+  const fileName = computed<string>(() => selection.value?.fileName ?? '')
+  const fileExtension = computed<string>(() => selection.value?.extension ?? '')
   const fileFormatSupported = computed<boolean>(() => formats.value.includes(fileExtension.value))
 
   const blockedReason = computed<string | null>(() => {
@@ -92,18 +98,20 @@ export function useDocumentTranslation() {
   }
 
   function selectFile(picked: DocumentPickResponseShape): void {
-    filePath.value = picked.filePath
+    selection.value = picked
     outputPath.value = null
     clearError()
   }
 
   async function checkSupport(): Promise<void> {
     checking.value = true
+    statusError.value = null
 
     try {
       status.value = await api.documents.status()
     } catch (err: unknown) {
       status.value = null
+      statusError.value = formatErrorMessage(err)
       handleError(err)
     } finally {
       checking.value = false
@@ -111,12 +119,17 @@ export function useDocumentTranslation() {
   }
 
   async function onProviderChanged(): Promise<void> {
+    selection.value = null
     outputPath.value = null
     clearError()
     await checkSupport()
   }
 
   async function pickFile(): Promise<void> {
+    if (translating.value) {
+      return
+    }
+
     try {
       const picked: DocumentPickResponseShape | null = await api.documents.pick()
 
@@ -129,6 +142,10 @@ export function useDocumentTranslation() {
   }
 
   async function dropFiles(files: File[] | null): Promise<void> {
+    if (translating.value) {
+      return
+    }
+
     if (!supported.value) {
       error.value = selectionError(statusMessage.value)
 

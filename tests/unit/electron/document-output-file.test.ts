@@ -7,6 +7,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
+  ZONE_IDENTIFIER_CONTENT,
   writeDocumentAtomically,
 } from '@electron/services/documents/output-file'
 import {
@@ -36,6 +37,36 @@ describe('writeDocumentAtomically', () => {
     await writeDocumentAtomically(outputPath, bytes)
 
     expect(Array.from(await readFile(outputPath))).toEqual([0, 255, 10, 13, 0])
+    expect(await readdir(dir)).toEqual(['report.ru.translated.pdf'])
+  })
+
+  it.runIf(IS_WINDOWS)('marks the saved file as downloaded from the internet (Zone.Identifier)', async () => {
+    const outputPath: string = join(dir, 'report.ru.translated.pdf')
+
+    await writeDocumentAtomically(outputPath, new Uint8Array([1]))
+
+    expect(await readFile(`${outputPath}:Zone.Identifier`, 'utf8')).toBe(ZONE_IDENTIFIER_CONTENT)
+  })
+
+  it.skipIf(IS_WINDOWS)('writes the Zone.Identifier stream before the rename on win32', async () => {
+    const outputPath: string = join(dir, 'report.ru.translated.pdf')
+
+    await writeDocumentAtomically(outputPath, new Uint8Array([1]), 'win32')
+
+    const entries: string[] = await readdir(dir)
+    const zoneEntry: string | undefined = entries.find(
+      (entry: string): boolean => entry.endsWith('.partial:Zone.Identifier'),
+    )
+    expect(zoneEntry).toBeDefined()
+    expect(await readFile(join(dir, zoneEntry ?? ''), 'utf8')).toBe(ZONE_IDENTIFIER_CONTENT)
+    expect(ZONE_IDENTIFIER_CONTENT).toBe('[ZoneTransfer]\r\nZoneId=3\r\n')
+  })
+
+  it.skipIf(IS_WINDOWS)('adds no Zone.Identifier on other platforms', async () => {
+    const outputPath: string = join(dir, 'report.ru.translated.pdf')
+
+    await writeDocumentAtomically(outputPath, new Uint8Array([1]), 'darwin')
+
     expect(await readdir(dir)).toEqual(['report.ru.translated.pdf'])
   })
 

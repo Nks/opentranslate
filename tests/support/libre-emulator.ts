@@ -3,6 +3,8 @@ import {
 } from 'node:http'
 import type { AddressInfo } from 'node:net'
 
+type UploadedFile = Blob & { name: string }
+
 export interface RecordedRequest {
   method: string
   path: string
@@ -115,7 +117,7 @@ async function route(
       return
     }
 
-    const file = form?.get('file') as (Blob & { name: string }) | null
+    const file: UploadedFile | null = form?.get('file') as UploadedFile | null
     const storedName: string = `0b9e.${file?.name ?? 'missing'}`
     const url: string = scenario.translatedFileUrl
       ? scenario.translatedFileUrl(emulator.origin, storedName)

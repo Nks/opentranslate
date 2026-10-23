@@ -16,23 +16,29 @@ import {
   installToastStub,
   mockPick,
   mockReveal,
+  mockDrop,
   mockStatus,
+  selectionFor,
   mockTranslate,
 } from './support/document-api'
+import type * as DocumentApiSupport from './support/document-api'
+import type * as UseDocumentTranslationModule from '@app/composables/useDocumentTranslation'
 
 vi.mock('@app/composables/useApi', async () => {
-  const { documentApi } = await import('./support/document-api')
+  const { documentApi }: typeof DocumentApiSupport = await import('./support/document-api')
 
   return { useApi: () => documentApi }
 })
 
-const { useDocumentTranslation } = await import('@app/composables/useDocumentTranslation')
+const { useDocumentTranslation }: typeof UseDocumentTranslationModule = await import(
+  '@app/composables/useDocumentTranslation'
+)
 
 type DocumentTranslation = ReturnType<typeof useDocumentTranslation>
 
 async function readyWithFile(filePath: string): Promise<DocumentTranslation> {
   mockStatus.mockResolvedValue(SUPPORTED_STATUS)
-  mockPick.mockResolvedValue({ filePath })
+  mockPick.mockResolvedValue(selectionFor(filePath))
   const documents: DocumentTranslation = useDocumentTranslation()
   await documents.checkSupport()
   await documents.pickFile()
@@ -48,7 +54,7 @@ describe('useDocumentTranslation — translate and reveal', () => {
   })
 
   it('sends the selected source and target languages and exposes the output path', async () => {
-    const store = useProvidersStore()
+    const store: ReturnType<typeof useProvidersStore> = useProvidersStore()
     store.sourceSelection = {
       mode: 'explicit',
       code: 'en',
@@ -108,6 +114,31 @@ describe('useDocumentTranslation — translate and reveal', () => {
     )
     expect(documents.error.value?.short).not.toContain('Error invoking remote method')
     expect(documents.outputPath.value).toBeNull()
+  })
+
+  it('ignores a pick or drop while a translation is running', async () => {
+    useProvidersStore().targetLanguage = 'ru'
+    let release: (value: DocumentTranslateResponseShape) => void = (): void => undefined
+    type Release = (value: DocumentTranslateResponseShape) => void
+    mockTranslate.mockReturnValue(new Promise((resolve: Release) => {
+      release = resolve
+    }))
+    const documents: DocumentTranslation = await readyWithFile('/docs/notes.txt')
+    mockPick.mockClear()
+    const pending: Promise<void> = documents.translate()
+
+    await documents.pickFile()
+    await documents.dropFiles([new File(['x'], 'other.txt')])
+
+    expect(mockPick).not.toHaveBeenCalled()
+    expect(mockDrop).not.toHaveBeenCalled()
+    expect(documents.fileName.value).toBe('notes.txt')
+    release({
+      outputPath: '/docs/notes.ru.translated.txt',
+      provider: 'libretranslate',
+    })
+    await pending
+    expect(documents.outputPath.value).toBe('/docs/notes.ru.translated.txt')
   })
 
   it('requires a target language', async () => {

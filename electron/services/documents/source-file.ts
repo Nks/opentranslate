@@ -1,5 +1,6 @@
+import { constants } from 'node:fs'
 import {
-  readFile, realpath, stat,
+  open, realpath, type FileHandle, type FileReadResult,
 } from 'node:fs/promises'
 import type { Stats } from 'node:fs'
 import {
@@ -25,17 +26,30 @@ export interface SourceDocument {
   sizeBytes: number
 }
 
+export interface LoadedSourceDocument {
+  document: SourceDocument
+  content: DocumentBytes
+}
+
+export type BoundedRead = {
+  kind: 'complete'
+  bytes: DocumentBytes
+} | {
+  kind: 'too-large'
+}
+
+interface OpenedSourceDocument {
+  document: SourceDocument
+  handle: FileHandle
+}
+
 const UPLOAD_LIMIT_LABEL: string = `${MAX_DOCUMENT_UPLOAD_BYTES / (1024 * 1024)} MiB`
 const NETWORK_PATH_RE: RegExp = /^[\\/]{2}/
-
-function assertLocalPath(filePath: string): void {
-  if (NETWORK_PATH_RE.test(filePath)) {
-    throw new AppError(
-      ErrorCategory.UnsupportedDocumentType,
-      'document: network paths are not supported — Copy the file to a local folder.',
-    )
-  }
-}
+const READ_CHUNK_BYTES: number = 64 * 1024
+// O_NOFOLLOW and O_NONBLOCK are undefined on Windows; O_NONBLOCK keeps a FIFO from blocking open().
+const SOURCE_OPEN_FLAGS: number = constants.O_RDONLY
+  | (constants.O_NOFOLLOW ?? 0)
+  | (constants.O_NONBLOCK ?? 0)
 
 function unreadable(cause: unknown): AppError {
   return new AppError(
@@ -52,57 +66,69 @@ function tooLarge(): AppError {
   )
 }
 
-interface RealFile {
-  path: string
-  stats: Stats
-}
-
-async function statRealFile(filePath: string): Promise<RealFile> {
-  try {
-    const resolved: string = await realpath(filePath)
-
-    return {
-      path: resolved,
-      stats: await stat(resolved),
-    }
-  } catch (err: unknown) {
-    throw unreadable(err)
+function assertLocalAbsolutePath(filePath: string): void {
+  if (NETWORK_PATH_RE.test(filePath)) {
+    throw new AppError(
+      ErrorCategory.UnsupportedDocumentType,
+      'document: network paths are not supported — Copy the file to a local folder.',
+    )
   }
-}
-
-export async function resolveSourceDocument(filePath: string): Promise<SourceDocument> {
-  assertLocalPath(filePath)
 
   if (!isAbsolute(filePath)) {
     throw new AppError(ErrorCategory.InternalAppError, 'document: file path must be absolute')
   }
+}
 
-  const real: RealFile = await statRealFile(filePath)
-  assertLocalPath(real.path)
-
-  if (!real.stats.isFile()) {
+function assertRegularFile(stats: Stats): void {
+  if (!stats.isFile()) {
     throw new AppError(
       ErrorCategory.UnsupportedDocumentType,
       'document: not a regular file — Pick a document file.',
     )
   }
 
-  if (real.stats.size === 0) {
+  if (stats.size === 0) {
     throw new AppError(
       ErrorCategory.UnsupportedDocumentType,
       'document: file is empty — Pick a non-empty document.',
     )
   }
 
-  if (real.stats.size > MAX_DOCUMENT_UPLOAD_BYTES) {
+  if (stats.size > MAX_DOCUMENT_UPLOAD_BYTES) {
     throw tooLarge()
   }
+}
 
-  return {
-    path: real.path,
-    fileName: basename(real.path),
-    extension: normalizeDocumentExtension(extname(real.path)) ?? '',
-    sizeBytes: real.stats.size,
+async function openSourceDocument(filePath: string): Promise<OpenedSourceDocument> {
+  assertLocalAbsolutePath(filePath)
+
+  let realPath: string
+  let handle: FileHandle
+
+  try {
+    realPath = await realpath(filePath)
+    handle = await open(realPath, SOURCE_OPEN_FLAGS)
+  } catch (err: unknown) {
+    throw unreadable(err)
+  }
+
+  try {
+    const stats: Stats = await handle.stat()
+    assertRegularFile(stats)
+
+    return {
+      handle,
+      document: {
+        path: realPath,
+        fileName: basename(realPath),
+        extension: normalizeDocumentExtension(extname(realPath)) ?? '',
+        sizeBytes: stats.size,
+      },
+    }
+  } catch (err: unknown) {
+    await handle.close()
+
+    throw err
   }
 }
 
@@ -122,18 +148,78 @@ export function assertSupportedExtension(
   )
 }
 
-export async function readSourceDocument(document: SourceDocument): Promise<DocumentBytes> {
-  let content: Buffer<ArrayBuffer>
+export async function readAtMost(handle: FileHandle, maxBytes: number): Promise<BoundedRead> {
+  const chunks: Uint8Array[] = []
+  let total: number = 0
+
+  while (total <= maxBytes) {
+    const chunk: Buffer = Buffer.alloc(Math.min(READ_CHUNK_BYTES, maxBytes + 1 - total))
+    const { bytesRead }: FileReadResult<Buffer> = await handle.read(
+      chunk,
+      0,
+      chunk.byteLength,
+      null,
+    )
+
+    if (bytesRead === 0) {
+      const bytes: DocumentBytes = new Uint8Array(total)
+      let offset: number = 0
+
+      for (const part of chunks) {
+        bytes.set(part, offset)
+        offset += part.byteLength
+      }
+
+      return {
+        kind: 'complete',
+        bytes,
+      }
+    }
+
+    chunks.push(chunk.subarray(0, bytesRead))
+    total += bytesRead
+  }
+
+  return { kind: 'too-large' }
+}
+
+export async function inspectSourceDocument(
+  filePath: string,
+  formats: readonly string[],
+): Promise<SourceDocument> {
+  const opened: OpenedSourceDocument = await openSourceDocument(filePath)
 
   try {
-    content = await readFile(document.path)
+    assertSupportedExtension(opened.document, formats)
+
+    return opened.document
+  } finally {
+    await opened.handle.close()
+  }
+}
+
+export async function loadSourceDocument(
+  filePath: string,
+  formats: readonly string[],
+): Promise<LoadedSourceDocument> {
+  const opened: OpenedSourceDocument = await openSourceDocument(filePath)
+
+  try {
+    assertSupportedExtension(opened.document, formats)
+
+    const read: BoundedRead = await readAtMost(opened.handle, MAX_DOCUMENT_UPLOAD_BYTES)
+
+    if (read.kind === 'too-large') {
+      throw tooLarge()
+    }
+
+    return {
+      document: opened.document,
+      content: read.bytes,
+    }
   } catch (err: unknown) {
-    throw unreadable(err)
+    throw err instanceof AppError ? err : unreadable(err)
+  } finally {
+    await opened.handle.close()
   }
-
-  if (content.byteLength > MAX_DOCUMENT_UPLOAD_BYTES) {
-    throw tooLarge()
-  }
-
-  return new Uint8Array(content.buffer, content.byteOffset, content.byteLength)
 }

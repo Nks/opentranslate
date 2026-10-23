@@ -14,6 +14,7 @@ const DEFAULT_FORMATS: readonly string[] = ['.txt', '.pdf']
 
 export function documentAdapter(options: {
   formats?: string[]
+  formatsError?: Error
   supported?: boolean
   translateDocument?: TranslateDocumentFn
 } = {}): TranslationProvider {
@@ -27,9 +28,13 @@ export function documentAdapter(options: {
       provider: 'libretranslate',
     }),
     supportsDocumentTranslation: async (): Promise<boolean> => options.supported ?? true,
-    getSupportedDocumentFormats: async (): Promise<string[]> => [
-      ...(options.formats ?? DEFAULT_FORMATS),
-    ],
+    getSupportedDocumentFormats: async (): Promise<string[]> => {
+      if (options.formatsError) {
+        throw options.formatsError
+      }
+
+      return [...(options.formats ?? DEFAULT_FORMATS)]
+    },
     translateDocument: options.translateDocument ??
       (async (): Promise<DocumentTranslationOutput> => PROVIDER_BYTES_OUTPUT),
     getCapabilities: async () => ({

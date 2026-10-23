@@ -10,9 +10,11 @@ import {
 import {
   AppError, ErrorCategory,
 } from '@shared/errors'
+import type { TranslationProvider } from '@shared/providers/contract'
 import type {
   DocumentService, DocumentStatus, DocumentTranslateResult,
 } from '@electron/services/documents/service'
+import type { SourceDocument } from '@electron/services/documents/source-file'
 
 export interface DocumentDialogFilter {
   name: string
@@ -35,6 +37,13 @@ export type DocumentOpenDialog = (
 
 export interface DocumentSelection {
   filePath: string
+  fileName: string
+  extension: string
+}
+
+interface AllowlistedSelection {
+  filePath: string
+  adapter: TranslationProvider | null
 }
 
 export interface DocumentHandlers {
@@ -49,6 +58,7 @@ export interface DocumentHandlerDeps {
   service: DocumentService
   showOpenDialog: DocumentOpenDialog
   showItemInFolder: (fullPath: string) => void
+  getAdapter: () => TranslationProvider | null
 }
 
 const ALL_FILES_FILTER: DocumentDialogFilter = {
@@ -75,14 +85,37 @@ function invalidPayload(channel: string): AppError {
 }
 
 export function createDocumentHandlers(deps: DocumentHandlerDeps): DocumentHandlers {
-  let selectedFilePath: string | null = null
+  let selection: AllowlistedSelection | null = null
   let lastOutputPath: string | null = null
 
   async function select(filePath: string): Promise<DocumentSelection> {
-    await deps.service.inspect(filePath)
-    selectedFilePath = filePath
+    const document: SourceDocument = await deps.service.inspect(filePath)
+    selection = {
+      filePath,
+      adapter: deps.getAdapter(),
+    }
 
-    return { filePath }
+    return {
+      filePath,
+      fileName: document.fileName,
+      extension: document.extension,
+    }
+  }
+
+  function assertSelected(filePath: string): void {
+    if (selection?.filePath !== filePath) {
+      throw new AppError(
+        ErrorCategory.InternalAppError,
+        'document:translate: file was not selected through the document picker',
+      )
+    }
+
+    if (selection.adapter !== deps.getAdapter()) {
+      throw new AppError(
+        ErrorCategory.InternalAppError,
+        'document:translate: the provider changed since the file was selected — Select the file again.',
+      )
+    }
   }
 
   return {
@@ -119,12 +152,7 @@ export function createDocumentHandlers(deps: DocumentHandlerDeps): DocumentHandl
         throw invalidPayload('document:translate')
       }
 
-      if (parsed.data.filePath !== selectedFilePath) {
-        throw new AppError(
-          ErrorCategory.InternalAppError,
-          'document:translate: file was not selected through the document picker',
-        )
-      }
+      assertSelected(parsed.data.filePath)
 
       const result: DocumentTranslateResult = await deps.service.translate(parsed.data)
       lastOutputPath = result.outputPath
