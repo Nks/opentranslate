@@ -72,8 +72,10 @@ Flow (all in the main process):
    formats) or drop it anywhere on the Documents page. Only that selected
    file can be translated, and only with the provider that was active when
    it was selected.
-2. The file must be local (no network / UNC paths), a regular non-empty
-   file, at most **50 MiB**.
+2. A raw network path (`\\host\share\…` or `//host/…`) is refused before
+   any file access; mapped drives and folders the user picks are accepted.
+   The file must be a regular non-empty file, at most **50 MiB**. A
+   deployment without `/frontend/settings` (404) counts as unsupported.
 3. `POST /translate_file` (multipart `file`, `source`, `target`, and
    `api_key` when configured). Redirects are not followed.
 4. The returned `translatedFileUrl` is downloaded only if it is on the

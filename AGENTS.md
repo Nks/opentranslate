@@ -29,7 +29,7 @@ Providers: **Google Cloud Translation**, **LibreTranslate**. No third provider u
 ```
 electron/   main/ preload/ providers/ services/ ipc/channels.ts (IPC source of truth)
 shared/     types/ errors/ schemas/ providers/ translation/ shortcuts/ capability-gate.ts index.ts
-app/        pages/ components/ composables/ stores/ assets/css/    (Nuxt SPA, srcDir: app/)
+app/        pages/ components/ composables/ stores/ types/ assets/css/    (Nuxt SPA, srcDir: app/)
 tests/      unit/ integration/ e2e/ setup/
 scripts/    dev.mjs build-electron.mjs package.mjs
 docs/       opentranslate-desktop-spec.md (SoT #2)  opentranslate-desktop-prd.md (SoT #3)

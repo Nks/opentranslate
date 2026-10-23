@@ -57,8 +57,10 @@ SmartScreen first-open steps.
   `http(s)` origin, without the API key.
 - Provider responses are size-limited: JSON 1 MiB, error bodies 64 KiB,
   downloads 100 MiB; server error text is shortened to 200 characters.
-- Translated files carry Mark-of-the-Web (Windows `Zone.Identifier`, macOS
-  quarantine), so Office/Explorer/Finder treat them as downloaded.
+- Translated files carry Mark-of-the-Web (Windows `Zone.Identifier`), so
+  Office/Explorer treat them as downloaded. On macOS the app is now
+  quarantine-enabled: every file it creates (translated documents and its
+  own settings/history files) gets `com.apple.quarantine`.
 - A selected document is opened once and checked and read through the same
   handle; it can only be translated with the provider that was active when
   it was picked or dropped.

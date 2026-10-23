@@ -821,7 +821,8 @@ The shared contract carries two optional methods, implemented together:
      browser item) resolves to `''` and is refused.
    Main runs the step 3 checks (`service.inspect`) on either selection and
    only then records it as the single allowlisted path, bound to the
-   provider adapter active at that moment; it returns the `fileName` and
+   provider adapter captured before the check (a switch during the check
+   refuses the selection); it returns the `fileName` and
    `extension` it resolved, which the renderer displays and gates on. A
    rejected file leaves the previous selection in place. A provider switch
    creates a new adapter, so the selection no longer matches and the file
@@ -836,12 +837,16 @@ The shared contract carries two optional methods, implemented together:
    (at selection and again at translate) rejects network (UNC / `//host`)
    paths before any fs call, requires an absolute path, resolves it with
    `realpath` and opens it **once** (`O_RDONLY | O_NOFOLLOW | O_NONBLOCK`
-   where defined; plain read-only on Windows). `isFile` and the size limit
-   (`MAX_DOCUMENT_UPLOAD_BYTES`, 50 MiB) come from that handle's `stat()`, so
-   a FIFO, device or symlink swapped in after the check is never read. The
-   extension must be in the provider formats; otherwise
-   `unsupported_document_type` lists the supported formats. Mapped drives
-   are accepted: the path comes only from the user's pick or drop.
+   where defined; plain read-only on Windows). The handle's `stat()`
+   dev + inode must equal an `lstat()` of the real path, which must not be a
+   symlink (this also covers Windows, where `O_NOFOLLOW` does not exist).
+   `isFile` and the size limit (`MAX_DOCUMENT_UPLOAD_BYTES`, 50 MiB) come
+   from that same handle, so a FIFO, device or symlink swapped in after the
+   check is never read. The extension must be in the provider formats;
+   otherwise `unsupported_document_type` lists the supported formats. Only
+   the raw path string is screened for UNC / `//host`: mapped drives and
+   symlinks the user picks are accepted, because the path comes only from
+   the user's pick or drop.
 4. The service reads at most 50 MiB + 1 byte from that same handle and
    calls `adapter.translateDocument`.
 5. The returned bytes are saved unmodified as
@@ -853,7 +858,9 @@ The shared contract carries two optional methods, implemented together:
    `:Zone.Identifier` stream (`ZoneId=3`) is written on the partial file
    before the rename (skipped with a log line on volumes without streams);
    on macOS `LSFileQuarantineEnabled` in the app's `Info.plist` makes the
-   system add `com.apple.quarantine` to files the app creates.
+   system add `com.apple.quarantine` to every file the app creates
+   (translated documents, and also its own `userData` files, where the flag
+   is harmless).
 6. Every failure reaches the renderer as an `AppError` category; anything
    unexpected becomes `internal_app_error`.
 7. `document:reveal` takes no payload: main calls `shell.showItemInFolder`

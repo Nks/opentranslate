@@ -115,18 +115,24 @@ ESLint's `preserve-caught-error` is suppressed for that one line;
   example a changed endpoint) the file must be selected again.
 - `document:reveal` takes no path: main reveals only the last output file it
   wrote.
-- The path must be local (UNC / `//host` rejected before any fs call),
-  absolute, and resolve via `realpath` to a regular non-empty file of at most
-  50 MiB with an extension the provider lists. It is opened once
-  (`O_NOFOLLOW` / `O_NONBLOCK` where available) and checked and read through
-  that handle, so a file swapped after validation is not read.
+- A raw UNC / `//host` path is refused before any fs call (no NTLM
+  handshake from a renderer-chosen path). Mapped drives, and symlinks whose
+  target is on a share, are accepted when the user picks or drops them. The
+  path must be absolute and resolve via `realpath` to a regular non-empty
+  file of at most 50 MiB with an extension the provider lists. It is opened
+  once (`O_NOFOLLOW` / `O_NONBLOCK` where available); the handle's dev +
+  inode must match an `lstat` of the real path (no symlink), and it is
+  checked and read through that handle, so a file swapped after validation
+  is not read.
 - `translatedFileUrl` is downloaded only from the configured endpoint's
   `http(s)` origin, with no API key and no auth header; its body is capped at
   100 MiB. No kernel request follows redirects (a 3xx is an error). JSON
   bodies are capped at 1 MiB and error bodies at 64 KiB.
 - Results are written via a `wx` partial file and `rename`, with
-  Mark-of-the-Web (Windows `Zone.Identifier`, macOS `com.apple.quarantine`
-  via `LSFileQuarantineEnabled`).
+  Mark-of-the-Web: Windows `Zone.Identifier` on the translated file; on
+  macOS `LSFileQuarantineEnabled` makes the system add
+  `com.apple.quarantine` to every file the app creates (translated
+  documents and its own `userData` files).
 - Error messages never include file paths, file contents or the API key.
   Provider error text is passed through, truncated to 200 characters.
 
