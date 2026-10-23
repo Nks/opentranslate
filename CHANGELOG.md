@@ -4,23 +4,23 @@ All notable changes to **OpenTranslate Desktop** are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-`0.1.0` is the first public alpha and is published as a **GitHub pre-release**.
-Binaries are unsigned on macOS and Windows; see
-[`docs/install.md`](docs/install.md) for Gatekeeper / SmartScreen bypass
-instructions.
+`0.1.x` is the first public alpha and is published as a **GitHub pre-release**.
+The macOS app is ad-hoc signed (not notarized) and the Windows installer is
+unsigned; see [`docs/install.md`](docs/install.md) for the Gatekeeper /
+SmartScreen first-open steps.
 
 ---
 
-## [Unreleased]
+## [0.1.1] — 2026-10-23
 
 ### Fixed
 
-- **macOS: "OpenTranslate Desktop is damaged and can't be opened."** The
-  app bundle is now ad-hoc signed, so its code signature seals
-  `Info.plist` and every resource. A downloaded (quarantined) app now gets
-  macOS's regular first-open prompt for apps that are not notarized, with
-  **Open Anyway** in System Settings → Privacy & Security, instead of being
-  reported as damaged. Packaging fails if `codesign --verify --deep
+- **macOS DMG reported as damaged ("OpenTranslate Desktop is damaged and
+  can't be opened"); the app bundle is now ad-hoc signed.** Its code
+  signature seals `Info.plist` and every resource, so a downloaded
+  (quarantined) app gets macOS's regular first-open prompt for apps that
+  are not notarized, with **Open Anyway** in System Settings → Privacy &
+  Security, instead of being reported as damaged. Packaging fails if `codesign --verify --deep
   --strict` rejects the bundle. First-open steps for macOS and Windows are
   in [`docs/install.md`](docs/install.md).
 
@@ -115,4 +115,5 @@ instructions.
   capability response. Self-hosted instances vary; the UI follows the
   reported capability and disables the document tab when unsupported.
 
+[0.1.1]: https://github.com/Nks/opentranslate/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Nks/opentranslate/releases/tag/v0.1.0

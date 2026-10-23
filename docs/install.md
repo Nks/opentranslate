@@ -1,6 +1,6 @@
 # Installation
 
-OpenTranslate Desktop `0.1.0` ships as a pre-release without a Developer ID
+OpenTranslate Desktop `0.1.1` ships as a pre-release without a Developer ID
 or Authenticode certificate. The macOS app is **ad-hoc signed** (sealed but
 not notarized) and the Windows installer is **unsigned**, so both must be
 allowed past Gatekeeper and SmartScreen once, on first launch. The Linux
@@ -18,8 +18,8 @@ Download the latest binaries from the GitHub releases page:
 
 | Architecture | File |
 |---|---|
-| Apple Silicon (M-series) | `opentranslate-desktop-0.1.0-mac-arm64.dmg` |
-| Intel | `opentranslate-desktop-0.1.0-mac-x64.dmg` |
+| Apple Silicon (M-series) | `opentranslate-desktop-0.1.1-mac-arm64.dmg` |
+| Intel | `opentranslate-desktop-0.1.1-mac-x64.dmg` |
 
 ### Install
 
@@ -75,12 +75,12 @@ release (and check its SHA-256 below). Path B also clears it.
 
 | Format | File |
 |---|---|
-| Installer | `opentranslate-desktop-0.1.0-win-x64-setup.exe` |
-| Portable zip | `opentranslate-desktop-0.1.0-win-x64.zip` |
+| Installer | `opentranslate-desktop-0.1.1-win-x64-setup.exe` |
+| Portable zip | `opentranslate-desktop-0.1.1-win-x64.zip` |
 
 ### Install (recommended — NSIS installer)
 
-1. Run `opentranslate-desktop-0.1.0-win-x64-setup.exe`.
+1. Run `opentranslate-desktop-0.1.1-win-x64-setup.exe`.
 2. **SmartScreen** blocks the unsigned installer with a blue prompt:
    *"Windows protected your PC."* Click **More info** → **Run anyway**.
 3. Follow the installer; choose an installation directory or accept the
@@ -88,7 +88,7 @@ release (and check its SHA-256 below). Path B also clears it.
 
 ### Install (portable — no installer)
 
-1. Extract `opentranslate-desktop-0.1.0-win-x64.zip` to a directory you own
+1. Extract `opentranslate-desktop-0.1.1-win-x64.zip` to a directory you own
    (e.g. `%LOCALAPPDATA%\OpenTranslate Desktop\`).
 2. Launch `OpenTranslate Desktop.exe`. SmartScreen may prompt the same
    way as for the installer; click **More info** → **Run anyway**.
@@ -108,14 +108,14 @@ release (and check its SHA-256 below). Path B also clears it.
 
 | Format | File |
 |---|---|
-| AppImage | `opentranslate-desktop-0.1.0-linux-x86_64.AppImage` |
-| Debian / Ubuntu | `opentranslate-desktop-0.1.0-linux-amd64.deb` |
+| AppImage | `opentranslate-desktop-0.1.1-linux-x86_64.AppImage` |
+| Debian / Ubuntu | `opentranslate-desktop-0.1.1-linux-amd64.deb` |
 
 ### Install — AppImage
 
 ```bash
-chmod +x opentranslate-desktop-0.1.0-linux-x86_64.AppImage
-./opentranslate-desktop-0.1.0-linux-x86_64.AppImage
+chmod +x opentranslate-desktop-0.1.1-linux-x86_64.AppImage
+./opentranslate-desktop-0.1.1-linux-x86_64.AppImage
 ```
 
 To integrate the AppImage with your desktop (icon + menu entry), install
@@ -125,7 +125,7 @@ open the AppImage once; it will offer to register the app.
 ### Install — Debian / Ubuntu
 
 ```bash
-sudo dpkg -i opentranslate-desktop-0.1.0-linux-amd64.deb
+sudo dpkg -i opentranslate-desktop-0.1.1-linux-amd64.deb
 sudo apt-get install -f
 ```
 
@@ -141,7 +141,7 @@ application menu or run `opentranslate-desktop` from a terminal.
   supported out of the box.
 - Quick-translate global shortcuts work under X11 directly. Under
   Wayland the implementation depends on portal availability and is
-  best-effort for `0.1.0`.
+  best-effort for `0.1.1`.
 
 ---
 
@@ -163,7 +163,7 @@ works the same on Linux).
 ### Windows (PowerShell)
 
 ```powershell
-$file     = "opentranslate-desktop-0.1.0-win-x64-setup.exe"
+$file     = "opentranslate-desktop-0.1.1-win-x64-setup.exe"
 $expected = (Select-String -Path SHA256SUMS.txt -Pattern ([regex]::Escape($file))).Line.Split(" ")[0]
 $actual   = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
 if ($expected -eq $actual) { "OK" } else { "MISMATCH" }
@@ -179,7 +179,7 @@ attestation from the release workflow. With the
 [GitHub CLI](https://cli.github.com/) installed:
 
 ```bash
-gh attestation verify opentranslate-desktop-0.1.0-mac-arm64.dmg --repo Nks/opentranslate
+gh attestation verify opentranslate-desktop-0.1.1-mac-arm64.dmg --repo Nks/opentranslate
 ```
 
 A passing check proves the file was built by this repository's release
@@ -210,7 +210,7 @@ $env:OPENTRANSLATE_DEVTOOLS=1; & "$env:LOCALAPPDATA\Programs\OpenTranslate Deskt
 **Linux**
 
 ```bash
-OPENTRANSLATE_DEVTOOLS=1 ./opentranslate-desktop-0.1.0-linux-x86_64.AppImage
+OPENTRANSLATE_DEVTOOLS=1 ./opentranslate-desktop-0.1.1-linux-x86_64.AppImage
 ```
 
 Without the variable, DevTools and their keyboard shortcuts stay
