@@ -5,6 +5,9 @@ import {
   mapLibreLanguages,
   mapLibreDetection,
   mapLibreTranslation,
+  mapLibreFileFormats,
+  mapLibreFileTranslation,
+  toLibreSourceCode,
   throwLibreHttpError,
 } from '@electron/providers/libretranslate/mapper'
 import {
@@ -147,5 +150,76 @@ describe('throwLibreHttpError', () => {
     } catch (err) {
       expect((err as AppError).category).toBe(ErrorCategory.EndpointUnreachable)
     }
+  })
+
+  it.each([
+    [400, 'Invalid request: file format not supported'],
+    [403, 'Files translation are disabled on this server.'],
+  ])('maps %i "%s" to UnsupportedDocumentType', (status: number, error: string) => {
+    expect(() => throwLibreHttpError(status, { error })).toThrow(
+      expect.objectContaining({ category: ErrorCategory.UnsupportedDocumentType }),
+    )
+  })
+
+  it('keeps a 403 invalid-key response as AuthenticationFailure', () => {
+    expect(() => throwLibreHttpError(403, { error: 'Invalid API key' })).toThrow(
+      expect.objectContaining({ category: ErrorCategory.AuthenticationFailure }),
+    )
+  })
+})
+
+describe('mapLibreFileFormats', () => {
+  it('normalizes supportedFilesFormat entries', () => {
+    expect(mapLibreFileFormats({
+      filesTranslation: true,
+      supportedFilesFormat: ['.TXT', 'pdf', '.docx', 7],
+    })).toEqual(['.txt', '.pdf', '.docx'])
+  })
+
+  it('returns no formats when files translation is disabled', () => {
+    expect(mapLibreFileFormats({
+      filesTranslation: false,
+      supportedFilesFormat: ['.txt'],
+    })).toEqual([])
+  })
+
+  it('returns no formats when supportedFilesFormat is missing', () => {
+    expect(mapLibreFileFormats({})).toEqual([])
+  })
+
+  it('rejects a non-object settings response', () => {
+    expect(() => mapLibreFileFormats('nope')).toThrow(
+      expect.objectContaining({ category: ErrorCategory.InvalidProviderResponse }),
+    )
+  })
+})
+
+describe('mapLibreFileTranslation', () => {
+  it('returns translatedFileUrl', () => {
+    expect(mapLibreFileTranslation({
+      translatedFileUrl: 'https://libre.test/download_file/x.pdf',
+    })).toBe('https://libre.test/download_file/x.pdf')
+  })
+
+  it.each([null, {}, { translatedFileUrl: '' }, { translatedFileUrl: 42 }])(
+    'rejects %j as InvalidProviderResponse',
+    (native: unknown) => {
+      expect(() => mapLibreFileTranslation(native)).toThrow(
+        expect.objectContaining({ category: ErrorCategory.InvalidProviderResponse }),
+      )
+    },
+  )
+})
+
+describe('toLibreSourceCode', () => {
+  it('maps auto selection to "auto"', () => {
+    expect(toLibreSourceCode({ mode: 'auto' })).toBe('auto')
+  })
+
+  it('maps an explicit selection to its code', () => {
+    expect(toLibreSourceCode({
+      mode: 'explicit',
+      code: 'de',
+    })).toBe('de')
   })
 })

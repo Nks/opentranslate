@@ -29,7 +29,8 @@
       "@shared/*": ["./shared/*"],
       "@electron/*": ["./electron/*"],
       "@app/*": ["./app/*"],
-      "@scripts/*": ["./scripts/*"]
+      "@scripts/*": ["./scripts/*"],
+      "@tests/*": ["./tests/*"]
     }
   }
 }
