@@ -147,6 +147,46 @@ describe('provider http — bounded JSON', () => {
   })
 })
 
+describe('provider http — executeOrNull', () => {
+  it('returns null for a 404 without calling the error mapper', async () => {
+    const errorMapper: Mock<ErrorMapper> = mapperSpy()
+    const { http }: HttpFixture = httpReturning(
+      () => new Response('not here', { status: 404 }),
+      errorMapper,
+    )
+
+    expect(await http.executeOrNull({
+      path: '/frontend/settings',
+      method: 'GET',
+    })).toBeNull()
+    expect(errorMapper).not.toHaveBeenCalled()
+  })
+
+  it('maps any other failure through the error mapper', async () => {
+    const errorMapper: Mock<ErrorMapper> = mapperSpy()
+    const { http }: HttpFixture = httpReturning(
+      () => new Response('down', { status: 503 }),
+      errorMapper,
+    )
+
+    await rejectionOf(http.executeOrNull({
+      path: '/frontend/settings',
+      method: 'GET',
+    }))
+
+    expect(errorMapper).toHaveBeenCalledWith(503, 'down')
+  })
+
+  it('parses a successful body', async () => {
+    const { http }: HttpFixture = httpReturning(() => Response.json({ ok: true }))
+
+    expect(await http.executeOrNull({
+      path: '/frontend/settings',
+      method: 'GET',
+    })).toEqual({ ok: true })
+  })
+})
+
 describe('provider http — redirects', () => {
   it('never follows redirects by default', async () => {
     const {

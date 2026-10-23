@@ -151,6 +151,14 @@ describe('LibreTranslate document formats', () => {
     )
   })
 
+  it('treats a deployment without /frontend/settings (404) as unsupported', async () => {
+    const { fetchImpl }: RoutedFetch = routedFetch(libreRoutes({
+      settings: () => new Response('Not Found', { status: 404 }),
+    }))
+
+    expect(await buildAdapter(fetchImpl).getSupportedDocumentFormats?.()).toEqual([])
+  })
+
   it('treats files translation disabled as unsupported', async () => {
     const { fetchImpl }: RoutedFetch = routedFetch(libreRoutes({
       settings: () => Response.json({

@@ -62,6 +62,8 @@ export interface DownloadRequest {
 
 export interface ProviderHttp {
   execute: <T>(req: ExecuteRequest) => Promise<T>
+  /** Like `execute`, but resolves `null` when the endpoint answers 404. */
+  executeOrNull: <T>(req: ExecuteRequest) => Promise<T | null>
   download: (req: DownloadRequest) => Promise<Uint8Array<ArrayBuffer>>
 }
 
@@ -145,7 +147,7 @@ export function createProviderHttp(config: ProviderHttpConfig): ProviderHttp {
     return config.errorMapper(response.status, await readErrorBody(response))
   }
 
-  async function execute<T>(req: ExecuteRequest): Promise<T> {
+  async function request(req: ExecuteRequest): Promise<Response> {
     const url: string = `${config.baseUrl}${req.path}`
     const headers: Record<string, string> = {
       Accept: req.accept ?? 'application/json',
@@ -166,7 +168,27 @@ export function createProviderHttp(config: ProviderHttpConfig): ProviderHttp {
       init.body = req.body
     }
 
-    const response: Response = await send(url, init)
+    return send(url, init)
+  }
+
+  async function execute<T>(req: ExecuteRequest): Promise<T> {
+    const response: Response = await request(req)
+
+    if (!response.ok) {
+      await rejectResponse(response)
+    }
+
+    return readJsonBody<T>(response, config.providerId)
+  }
+
+  async function executeOrNull<T>(req: ExecuteRequest): Promise<T | null> {
+    const response: Response = await request(req)
+
+    if (response.status === 404) {
+      await response.body?.cancel()
+
+      return null
+    }
 
     if (!response.ok) {
       await rejectResponse(response)
@@ -234,6 +256,7 @@ export function createProviderHttp(config: ProviderHttpConfig): ProviderHttp {
 
   return {
     execute,
+    executeOrNull,
     download,
   }
 }

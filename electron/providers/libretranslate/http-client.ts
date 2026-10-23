@@ -149,12 +149,12 @@ export function createLibreHttpClient(input: LibreHttpClientInput): LibreHttpCli
   }
 
   async function fetchDocumentFormats(): Promise<string[]> {
-    const native: unknown = await http.execute<unknown>({
+    const native: unknown = await http.executeOrNull<unknown>({
       path: '/frontend/settings',
       method: 'GET',
     })
 
-    return mapLibreFileFormats(native)
+    return native === null ? [] : mapLibreFileFormats(native)
   }
 
   async function probeDocumentSupport(): Promise<boolean> {
