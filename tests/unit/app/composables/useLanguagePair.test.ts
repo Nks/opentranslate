@@ -1,14 +1,17 @@
 // @vitest-environment happy-dom
 import {
-  beforeEach, describe, expect, it, vi,
+  beforeEach, describe, expect, it, vi, type Mock,
 } from 'vitest'
 import {
   createPinia, setActivePinia,
 } from 'pinia'
 import { useProvidersStore } from '@app/stores/providers'
 import { useSettingsStore } from '@app/stores/settings'
+import type * as UseLanguagePairModule from '@app/composables/useLanguagePair'
 
-const mockSettingsUpdate = vi.fn<(input: unknown) => Promise<unknown>>()
+const mockSettingsUpdate: Mock<(input: unknown) => Promise<unknown>> = vi.fn<
+  (input: unknown) => Promise<unknown>
+>()
 
 vi.mock('@app/composables/useApi', () => ({
   useApi: () => ({
@@ -16,7 +19,7 @@ vi.mock('@app/composables/useApi', () => ({
   }),
 }))
 
-const { useLanguagePair } = await import('@app/composables/useLanguagePair')
+const { useLanguagePair }: typeof UseLanguagePairModule = await import('@app/composables/useLanguagePair')
 
 describe('useLanguagePair', () => {
   beforeEach(() => {
@@ -26,7 +29,7 @@ describe('useLanguagePair', () => {
   })
 
   it('sets an explicit source and persists the selection', () => {
-    const store = useProvidersStore()
+    const store: ReturnType<typeof useProvidersStore> = useProvidersStore()
     store.activeProviderId = 'libretranslate'
     store.targetLanguage = 'ru'
 
@@ -51,7 +54,7 @@ describe('useLanguagePair', () => {
   })
 
   it('returns to auto-detect when the source is cleared', () => {
-    const store = useProvidersStore()
+    const store: ReturnType<typeof useProvidersStore> = useProvidersStore()
     store.sourceSelection = {
       mode: 'explicit',
       code: 'en',
@@ -63,8 +66,8 @@ describe('useLanguagePair', () => {
   })
 
   it('sets the target, records it in the target history and persists', async () => {
-    const store = useProvidersStore()
-    const settingsStore = useSettingsStore()
+    const store: ReturnType<typeof useProvidersStore> = useProvidersStore()
+    const settingsStore: ReturnType<typeof useSettingsStore> = useSettingsStore()
     settingsStore.app.targetHistory = ['de']
 
     await useLanguagePair().changeTarget('ru')
@@ -75,7 +78,7 @@ describe('useLanguagePair', () => {
   })
 
   it('swaps the pair when the new target equals the explicit source', async () => {
-    const store = useProvidersStore()
+    const store: ReturnType<typeof useProvidersStore> = useProvidersStore()
     store.sourceSelection = {
       mode: 'explicit',
       code: 'en',
@@ -88,6 +91,55 @@ describe('useLanguagePair', () => {
     expect(store.sourceSelection).toEqual({
       mode: 'explicit',
       code: 'ru',
+    })
+  })
+
+  describe('pushTargetHistory', () => {
+    it('prepends a fresh user-picked target to the ring buffer', async () => {
+      const settingsStore: ReturnType<typeof useSettingsStore> = useSettingsStore()
+      settingsStore.app.targetHistory = ['es', 'en']
+
+      const { pushTargetHistory }: ReturnType<typeof useLanguagePair> = useLanguagePair()
+      await pushTargetHistory('ru')
+
+      expect(settingsStore.app.targetHistory).toEqual(['ru', 'es', 'en'])
+      expect(mockSettingsUpdate).toHaveBeenCalledWith({
+        app: { targetHistory: ['ru', 'es', 'en'] },
+      })
+    })
+
+    it('deduplicates by removing prior occurrences before prepending', async () => {
+      const settingsStore: ReturnType<typeof useSettingsStore> = useSettingsStore()
+      settingsStore.app.targetHistory = ['es', 'ru', 'en']
+
+      const { pushTargetHistory }: ReturnType<typeof useLanguagePair> = useLanguagePair()
+      await pushTargetHistory('ru')
+
+      expect(settingsStore.app.targetHistory).toEqual(['ru', 'es', 'en'])
+    })
+
+    it('caps the ring buffer at five entries', async () => {
+      const settingsStore: ReturnType<typeof useSettingsStore> = useSettingsStore()
+      settingsStore.app.targetHistory = ['es', 'en', 'de', 'fr', 'it']
+
+      const { pushTargetHistory }: ReturnType<typeof useLanguagePair> = useLanguagePair()
+      await pushTargetHistory('ru')
+
+      expect(settingsStore.app.targetHistory).toEqual([
+        'ru', 'es', 'en', 'de', 'fr',
+      ])
+    })
+
+    it('ignores null or empty codes', async () => {
+      const settingsStore: ReturnType<typeof useSettingsStore> = useSettingsStore()
+      settingsStore.app.targetHistory = ['es']
+
+      const { pushTargetHistory }: ReturnType<typeof useLanguagePair> = useLanguagePair()
+      await pushTargetHistory(null)
+      await pushTargetHistory('')
+
+      expect(settingsStore.app.targetHistory).toEqual(['es'])
+      expect(mockSettingsUpdate).not.toHaveBeenCalled()
     })
   })
 })

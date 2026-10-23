@@ -3,22 +3,18 @@ import {
   computed, onMounted, ref,
 } from 'vue'
 import {
-  onKeyStroke, useDropZone,
+  onKeyStroke, useDropZone, type UseDropZoneReturn,
 } from '@vueuse/core'
 import { useProvidersStore } from '@app/stores/providers'
 import { useTranslation } from '@app/composables/useTranslation'
-import { useProviderBootstrap } from '@app/composables/useProviderBootstrap'
-import { useProviderCatalog } from '@app/composables/useProviderCatalog'
+import { useProviderSession } from '@app/composables/useProviderSession'
 import { useLanguagePair } from '@app/composables/useLanguagePair'
 import { useDocumentTranslation } from '@app/composables/useDocumentTranslation'
 import type { Language } from '@shared/types/language'
 
 const providersStore = useProvidersStore()
-const {
-  switchProvider, restoreSelection,
-} = useTranslation()
-const { ensureActiveProviderHydrated } = useProviderBootstrap()
-const { loadProviderCatalog } = useProviderCatalog()
+const { switchProvider }: ReturnType<typeof useTranslation> = useTranslation()
+const { hydrateProviderSession }: ReturnType<typeof useProviderSession> = useProviderSession()
 const {
   changeSource, changeTarget,
 } = useLanguagePair()
@@ -43,7 +39,7 @@ const {
 } = useDocumentTranslation()
 
 const pageRoot = ref<HTMLElement | null>(null)
-const { isOverDropZone } = useDropZone(pageRoot, {
+const { isOverDropZone }: UseDropZoneReturn = useDropZone(pageRoot, {
   onDrop: (files: File[] | null): void => {
     void dropFiles(files)
   },
@@ -73,15 +69,7 @@ async function hydrateProviders(): Promise<void> {
     return
   }
 
-  await loadProviderCatalog()
-  await restoreSelection()
-
-  let hydration: Promise<void> = Promise.resolve()
-
-  ensureActiveProviderHydrated((id: string): void => {
-    hydration = switchProvider(id)
-  })
-  await hydration
+  await hydrateProviderSession(switchProvider)
 }
 
 async function onProviderSwitch(providerId: string): Promise<void> {

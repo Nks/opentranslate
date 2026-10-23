@@ -414,55 +414,8 @@ describe('useTranslation', () => {
     })
   })
 
-  describe('pushTargetHistory', () => {
-    it('prepends a fresh user-picked target to the ring buffer', () => {
-      const settingsStore = useSettingsStore()
-      settingsStore.app.targetHistory = ['es', 'en']
-
-      const { pushTargetHistory } = useTranslation()
-      pushTargetHistory('ru')
-
-      expect(settingsStore.app.targetHistory).toEqual(['ru', 'es', 'en'])
-      expect(mockSettingsUpdate).toHaveBeenCalledWith({
-        app: { targetHistory: ['ru', 'es', 'en'] },
-      })
-    })
-
-    it('deduplicates by removing prior occurrences before prepending', () => {
-      const settingsStore = useSettingsStore()
-      settingsStore.app.targetHistory = ['es', 'ru', 'en']
-
-      const { pushTargetHistory } = useTranslation()
-      pushTargetHistory('ru')
-
-      expect(settingsStore.app.targetHistory).toEqual(['ru', 'es', 'en'])
-    })
-
-    it('caps the ring buffer at five entries', () => {
-      const settingsStore = useSettingsStore()
-      settingsStore.app.targetHistory = ['es', 'en', 'de', 'fr', 'it']
-
-      const { pushTargetHistory } = useTranslation()
-      pushTargetHistory('ru')
-
-      expect(settingsStore.app.targetHistory).toEqual([
-        'ru', 'es', 'en', 'de', 'fr',
-      ])
-    })
-
-    it('ignores null or empty codes', () => {
-      const settingsStore = useSettingsStore()
-      settingsStore.app.targetHistory = ['es']
-
-      const { pushTargetHistory } = useTranslation()
-      pushTargetHistory(null)
-      pushTargetHistory('')
-
-      expect(settingsStore.app.targetHistory).toEqual(['es'])
-      expect(mockSettingsUpdate).not.toHaveBeenCalled()
-    })
-
-    it('is NOT invoked when an auto-switch fires', async () => {
+  describe('target history', () => {
+    it('is NOT updated when an auto-switch fires', async () => {
       const translationStore = useTranslationStore()
       const providersStore = useProvidersStore()
       const settingsStore = useSettingsStore()

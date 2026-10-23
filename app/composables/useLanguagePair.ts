@@ -11,10 +11,10 @@ import {
 import { TARGET_HISTORY_MAX } from '@shared/types/settings'
 
 export function useLanguagePair() {
-  const api = useApi()
-  const providersStore = useProvidersStore()
-  const settingsStore = useSettingsStore()
-  const handleError = useHandleError()
+  const api: ReturnType<typeof useApi> = useApi()
+  const providersStore: ReturnType<typeof useProvidersStore> = useProvidersStore()
+  const settingsStore: ReturnType<typeof useSettingsStore> = useSettingsStore()
+  const handleError: (err: unknown) => void = useHandleError()
   const { persist: persistSelection } = useSelectionPersistence()
 
   function currentPair(): LanguagePair {

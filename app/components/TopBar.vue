@@ -1,32 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NavigationMenuItem } from '@nuxt/ui'
-import type { ProviderDescriptorDto } from '@shared/providers/descriptor'
-import type { Language } from '@shared/types/language'
-import type { SourceLanguageSelection } from '@shared/types/translation'
+import type {
+  ProviderLanguageControlsEmits,
+  ProviderLanguageControlsProps,
+} from '@app/types/provider-language-controls'
 
-interface Props {
-  providers: ProviderDescriptorDto[]
-  activeProviderId: string | null
-  sourceLanguages: Language[]
-  targetLanguages: Language[]
-  sourceSelection: SourceLanguageSelection
-  targetLanguage: string | null
-}
-
-interface Emits {
-  switch: [providerId: string]
-  'source-change': [code: string | null]
-  'target-change': [code: string | null]
+interface Emits extends ProviderLanguageControlsEmits {
   swap: []
 }
 
-const props = defineProps<Props>()
+const props = defineProps<ProviderLanguageControlsProps>()
 defineEmits<Emits>()
-
-const sourceCode = computed<string | null>((): string | null =>
-  props.sourceSelection.mode === 'explicit' ? props.sourceSelection.code : null,
-)
 
 const swapDisabled = computed<boolean>(
   (): boolean => props.sourceSelection.mode === 'auto',
@@ -41,32 +26,28 @@ const navItems: NavigationMenuItem[] = [
 
 <template>
   <div class="flex items-center gap-4 px-4 py-3 border-b border-default">
-    <ProviderSelector
+    <ProviderLanguageControls
       :providers
-      :active-id="activeProviderId"
+      :active-provider-id
+      :source-languages
+      :target-languages
+      :source-selection
+      :target-language
       @switch="$emit('switch', $event)"
-    />
-    <LanguageSelector
-      :languages="sourceLanguages"
-      :model-value="sourceCode"
-      label="Source language"
-      :auto-detect-option="true"
-      @update:model-value="$emit('source-change', $event)"
-    />
-    <UButton
-      size="xs"
-      variant="ghost"
-      icon="i-fluent-arrow-swap-24-regular"
-      aria-label="Swap languages"
-      :disabled="swapDisabled"
-      @click="$emit('swap')"
-    />
-    <LanguageSelector
-      :languages="targetLanguages"
-      :model-value="targetLanguage"
-      label="Target language"
-      @update:model-value="$emit('target-change', $event)"
-    />
+      @source-change="$emit('source-change', $event)"
+      @target-change="$emit('target-change', $event)"
+    >
+      <template #between>
+        <UButton
+          size="xs"
+          variant="ghost"
+          icon="i-fluent-arrow-swap-24-regular"
+          aria-label="Swap languages"
+          :disabled="swapDisabled"
+          @click="$emit('swap')"
+        />
+      </template>
+    </ProviderLanguageControls>
     <div class="ml-auto flex items-center gap-1">
       <UNavigationMenu
         :items="navItems"

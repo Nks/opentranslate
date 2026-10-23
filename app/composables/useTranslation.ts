@@ -9,7 +9,6 @@ import { formatErrorMessage } from '@shared/errors/format'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
 import { useSelectionPersistence } from '@app/composables/useSelectionPersistence'
-import { useLanguagePair } from '@app/composables/useLanguagePair'
 import {
   pickFallbackTarget,
   reconcileSource,
@@ -27,7 +26,6 @@ export function useTranslation() {
   const {
     persist: persistSelection, restore: restoreSelection,
   } = useSelectionPersistence()
-  const { pushTargetHistory } = useLanguagePair()
 
   async function executeTranslate(): Promise<void> {
     if (!providersStore.activeProviderId) {
@@ -220,6 +218,5 @@ export function useTranslation() {
     switchProvider,
     persistSelection,
     restoreSelection,
-    pushTargetHistory,
   }
 }

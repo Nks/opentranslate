@@ -2,12 +2,19 @@
 import {
   describe, expect, it,
 } from 'vitest'
-import { mount } from '@vue/test-utils'
+import {
+  mount, type VueWrapper,
+} from '@vue/test-utils'
+import type { Component } from 'vue'
 import DocumentsHeader from '@app/components/DocumentsHeader.vue'
 import type { ProviderDescriptorDto } from '@shared/providers/descriptor'
 import type { Language } from '@shared/types/language'
 import type { SourceLanguageSelection } from '@shared/types/translation'
+import ProviderLanguageControls from '@app/components/ProviderLanguageControls.vue'
 import { documentStubs } from './support/nuxt-ui-stubs'
+import {
+  languageSelectorStub, providerSelectorStub,
+} from './support/selector-stubs'
 
 const providers: ProviderDescriptorDto[] = [
   {
@@ -29,21 +36,13 @@ const languages: Language[] = [
   },
 ]
 
-const stubs = {
+const stubs: Record<string, Component> = {
   ...documentStubs,
-  ProviderSelector: {
-    props: ['providers', 'activeId'],
-    emits: ['switch'],
-    template: '<select data-testid="provider" :data-active="activeId" @change="$emit(\'switch\', \'libretranslate\')" />',
-  },
-  LanguageSelector: {
-    props: ['languages', 'modelValue', 'label', 'autoDetectOption'],
-    emits: ['update:modelValue'],
-    template: '<select :aria-label="label" :data-value="modelValue" :data-auto="autoDetectOption" @change="$emit(\'update:modelValue\', \'en\')" />',
-  },
+  ProviderSelector: providerSelectorStub,
+  LanguageSelector: languageSelectorStub,
 }
 
-function mountHeader(sourceSelection: SourceLanguageSelection) {
+function mountHeader(sourceSelection: SourceLanguageSelection): VueWrapper {
   return mount(DocumentsHeader, {
     props: {
       providers,
@@ -53,13 +52,16 @@ function mountHeader(sourceSelection: SourceLanguageSelection) {
       sourceSelection,
       targetLanguage: 'ru',
     },
-    global: { stubs },
+    global: {
+      stubs,
+      components: { ProviderLanguageControls },
+    },
   })
 }
 
 describe('DocumentsHeader', () => {
   it('renders the provider selector and both language selectors', () => {
-    const wrapper = mountHeader({ mode: 'auto' })
+    const wrapper: VueWrapper = mountHeader({ mode: 'auto' })
 
     expect(wrapper.find('[data-testid="provider"]').attributes('data-active')).toBe('libretranslate')
     expect(wrapper.find('[aria-label="Source language"]').attributes('data-auto')).toBe('true')
@@ -67,7 +69,7 @@ describe('DocumentsHeader', () => {
   })
 
   it('passes the explicit source code to the source selector', () => {
-    const wrapper = mountHeader({
+    const wrapper: VueWrapper = mountHeader({
       mode: 'explicit',
       code: 'en',
     })
@@ -76,7 +78,7 @@ describe('DocumentsHeader', () => {
   })
 
   it('re-emits provider and language changes', async () => {
-    const wrapper = mountHeader({ mode: 'auto' })
+    const wrapper: VueWrapper = mountHeader({ mode: 'auto' })
 
     await wrapper.find('[data-testid="provider"]').trigger('change')
     await wrapper.find('[aria-label="Source language"]').trigger('change')

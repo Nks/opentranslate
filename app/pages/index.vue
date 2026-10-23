@@ -5,8 +5,7 @@ import {
 import { useTranslationStore } from '@app/stores/translation'
 import { useProvidersStore } from '@app/stores/providers'
 import { useTranslation } from '@app/composables/useTranslation'
-import { useProviderBootstrap } from '@app/composables/useProviderBootstrap'
-import { useProviderCatalog } from '@app/composables/useProviderCatalog'
+import { useProviderSession } from '@app/composables/useProviderSession'
 import { useLanguagePair } from '@app/composables/useLanguagePair'
 import { useApi } from '@app/composables/useApi'
 import { useHandleError } from '@app/composables/useHandleError'
@@ -25,10 +24,8 @@ const {
   clearInput,
   switchProvider,
   persistSelection,
-  restoreSelection,
 } = useTranslation()
-const { ensureActiveProviderHydrated } = useProviderBootstrap()
-const { loadProviderCatalog } = useProviderCatalog()
+const { hydrateProviderSession }: ReturnType<typeof useProviderSession> = useProviderSession()
 const {
   changeSource, changeTarget,
 } = useLanguagePair()
@@ -78,13 +75,9 @@ async function onCloseChoice(payload: WindowCloseResponsePayload): Promise<void>
 }
 
 onMounted(async (): Promise<void> => {
-  await loadProviderCatalog()
-  await restoreSelection()
-  ensureActiveProviderHydrated((id: string): void => {
-    void switchProvider(id)
-  })
   registerQuickTranslateListener()
   registerCloseRequestListener()
+  await hydrateProviderSession(switchProvider)
 })
 
 const hasConfiguredProvider = computed<boolean>(

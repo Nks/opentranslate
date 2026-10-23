@@ -3,15 +3,20 @@ import { useHandleError } from '@app/composables/useHandleError'
 import {
   useProvidersStore, type RendererProviderSettings,
 } from '@app/stores/providers'
+import type { SettingsGetResponseShape } from '@electron/ipc/channels'
+import type { ProviderDescriptorDto } from '@shared/providers/descriptor'
 
 export function useProviderCatalog() {
-  const api = useApi()
-  const providersStore = useProvidersStore()
-  const handleError = useHandleError()
+  const api: ReturnType<typeof useApi> = useApi()
+  const providersStore: ReturnType<typeof useProvidersStore> = useProvidersStore()
+  const handleError: (err: unknown) => void = useHandleError()
 
   async function loadProviderCatalog(): Promise<void> {
     try {
-      const [descriptors, settings] = await Promise.all([
+      const [descriptors, settings]: [
+        readonly ProviderDescriptorDto[],
+        SettingsGetResponseShape,
+      ] = await Promise.all([
         api.providers.list(),
         api.settings.get(),
       ])

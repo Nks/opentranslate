@@ -1,30 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { ProviderDescriptorDto } from '@shared/providers/descriptor'
-import type { Language } from '@shared/types/language'
-import type { SourceLanguageSelection } from '@shared/types/translation'
+import type {
+  ProviderLanguageControlsEmits,
+  ProviderLanguageControlsProps,
+} from '@app/types/provider-language-controls'
 
-interface Props {
-  providers: ProviderDescriptorDto[]
-  activeProviderId: string | null
-  sourceLanguages: Language[]
-  targetLanguages: Language[]
-  sourceSelection: SourceLanguageSelection
-  targetLanguage: string | null
-}
-
-interface Emits {
-  switch: [providerId: string]
-  'source-change': [code: string | null]
-  'target-change': [code: string | null]
-}
-
-const props = defineProps<Props>()
-defineEmits<Emits>()
-
-const sourceCode = computed<string | null>((): string | null =>
-  props.sourceSelection.mode === 'explicit' ? props.sourceSelection.code : null,
-)
+defineProps<ProviderLanguageControlsProps>()
+defineEmits<ProviderLanguageControlsEmits>()
 </script>
 
 <template>
@@ -40,27 +21,23 @@ const sourceCode = computed<string | null>((): string | null =>
     <h1 class="text-lg font-semibold">
       Documents
     </h1>
-    <ProviderSelector
+    <ProviderLanguageControls
       :providers
-      :active-id="activeProviderId"
+      :active-provider-id
+      :source-languages
+      :target-languages
+      :source-selection
+      :target-language
       @switch="$emit('switch', $event)"
-    />
-    <LanguageSelector
-      :languages="sourceLanguages"
-      :model-value="sourceCode"
-      label="Source language"
-      :auto-detect-option="true"
-      @update:model-value="$emit('source-change', $event)"
-    />
-    <UIcon
-      name="i-fluent-arrow-right-24-regular"
-      class="text-dimmed"
-    />
-    <LanguageSelector
-      :languages="targetLanguages"
-      :model-value="targetLanguage"
-      label="Target language"
-      @update:model-value="$emit('target-change', $event)"
-    />
+      @source-change="$emit('source-change', $event)"
+      @target-change="$emit('target-change', $event)"
+    >
+      <template #between>
+        <UIcon
+          name="i-fluent-arrow-right-24-regular"
+          class="text-dimmed"
+        />
+      </template>
+    </ProviderLanguageControls>
   </div>
 </template>

@@ -1,12 +1,13 @@
 // @vitest-environment happy-dom
 import {
-  beforeEach, describe, expect, it, vi,
+  beforeEach, describe, expect, it, vi, type Mock,
 } from 'vitest'
 import {
   createPinia, setActivePinia,
 } from 'pinia'
 import { useProvidersStore } from '@app/stores/providers'
 import type { ProviderDescriptorDto } from '@shared/providers/descriptor'
+import type * as UseProviderCatalogModule from '@app/composables/useProviderCatalog'
 
 const LIBRE_DESCRIPTOR: ProviderDescriptorDto = {
   id: 'libretranslate',
@@ -16,9 +17,14 @@ const LIBRE_DESCRIPTOR: ProviderDescriptorDto = {
   secretFields: [],
 }
 
-const mockList = vi.fn<() => Promise<ProviderDescriptorDto[]>>()
-const mockSettingsGet = vi.fn<() => Promise<{ providers: Record<string, unknown> }>>()
-const mockToastAdd = vi.fn<(options: Record<string, unknown>) => void>()
+const mockList: Mock<() => Promise<ProviderDescriptorDto[]>> = vi.fn<
+  () => Promise<ProviderDescriptorDto[]>
+>()
+type SettingsGet = () => Promise<{ providers: Record<string, unknown> }>
+const mockSettingsGet: Mock<SettingsGet> = vi.fn<SettingsGet>()
+const mockToastAdd: Mock<(options: Record<string, unknown>) => void> = vi.fn<
+  (options: Record<string, unknown>) => void
+>()
 
 vi.mock('@app/composables/useApi', () => ({
   useApi: () => ({
@@ -27,7 +33,9 @@ vi.mock('@app/composables/useApi', () => ({
   }),
 }))
 
-const { useProviderCatalog } = await import('@app/composables/useProviderCatalog')
+const { useProviderCatalog }: typeof UseProviderCatalogModule = await import(
+  '@app/composables/useProviderCatalog'
+)
 
 describe('useProviderCatalog', () => {
   beforeEach(() => {
@@ -47,7 +55,7 @@ describe('useProviderCatalog', () => {
 
     await useProviderCatalog().loadProviderCatalog()
 
-    const store = useProvidersStore()
+    const store: ReturnType<typeof useProvidersStore> = useProvidersStore()
     expect(store.descriptors).toEqual([LIBRE_DESCRIPTOR])
     expect(store.providerSettings).toEqual({
       libretranslate: { enabled: true },
