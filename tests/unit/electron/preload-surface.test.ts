@@ -30,4 +30,20 @@ describe('preload surface contract', () => {
     expect(source).toContain('secrets:set')
     expect(source).toContain('secrets:test')
   })
+
+  it('resolves dropped files in preload and never accepts a raw path from the renderer', async () => {
+    const source = await readFile(preloadSource, 'utf8')
+    const dropInvocations: RegExpMatchArray[] = [...source.matchAll(/invoke\('document:drop'/g)]
+
+    expect(source).toContain('webUtils.getPathForFile(file)')
+    expect(dropInvocations).toHaveLength(1)
+    expect(source).toMatch(/selectDroppedFile: async \(file: File\)/)
+  })
+
+  it('reveals the translated document without sending any path', async () => {
+    const source = await readFile(preloadSource, 'utf8')
+
+    expect(source).toContain("invoke('document:reveal')")
+    expect(source).not.toMatch(/invoke\('document:reveal',/)
+  })
 })

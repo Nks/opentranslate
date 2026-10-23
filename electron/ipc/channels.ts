@@ -59,8 +59,10 @@ export const channels = {
   'history:clear': 'history:clear',
   'history:toggle': 'history:toggle',
   'document:pick': 'document:pick',
+  'document:drop': 'document:drop',
   'document:translate': 'document:translate',
   'document:status': 'document:status',
+  'document:reveal': 'document:reveal',
 } as const
 
 export type ChannelName = keyof typeof channels
@@ -242,6 +244,10 @@ export interface ChannelContract {
     request: void
     response: DocumentPickResponseShape | null
   }
+  'document:drop': {
+    request: DocumentDropRequestShape
+    response: DocumentPickResponseShape
+  }
   'document:translate': {
     request: DocumentTranslateRequestShape
     response: DocumentTranslateResponseShape | null
@@ -250,9 +256,22 @@ export interface ChannelContract {
     request: void
     response: DocumentStatusResponseShape
   }
+  'document:reveal': {
+    request: void
+    response: void
+  }
 }
 
 export interface DocumentPickResponseShape {
+  filePath: string
+}
+
+/**
+ * Sent only by the preload bridge, which resolves the path of a dropped
+ * `File` with `webUtils.getPathForFile`. The renderer never supplies it;
+ * main validates the file before allowlisting it for `document:translate`.
+ */
+export interface DocumentDropRequestShape {
   filePath: string
 }
 
