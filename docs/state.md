@@ -1,21 +1,30 @@
 # Project State — OpenTranslate Desktop
 
-_Last updated: 2026-10-22 (v0.1.0 release prep — multi-arch builds + dependency refresh + security alert cleanup integrated on `feature/multi-arch-builds`)_
+_Last updated: 2026-10-23 (v0.1.1 release — macOS ad-hoc signing fix on `release/0.1.1`)_
 
 ---
 
 ## Active context
 
-- **Current phase:** v0.1.0 release prep — multi-arch builds, dependency
-  refresh, security alert cleanup. Integrated and validated locally;
-  awaiting review, push and PR.
-- **Current branch:** `feature/multi-arch-builds`
+- **Current phase:** v0.1.1 release. `v0.1.0` was tagged and built as a
+  draft pre-release, but its macOS DMGs are unsealed (Gatekeeper: "damaged");
+  the user chose to leave the `v0.1.0` tag and draft untouched and cut
+  `v0.1.1` with the ad-hoc signing fix (PR #66). No Developer ID: macOS
+  stays ad-hoc signed, not notarized.
+- **Current branch:** `release/0.1.1` (from `develop` at `6c7a0e3`) →
+  PR into `master`, tag `v0.1.1`, draft pre-release, back-merge PR
+  `master` → `develop`.
 - **Parent branch:** `develop`
-- **Next steps:** review the branch, push, open the PR into `develop`, let
-  `ci.yml` run `checks.yml` + the 4-target `package.yml` (first run of the
-  Windows x64 and native Intel mac jobs), then tag `v0.1.0` and publish the
-  draft pre-release.
-- **What landed on this branch:**
+- **Next steps:** review and publish the `v0.1.1` draft pre-release;
+  decide what to do with the unpublished `v0.1.0` draft; merge the
+  back-merge PR.
+- **v0.1.1 delta:** `mac.identity: '-'` ad-hoc signs the whole bundle;
+  `verify-package` fails mac targets whose bundle does not pass
+  `codesign --verify --deep --strict`; `package.yml` sets
+  `CSC_FOR_PULL_REQUEST=true` so PR builds are sealed too; `install.md`
+  documents the macOS (Open Anyway / `xattr -dr`) and Windows
+  (More info → Run anyway) first-open steps.
+- **What landed for v0.1.0 (`feature/multi-arch-builds`, PR #61):**
   - **Multi-arch builds:** four targets (mac arm64, mac x64, win x64,
     linux x64) with arch-suffixed artifact names, `scripts/package.mjs
     --arch`, `--publish never`, `scripts/verify-package.mjs` (native
@@ -67,21 +76,22 @@ _Last updated: 2026-10-22 (v0.1.0 release prep — multi-arch builds + dependenc
   release builds. Electron stays on 44.x, so the async `safeStorage`
   migration remains backlog-only (B-058).
 
-## Locked v0.1.0 decisions
+## Locked v0.1.x decisions
 
-- Version: `0.1.0` (no alpha suffix); published as a **GitHub
-  pre-release**.
-- macOS + Windows binaries: **unsigned**; bypass instructions live in
-  `docs/install.md`.
-- Auto-update: **not wired** (tracked as B-G-19 for v0.1.1).
+- Version: `0.1.1` (no alpha suffix); published as a **GitHub
+  pre-release**. The `v0.1.0` tag and draft stay untouched.
+- macOS binaries: **ad-hoc signed** (`mac.identity: '-'`), not notarized,
+  no Developer ID. Windows binaries: **unsigned**. First-open steps live
+  in `docs/install.md`.
+- Auto-update: **not wired** (tracked as B-G-19).
 - Tray template icon: shipped as auto-generated; hand-redesign
-  tracked as B-G-18 for v0.1.1.
+  tracked as B-G-18.
 - DMG background: flat `#F5F5F5` canvas, no decorative logo.
 - CHANGELOG.md: user-facing highlights only (no per-B-ID dump).
 - Release targets: mac arm64, mac x64, win x64, linux x64 (no arm64 on
   Linux/Windows).
 - Supply chain: no dependency younger than 7 days (`minimumReleaseAge`)
-  except the Electron patch line of the pinned major; `0.1.0` ships
+  except the Electron patch line of the pinned major; `0.1.x` ships
   Electron 44.9.3, not 45.0.0.
 
 ## Green-state verification
