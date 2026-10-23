@@ -42,11 +42,26 @@ SmartScreen first-open steps.
   show the categorized message (for example "This file type is not
   supported for translation. Supported formats: …").
 
+### Changed
+
+- **Provider requests no longer follow HTTP redirects.** A redirecting
+  endpoint (for example `http://` → `https://`) now fails with "endpoint
+  answered with a redirect"; enter the final URL in Settings. This keeps the
+  LibreTranslate API key from being re-sent to another host on a 307/308.
+- An unreachable endpoint, TLS or authentication problem on the Documents
+  page now shows that error instead of "not supported".
+
 ### Security
 
 - The translated file is downloaded only from the configured LibreTranslate
-  origin, without the API key and without following redirects; uploads do
-  not follow redirects either.
+  `http(s)` origin, without the API key.
+- Provider responses are size-limited: JSON 1 MiB, error bodies 64 KiB,
+  downloads 100 MiB; server error text is shortened to 200 characters.
+- Translated files carry Mark-of-the-Web (Windows `Zone.Identifier`, macOS
+  quarantine), so Office/Explorer/Finder treat them as downloaded.
+- A selected document is opened once and checked and read through the same
+  handle; it can only be translated with the provider that was active when
+  it was picked or dropped.
 - Only the file picked in the native dialog or dropped on the page can be
   translated (the dropped file's path is resolved in preload, never sent by
   the page); network (UNC) paths, non-regular files and oversized files are

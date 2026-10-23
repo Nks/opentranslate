@@ -217,7 +217,7 @@ Later phases extend this registry:
 | 5 | `translation:translate`, `translation:cancel`, `translation:detect` |
 | 7 | `history:add`, `history:list`, `history:search`, `history:delete`, `history:clear`, `history:toggle` |
 | 8 | `quick-translate:open`, `quick-translate:close`, `quick-translate:translate` (overlay window) |
-| 9 | `document:pick`, `document:translate`, `document:save` |
+| 9 | `document:pick`, `document:drop`, `document:translate`, `document:status`, `document:reveal` |
 
 ---
 
@@ -820,28 +820,40 @@ The shared contract carries two optional methods, implemented together:
      never sends a raw path; a `File` without a disk path (dragged text,
      browser item) resolves to `''` and is refused.
    Main runs the step 3 checks (`service.inspect`) on either selection and
-   only then records it as the single allowlisted path; a rejected file
-   leaves the previous selection in place.
+   only then records it as the single allowlisted path, bound to the
+   provider adapter active at that moment; it returns the `fileName` and
+   `extension` it resolved, which the renderer displays and gates on. A
+   rejected file leaves the previous selection in place. A provider switch
+   creates a new adapter, so the selection no longer matches and the file
+   must be selected again (the page clears it too).
 2. `document:translate` validates the payload with
    `documentTranslateRequestSchema` (strict object; language codes match
    `^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8}){0,3}$`, so they are safe inside the
    output filename) and refuses any `filePath` other than the last selected
    one. LibreTranslate accepts `source=auto` for files, so Auto Detect stays
    available on the Documents page.
-3. `source-file.ts` (at selection and again at translate) rejects network (UNC / `//host`) paths before any fs
-   call, requires an absolute path, resolves it with `realpath`, requires a
-   regular non-empty file of at most `MAX_DOCUMENT_UPLOAD_BYTES` (50 MiB),
-   and checks its extension against the provider formats. An unsupported
-   extension fails with `unsupported_document_type` and lists the supported
-   formats.
-4. The service reads the bytes (size re-checked after the read) and calls
-   `adapter.translateDocument`.
+3. The service first fetches the provider formats, then `source-file.ts`
+   (at selection and again at translate) rejects network (UNC / `//host`)
+   paths before any fs call, requires an absolute path, resolves it with
+   `realpath` and opens it **once** (`O_RDONLY | O_NOFOLLOW | O_NONBLOCK`
+   where defined; plain read-only on Windows). `isFile` and the size limit
+   (`MAX_DOCUMENT_UPLOAD_BYTES`, 50 MiB) come from that handle's `stat()`, so
+   a FIFO, device or symlink swapped in after the check is never read. The
+   extension must be in the provider formats; otherwise
+   `unsupported_document_type` lists the supported formats. Mapped drives
+   are accepted: the path comes only from the user's pick or drop.
+4. The service reads at most 50 MiB + 1 byte from that same handle and
+   calls `adapter.translateDocument`.
 5. The returned bytes are saved unmodified as
    `<name>.<target-lang>.translated<ext>` next to the real path
    (e.g. `report.es.translated.pdf`): written to a `wx`-created
    `*.partial` file, then `rename`d over the target, so a symlink at the
    output path is replaced, never written through, and a failed write
-   leaves no partial file.
+   leaves no partial file. The output carries Mark-of-the-Web: on Windows a
+   `:Zone.Identifier` stream (`ZoneId=3`) is written on the partial file
+   before the rename (skipped with a log line on volumes without streams);
+   on macOS `LSFileQuarantineEnabled` in the app's `Info.plist` makes the
+   system add `com.apple.quarantine` to files the app creates.
 6. Every failure reaches the renderer as an `AppError` category; anything
    unexpected becomes `internal_app_error`.
 7. `document:reveal` takes no payload: main calls `shell.showItemInFolder`
@@ -850,27 +862,39 @@ The shared contract carries two optional methods, implemented together:
 ### 8.7.3 LibreTranslate transport
 
 - `POST /translate_file` — multipart `file`, `source` (`auto` or code),
-  `target`, plus `api_key` when the vault holds one. Redirects are not
-  followed (`redirect: 'manual'`).
+  `target`, plus `api_key` when the vault holds one.
+- Every kernel request uses `redirect: 'manual'`; a 3xx becomes
+  `endpoint_unreachable` ("redirects are not followed"), so no request body
+  with `api_key` is ever re-sent to another host.
 - The response's `translatedFileUrl` is fetched through the HTTP kernel's
   `download()` only when its origin equals the configured endpoint's
   origin (scheme, host and port). Otherwise → `invalid_provider_response`
   without any request. The download sends no `api_key` and no auth header,
-  follows no redirects, and is capped at `MAX_DOCUMENT_DOWNLOAD_BYTES`
-  (100 MiB) by `Content-Length` and by a streaming byte counter.
+  and its body is capped at `MAX_DOCUMENT_DOWNLOAD_BYTES` (100 MiB) by
+  `Content-Length` and by a streaming byte counter. The URL must be
+  `http(s)` with the endpoint's own protocol (`blob:` and similar are
+  refused).
+- Every other response body is bounded too (`response-body.ts`): JSON
+  success bodies at 1 MiB, error bodies at 64 KiB (larger ones are dropped
+  before parsing), and provider error text is truncated to 200 characters
+  in error messages.
 - Upload and download use the same kernel `fetch`, so `allowSelfSignedTls`
   applies through the one shared `undici.Agent`. Both use
   `max(requestTimeoutMs, DOCUMENT_REQUEST_TIMEOUT_MS)` (5 min).
 - HTTP errors go through `throwLibreHttpError`; `400 … file format not
   supported` and `403 Files translation are disabled …` map to
   `unsupported_document_type`.
+- `document:status` asks the adapter for its formats directly, so an
+  unreachable endpoint, TLS or auth failure reaches the page as that
+  category instead of "not supported". The `/frontend/settings` probe is
+  used only for `getCapabilities()`.
 
 ### 8.7.4 IPC channels
 
-- `document:pick` — request: `void`, response: `{ filePath: string } | null`
-  (native open dialog in main)
+- `document:pick` — request: `void`, response:
+  `{ filePath, fileName, extension } | null` (native open dialog in main)
 - `document:drop` — request: `{ filePath }` sent only by the preload
-  `selectDroppedFile(file)` bridge, response: `{ filePath: string }`
+  `selectDroppedFile(file)` bridge, response: `{ filePath, fileName, extension }`
 - `document:translate` — request: `{ filePath, sourceLanguage, targetLanguage }`,
   response: `{ outputPath: string, provider: string }`
 - `document:status` — request: `void`, response:

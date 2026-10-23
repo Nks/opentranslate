@@ -69,18 +69,22 @@ before upload with `unsupported_document_type` and the supported formats.
 Flow (all in the main process):
 
 1. Pick a file with the native dialog (filtered by the deployment's
-   formats). Only the picked file can be translated.
+   formats) or drop it anywhere on the Documents page. Only that selected
+   file can be translated, and only with the provider that was active when
+   it was selected.
 2. The file must be local (no network / UNC paths), a regular non-empty
    file, at most **50 MiB**.
 3. `POST /translate_file` (multipart `file`, `source`, `target`, and
    `api_key` when configured). Redirects are not followed.
 4. The returned `translatedFileUrl` is downloaded only if it is on the
    **same origin** as the configured endpoint (scheme, host, port). The
-   download carries no API key, follows no redirects and is capped at
-   **100 MiB**.
+   download carries no API key and its body is capped at **100 MiB**.
+   Other responses are capped too (JSON 1 MiB, error bodies 64 KiB), and
+   server error text is shortened to 200 characters.
 5. The bytes are saved unmodified next to the source as
-   `<name>.<target>.translated<ext>`; an existing translation with that
-   name is replaced.
+   `<name>.<target>.translated<ext>`, marked as downloaded from the internet
+   (Windows `Zone.Identifier`, macOS quarantine); an existing translation
+   with that name is replaced.
 
 Uploads and downloads time out after `max(requestTimeoutMs, 5 min)`.
 There is no cancel button yet.
@@ -89,8 +93,15 @@ There is no cancel button yet.
 > request it received. If a TLS-terminating proxy makes it answer with
 > `http://…` while the endpoint is `https://…`, or with an internal host
 > name, the origin check refuses the download
-> (`invalid_provider_response`). Configure the proxy to forward
-> `X-Forwarded-Proto` / `Host` so the URL matches the public endpoint.
+> (`invalid_provider_response`). Forward the original `Host` header and
+> make the server trust the proxy's `X-Forwarded-Proto` (the Docker image
+> runs gunicorn: set `FORWARDED_ALLOW_IPS`) so the URL matches the public
+> endpoint.
+>
+> **Redirects:** the app never follows HTTP redirects for any LibreTranslate
+> request. If the endpoint redirects (for example `http://` → `https://`),
+> requests fail with "endpoint answered with a redirect"; enter the final
+> URL in Settings.
 
 ---
 

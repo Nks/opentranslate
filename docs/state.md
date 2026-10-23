@@ -67,8 +67,8 @@ _Last updated: 2026-10-23 (LibreTranslate document translation on `feature/libre
     (`erasableSyntaxOnly`, `verbatimModuleSyntax`); packaged smoke fails
     in CI without an app and never leaks its temp profile.
 - **Deferred (see `docs/backlog.md`):** B-067 cancel document
-  translation; B-G-07 writable-root allowlist and B-G-08 `execute()` size cap
-  (`docs/threat-model.md`); B-056 boundaries lint has no
+  translation; B-G-07 writable-root allowlist (`docs/threat-model.md`);
+  B-056 boundaries lint has no
   import resolver (5 known violations); B-057 navigation / window-open /
   permission guards + Electron fuses; B-058 Electron 45 after its
   cooldown (async `safeStorage` before Electron 46); B-066 drop the
@@ -104,8 +104,10 @@ _`feature/libretranslate-documents`, 2026-10-23:_
 
 - `pnpm lint` — clean
 - `pnpm typecheck` — clean
-- `pnpm test` — **1066 tests across 110 files** (integration: documents via
-  `registerIpcHandlers` against a local LibreTranslate emulator)
+- `pnpm test` — **1097 passed + 1 Windows-only skip across 115 files**
+  (integration: documents via `registerIpcHandlers` against a local
+  LibreTranslate emulator, split into translation and selection suites over
+  `tests/support/document-ipc-harness.ts`)
 - `pnpm test:e2e` — 1/1 (electron-dev, macOS arm64)
 - `pnpm test:e2e:packaged` — 3/3 on a local mac arm64 `package:dir` build,
   including `packaged-documents.e2e.ts` (capability gating, unsupported
@@ -176,6 +178,15 @@ _`feature/multi-arch-builds`, 2026-10-22, after `rm -rf node_modules && pnpm ins
     so e2e and integration share `tests/support/libre-emulator.ts`.
   - Live smoke (LibreTranslate 1.9.6, en↔ru): `.txt`, `.pdf`, `.html`
     translated and saved; `.bin` rejected with the supported-formats list.
+  - Review/audit fix round: bounded JSON/error bodies + 200-char provider
+    detail, `redirect: 'manual'` kernel default (3xx → error), `http(s)`
+    same-protocol download check, single-open TOCTOU-safe source reads
+    (formats first, `O_NOFOLLOW`/`O_NONBLOCK`), selection bound to the
+    active adapter, Mark-of-the-Web (Windows ADS, mac
+    `LSFileQuarantineEnabled`), format list Set + 64 cap, status errors
+    propagate, `ProviderLanguageControls` shared by `TopBar` /
+    `DocumentsHeader`, `useProviderSession`, `document-shapes.ts`, `@tests/*`
+    import ban for production code.
 
 ## Architecture snapshot
 
